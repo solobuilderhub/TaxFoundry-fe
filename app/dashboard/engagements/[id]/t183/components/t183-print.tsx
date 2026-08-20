@@ -98,6 +98,10 @@ export function T183Print({ id }: { id: string }) {
         open={recordOpen}
         onOpenChange={(open: boolean) => !open && setRecordOpen(false)}
         title="Record the officer's T183 authorization"
+        description="What the signing officer actually signed. Nothing here is filled in for you."
+        // The default dialog is `sm:max-w-md` — 448px, which stacks six fields
+        // into a single cramped column and pushes the last one below the fold.
+        size="lg"
         submitLabel="Record"
         submitLoading={authorizeT183.isPending}
         schema={getT183Schema()}

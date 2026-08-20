@@ -61,14 +61,15 @@ export function getT183Schema() {
         [
           field.text<T183Values>("officerName", "Officer name", {
             required: true,
-            description: "The officer of the corporation who signed, not the preparer.",
+            placeholder: "e.g. Jane Okafor",
+            description: "The officer of the corporation, not the preparer.",
           }),
           field.text<T183Values>("officerPosition", "Position, office or rank", {
             required: true,
             placeholder: "e.g. President",
           }),
         ],
-        { cols: 2 },
+        { variant: "card", cols: 2 },
       ),
       section<T183Values>(
         "signature",
@@ -76,8 +77,7 @@ export function getT183Schema() {
         [
           datetime<T183Values>("signedAt", "Date and time signed", {
             required: true,
-            description:
-              "When the officer actually signed — not now. CRA requires an electronic signature to report the date and time it was applied.",
+            description: "When the officer signed — not now.",
           }),
           field.select<T183Values>(
             "authorizationMethod",
@@ -85,21 +85,22 @@ export function getT183Schema() {
             [...T183_METHODS],
             {
               required: true,
-              description:
-                "Only a wet or electronic signature permits filing. Verbal and other are recorded as notes.",
+              description: "Only wet or electronic permits filing.",
             },
           ),
           field.text<T183Values>("evidenceRef", "Where the signed T183 is retained", {
             required: true,
-            placeholder: "e.g. DMS ref, file name",
-            description:
-              "The transmitter must keep the signed original for six years. Required for a wet or electronic signature.",
+            placeholder: "e.g. DMS reference, file name",
+            description: "You must keep the signed original for six years.",
           }),
           field.text<T183Values>("formVersion", "Form version", {
             placeholder: "e.g. T183CORP-2024",
           }),
         ],
-        { cols: 1 },
+        // Two columns now that the dialog is wide enough for them: the signing
+        // moment beside the method, and the retention reference beside the form
+        // version. Six stacked fields ran past the bottom of the viewport.
+        { variant: "card", cols: 2 },
       ),
     ],
   });
