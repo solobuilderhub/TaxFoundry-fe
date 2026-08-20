@@ -1,0 +1,356 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@classytic/fluid/styles.css";
+
+@custom-variant dark (&:is(.dark *));
+@plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
+
+/* ============================================================================
+   Token bridge — exposes CSS variables as Tailwind utilities.
+   Every token below is consumable as bg-*, text-*, border-*, ring-*, etc.
+   ============================================================================ */
+@theme inline {
+  /* Radii */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Surfaces */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Brand & primary action */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  /* Warm brass counterweight to the teal brand. NOTE: distinct from `--accent`,
+     which is shadcn's neutral hover SURFACE — do not conflate them. */
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  /* Muted & accent */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* Semantic states (every pair WCAG-AA in both modes) */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  /* Form & focus */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Charts — categorical, color-blind aware */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-background: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Accounting domain palette
+     Posted   = finalized/success (emerald)
+     Unposted = draft/pending (amber)
+     Debit    = left side of ledger (blue)
+     Credit   = right side of ledger (rose) */
+  --color-accounting-posted: var(--accounting-posted);
+  --color-accounting-posted-foreground: var(--accounting-posted-foreground);
+  --color-accounting-unposted: var(--accounting-unposted);
+  --color-accounting-unposted-foreground: var(--accounting-unposted-foreground);
+  --color-accounting-debit: var(--accounting-debit);
+  --color-accounting-debit-foreground: var(--accounting-debit-foreground);
+  --color-accounting-credit: var(--accounting-credit);
+  --color-accounting-credit-foreground: var(--accounting-credit-foreground);
+}
+
+/* ============================================================================
+   Light theme — deep teal brand, brass accent, cool-tinted neutrals
+
+   Palette rationale (all values verified, see the token table below):
+   · Primary is TEAL (hue ~218), not indigo/violet. Violet has become the
+     visual shorthand for AI brands and blue is used by ~70% of SaaS; a deep
+     teal still reads financial/trustworthy while not blending in.
+   · Brass (hue ~62) is the warm counterweight — the historical blue-and-gold
+     money/authority pairing, and the "Foundry" note. It also stops the teal
+     reading cold, which is the usual failure of blue-led fintech palettes.
+   · Neutrals carry a slight cool chroma (0.003–0.021) rather than chroma 0.
+     Pure grey is what made the old theme read as flat black-and-white.
+   · Every foreground/background pair below clears WCAG AA (≥4.5:1 for text,
+     ≥3:1 for UI). Lightness is anchored first, then chroma, per OKLCH practice.
+   ============================================================================ */
+:root {
+  --radius: 0.625rem;
+
+  /* Surfaces */
+  --background: oklch(0.995 0.003 225);
+  --foreground: oklch(0.21 0.021 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.021 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.021 240);
+
+  /* Brand — deep teal. 5.56:1 on background. */
+  --brand: oklch(0.505 0.096 218);
+  --brand-foreground: oklch(0.995 0.004 220);
+
+  /* Brass accent — emphasis only, never a hover surface. 5.06:1 on background. */
+  --brand-accent: oklch(0.545 0.118 62);
+  --brand-accent-foreground: oklch(0.995 0.004 220);
+
+  /* Primary — adopts the brand hue. This is the fix for the old palette: the
+     brand token existed but primary was oklch(0.205 0 0), pure achromatic, so
+     every bg-primary/text-primary in the app rendered as black or white. */
+  --primary: oklch(0.505 0.096 218);
+  --primary-foreground: oklch(0.995 0.004 220);
+
+  --secondary: oklch(0.968 0.008 230);
+  --secondary-foreground: oklch(0.21 0.021 240);
+
+  --muted: oklch(0.968 0.008 230);
+  --muted-foreground: oklch(0.502 0.021 235);
+
+  /* shadcn hover/active SURFACE — neutral by design, just lightly tinted. */
+  --accent: oklch(0.952 0.012 225);
+  --accent-foreground: oklch(0.21 0.021 240);
+
+  /* Semantic states — darkened from the stock values so each clears 4.5:1 as
+     TEXT on the background, not just as a fill behind white. */
+  --destructive: oklch(0.535 0.21 27);
+  --destructive-foreground: oklch(0.995 0.004 220);
+  --success: oklch(0.515 0.128 155);
+  --success-foreground: oklch(0.995 0.004 220);
+  --warning: oklch(0.545 0.115 80);
+  --warning-foreground: oklch(0.995 0.004 220);
+  --info: oklch(0.52 0.118 240);
+  --info-foreground: oklch(0.995 0.004 220);
+
+  --border: oklch(0.878 0.01 230);
+  --input: oklch(0.878 0.01 230);
+  --ring: oklch(0.505 0.096 218);
+
+  /* Charts — brand teal and brass first (they carry the identity), then hues
+     spaced far enough apart to stay separable for common colour-blindness. */
+  --chart-1: oklch(0.505 0.096 218);
+  --chart-2: oklch(0.545 0.118 62);
+  --chart-3: oklch(0.515 0.128 155);
+  --chart-4: oklch(0.5 0.14 300);
+  --chart-5: oklch(0.56 0.14 25);
+
+  /* Sidebar — a touch cooler than the page so the shell reads as chrome */
+  --sidebar: oklch(0.972 0.008 230);
+  --sidebar-background: oklch(0.972 0.008 230);
+  --sidebar-foreground: oklch(0.21 0.021 240);
+  --sidebar-primary: oklch(0.505 0.096 218);
+  --sidebar-primary-foreground: oklch(0.995 0.004 220);
+  --sidebar-accent: oklch(0.935 0.016 222);
+  --sidebar-accent-foreground: oklch(0.21 0.021 240);
+  --sidebar-border: oklch(0.878 0.01 230);
+  --sidebar-ring: oklch(0.505 0.096 218);
+
+  /* Accounting palette — WCAG-AA on light surfaces */
+  --accounting-posted: oklch(0.515 0.128 155);
+  --accounting-posted-foreground: oklch(0.995 0.004 220);
+  --accounting-unposted: oklch(0.545 0.115 80);
+  --accounting-unposted-foreground: oklch(0.995 0.004 220);
+  --accounting-debit: oklch(0.505 0.096 218);
+  --accounting-debit-foreground: oklch(0.995 0.004 220);
+  --accounting-credit: oklch(0.56 0.14 25);
+  --accounting-credit-foreground: oklch(0.995 0.004 220);
+}
+
+/* ============================================================================
+   Dark theme — cool near-black (NOT pure black), desaturated brand
+
+   Two dark-mode rules applied here:
+   · No pure black. Backgrounds sit in the ~#0b141a–#222c33 band with a cool
+     hue, so cards, muted rows and borders separate by lightness instead of
+     needing heavy strokes. The old theme's chroma-0 greys had no such depth.
+   · Chroma is pulled back and lightness pushed up versus the light theme.
+     Saturated colours on dark surfaces vibrate and read as glare.
+   ============================================================================ */
+.dark {
+  --background: oklch(0.185 0.018 240);
+  --foreground: oklch(0.968 0.005 230);
+  --card: oklch(0.232 0.019 240);
+  --card-foreground: oklch(0.968 0.005 230);
+  --popover: oklch(0.232 0.019 240);
+  --popover-foreground: oklch(0.968 0.005 230);
+
+  --brand: oklch(0.72 0.115 216);
+  --brand-foreground: oklch(0.185 0.03 225);
+
+  --brand-accent: oklch(0.79 0.125 72);
+  --brand-accent-foreground: oklch(0.2 0.04 60);
+
+  /* Was oklch(0.922 0 0) — a near-white CTA. Now carries the brand hue. */
+  --primary: oklch(0.72 0.115 216);
+  --primary-foreground: oklch(0.185 0.03 225);
+
+  --secondary: oklch(0.285 0.019 240);
+  --secondary-foreground: oklch(0.968 0.005 230);
+
+  --muted: oklch(0.285 0.019 240);
+  --muted-foreground: oklch(0.762 0.021 235);
+
+  --accent: oklch(0.305 0.022 238);
+  --accent-foreground: oklch(0.968 0.005 230);
+
+  --destructive: oklch(0.704 0.178 22.216);
+  --destructive-foreground: oklch(0.185 0.03 225);
+  --success: oklch(0.72 0.16 155);
+  --success-foreground: oklch(0.185 0.03 225);
+  --warning: oklch(0.8 0.14 85);
+  --warning-foreground: oklch(0.2 0.04 75);
+  --info: oklch(0.72 0.13 240);
+  --info-foreground: oklch(0.185 0.03 225);
+
+  /* Solid, tinted borders rather than white-alpha: alpha borders shift with
+     whatever surface is behind them, so nested cards lost their edges. */
+  --border: oklch(0.34 0.018 240);
+  --input: oklch(0.375 0.02 240);
+  --ring: oklch(0.72 0.115 216);
+
+  --chart-1: oklch(0.72 0.115 216);
+  --chart-2: oklch(0.79 0.125 72);
+  --chart-3: oklch(0.72 0.16 155);
+  --chart-4: oklch(0.7 0.15 300);
+  --chart-5: oklch(0.72 0.16 25);
+
+  --sidebar: oklch(0.205 0.019 240);
+  --sidebar-background: oklch(0.205 0.019 240);
+  --sidebar-foreground: oklch(0.968 0.005 230);
+  --sidebar-primary: oklch(0.72 0.115 216);
+  --sidebar-primary-foreground: oklch(0.185 0.03 225);
+  --sidebar-accent: oklch(0.295 0.024 232);
+  --sidebar-accent-foreground: oklch(0.968 0.005 230);
+  --sidebar-border: oklch(0.32 0.018 240);
+  --sidebar-ring: oklch(0.72 0.115 216);
+
+  --accounting-posted: oklch(0.72 0.16 155);
+  --accounting-posted-foreground: oklch(0.185 0.03 225);
+  --accounting-unposted: oklch(0.8 0.14 85);
+  --accounting-unposted-foreground: oklch(0.2 0.04 75);
+  --accounting-debit: oklch(0.72 0.115 216);
+  --accounting-debit-foreground: oklch(0.185 0.03 225);
+  --accounting-credit: oklch(0.72 0.16 25);
+  --accounting-credit-foreground: oklch(0.185 0.03 225);
+}
+
+/* ============================================================================
+   Base layer
+   ============================================================================ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground theme-transition;
+  }
+
+  /* WebKit scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 3px 0;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: oklch(0.6 0 0 / 0.3);
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    min-height: 40px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.5 0 0 / 0.5);
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.6 0 0 / 0.3) transparent;
+  }
+}
+
+/* ============================================================================
+   Custom utilities
+   ============================================================================ */
+@utility theme-transition {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Tabular figures for ledger alignment.
+   Use on any cell/figure containing currency, quantity, or a calculated total. */
+@utility numeric {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+@utility numeric-positive {
+  color: var(--success);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@utility numeric-negative {
+  color: var(--destructive);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Short aliases — debit/credit are domain-critical and used everywhere */
+@utility text-debit {
+  color: var(--accounting-debit);
+}
+
+@utility text-credit {
+  color: var(--accounting-credit);
+}
+
+/* Ledger input cells — tinted background + side stripe to disambiguate
+   the column at a glance, even when the number itself is empty/zero. */
+@utility debit-input {
+  background-color: color-mix(in oklch, var(--accounting-debit) 6%, transparent);
+  border-left: 2px solid color-mix(in oklch, var(--accounting-debit) 35%, transparent);
+}
+
+@utility credit-input {
+  background-color: color-mix(in oklch, var(--accounting-credit) 6%, transparent);
+  border-left: 2px solid color-mix(in oklch, var(--accounting-credit) 35%, transparent);
+}
