@@ -3,8 +3,9 @@
 import { Suspense, type ReactNode } from "react";
 import { DashboardLayout } from "@classytic/fluid/dashboard/client";
 import { ModeToggle } from "@classytic/fluid/client/theme";
-import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { OrganizationProvider, useOrganization } from "@/contexts/OrganizationContext";
 import { useSidebarConfig } from "../_nav/sidebar-config";
+import { NoOrganization } from "./no-organization";
 
 // A raw 24-hex Mongo id makes an ugly breadcrumb crumb; label it by its parent
 // segment ("engagements/<id>" → "Engagement") instead of showing the hex.
@@ -23,6 +24,21 @@ function resolveSegment(
     return SEGMENT_LABEL[segments[index - 1] ?? ""] ?? "Detail";
   }
   return undefined; // fall back to the default title-cased label
+}
+
+/**
+ * Gate the dashboard on the user belonging to a firm.
+ *
+ * Only once the org list has actually loaded — `organizations` is `[]` while it
+ * is still in flight, so gating on the array alone would flash "set up your
+ * firm" at every user on every load.
+ */
+function OrgGate({ children }: { children: ReactNode }) {
+  const { organizations, isLoading } = useOrganization();
+
+  if (isLoading) return <div className="min-h-dvh" />;
+  if (organizations.length === 0) return <NoOrganization />;
+  return <>{children}</>;
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -60,7 +76,9 @@ export function DashboardShell({
 }) {
   return (
     <OrganizationProvider serverSession={serverSession}>
-      <Shell>{children}</Shell>
+      <OrgGate>
+        <Shell>{children}</Shell>
+      </OrgGate>
     </OrganizationProvider>
   );
 }

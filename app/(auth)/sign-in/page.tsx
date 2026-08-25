@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SchemaForm } from "@classytic/fluid/formkit";
@@ -57,6 +58,15 @@ export default function SignInPage() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </SchemaForm>
+        <p className="text-center text-sm text-muted-foreground">
+          New here?{" "}
+          <Link
+            href="/sign-up"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            Create an account
+          </Link>
+        </p>
       </div>
     </div>
   );
