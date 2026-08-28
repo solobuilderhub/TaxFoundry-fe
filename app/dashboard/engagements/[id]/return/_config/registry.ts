@@ -6,11 +6,15 @@
  * schedule is a new file in `./schedules/` plus one line here.
  */
 import type { ReturnInput } from "../_lib/return-input";
+import { alberta } from "./schedules/alberta";
+import { albertaContinuity } from "./schedules/alberta-continuity";
+import { albertaIeg } from "./schedules/alberta-ieg";
 import { balanceSheet } from "./schedules/balance-sheet";
+import { capital } from "./schedules/capital";
 import { capitalGains } from "./schedules/capital-gains";
 import { cca } from "./schedules/cca";
 import { credits } from "./schedules/credits";
-import type { ScheduleDef } from "./schedules/define";
+import type { ScheduleDef, ScheduleProgram } from "./schedules/define";
 import { dividends } from "./schedules/dividends";
 import { donations } from "./schedules/donations";
 import { eifel } from "./schedules/eifel";
@@ -22,43 +26,42 @@ import { incomeStatement } from "./schedules/income-statement";
 import { internetBusiness } from "./schedules/internet-business";
 import { losses } from "./schedules/losses";
 import { netIncome } from "./schedules/net-income";
-import { capital } from "./schedules/capital";
 import { payments } from "./schedules/payments";
 import { preferredShares } from "./schedules/preferred-shares";
 import { provincialAllocation } from "./schedules/provincial-allocation";
-import { alberta } from "./schedules/alberta";
 import { quebec } from "./schedules/quebec";
 import { reserves } from "./schedules/reserves";
 import { sbd } from "./schedules/sbd";
 import { shareholders } from "./schedules/shareholders";
-import type { ScheduleProgram } from "./schedules/define";
 
 /** In return order — this is the order the preparer sees in the schedule tree. */
 export const SCHEDULES = [
-  identification,
-  balanceSheet,
-  incomeStatement,
-  gifiNotes,
-  netIncome,
-  reserves,
-  donations,
-  dividends,
-  preferredShares,
-  capitalGains,
-  losses,
-  sbd,
-  capital,
-  eifel,
-  cca,
-  credits,
-  foreign,
-  provincialAllocation,
-  quebec,
-  alberta,
-  payments,
-  internetBusiness,
-  firstReturn,
-  shareholders,
+	identification,
+	balanceSheet,
+	incomeStatement,
+	gifiNotes,
+	netIncome,
+	reserves,
+	donations,
+	dividends,
+	preferredShares,
+	capitalGains,
+	losses,
+	sbd,
+	capital,
+	eifel,
+	cca,
+	credits,
+	foreign,
+	provincialAllocation,
+	quebec,
+	alberta,
+	albertaContinuity,
+	albertaIeg,
+	payments,
+	internetBusiness,
+	firstReturn,
+	shareholders,
 ] as const;
 
 export type ScheduleKey = (typeof SCHEDULES)[number]["key"];
@@ -71,16 +74,23 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
  * registering a schedule (or vice versa) fails here rather than showing up as
  * a schedule that silently saves nowhere.
  */
-export const SCHEDULE_KEYS_MATCH_RETURN_INPUT: Exact<ScheduleKey, keyof ReturnInput> = true;
+export const SCHEDULE_KEYS_MATCH_RETURN_INPUT: Exact<
+	ScheduleKey,
+	keyof ReturnInput
+> = true;
 
 const BY_KEY = Object.fromEntries(SCHEDULES.map((s) => [s.key, s])) as Record<
-  ScheduleKey,
-  ScheduleDef
+	ScheduleKey,
+	ScheduleDef
 >;
 
 /** Nav metadata only — no form schemas, so nav-only consumers stay light. */
-export const SCHEDULE_TREE: { key: ScheduleKey; num: string; label: string; hint: string }[] =
-  SCHEDULES.map(({ key, num, label, hint }) => ({ key, num, label, hint }));
+export const SCHEDULE_TREE: {
+	key: ScheduleKey;
+	num: string;
+	label: string;
+	hint: string;
+}[] = SCHEDULES.map(({ key, num, label, hint }) => ({ key, num, label, hint }));
 
 /**
  * The schedule tree for one filing program — drops schedules that don't apply
@@ -89,8 +99,8 @@ export const SCHEDULE_TREE: { key: ScheduleKey; num: string; label: string; hint
  * engagement never sees the Québec block.
  */
 export const scheduleTreeFor = (program: string) =>
-  SCHEDULES.filter((s) => !s.programs || s.programs.includes(program as ScheduleProgram)).map(
-    ({ key, num, label, hint }) => ({ key, num, label, hint }),
-  );
+	SCHEDULES.filter(
+		(s) => !s.programs || s.programs.includes(program as ScheduleProgram),
+	).map(({ key, num, label, hint }) => ({ key, num, label, hint }));
 
 export const schemaFor = (key: ScheduleKey) => BY_KEY[key].schema;
