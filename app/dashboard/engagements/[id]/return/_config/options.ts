@@ -12,6 +12,35 @@ export const YES_NO = [
 	{ value: "no", label: "No" },
 ];
 
+/** AT1 Schedule 29 page 1, line 040 — primary field of science or technology. */
+export const IEG_PRIMARY_FIELD_OPTIONS = [
+	{ value: "1", label: "1 — Natural and formal sciences" },
+	{ value: "2", label: "2 — Engineering and technology" },
+	{ value: "3", label: "3 — Medical and health sciences" },
+	{ value: "4", label: "4 — Agricultural sciences" },
+];
+
+/** AT4970's jurisdiction-breakdown table (lines 135–161), in the form's own order. */
+export const IEG_JURISDICTION_OPTIONS = [
+	{ value: "alberta", label: "Alberta (135)" },
+	{ value: "britishColumbia", label: "British Columbia (137)" },
+	{ value: "manitoba", label: "Manitoba (139)" },
+	{ value: "newBrunswick", label: "New Brunswick (141)" },
+	{
+		value: "newfoundlandAndLabrador",
+		label: "Newfoundland and Labrador (143)",
+	},
+	{ value: "northwestTerritories", label: "Northwest Territories (145)" },
+	{ value: "novaScotia", label: "Nova Scotia (147)" },
+	{ value: "nunavut", label: "Nunavut (149)" },
+	{ value: "ontario", label: "Ontario (151)" },
+	{ value: "princeEdwardIsland", label: "Prince Edward Island (153)" },
+	{ value: "quebec", label: "Quebec (155)" },
+	{ value: "saskatchewan", label: "Saskatchewan (157)" },
+	{ value: "yukon", label: "Yukon (159)" },
+	{ value: "other", label: "Other (161)" },
+];
+
 export const CORP_TYPES = [
 	{ value: "CCPC", label: "CCPC: Canadian-controlled private corporation" },
 	{ value: "Other private", label: "Other private corporation" },
@@ -68,10 +97,14 @@ export const DISPOSITION_CATEGORY_OPTIONS = [
 ];
 
 /**
- * AT1 Schedule 17's reserve kinds with a federal Schedule 13 Part 2
- * equivalent. (Two Alberta-only kinds — insurance policy reserves and bank
- * reserves — are not offered here; neither applies outside those industries,
- * and adding them without a real use is how a form field goes untested.)
+ * AT1 Schedule 17's reserve kinds. The first six have a federal Schedule 13
+ * Part 2 equivalent — the row's federal opening/transfer/closing default the
+ * Alberta figure unless overridden below. `insurancePolicyReserves` and
+ * `bankReserves` are Alberta-only (no federal Part 2 line at all), so for
+ * those the federal side always reads as 0 and the Alberta override fields
+ * are effectively the only source of the figure — narrow (insurance/bank
+ * corporations only), but a real reserve balance dropped silently is a wrong
+ * return, not a missing feature.
  */
 export const RESERVE_TYPE_OPTIONS = [
 	{ value: "doubtfulDebts", label: "Doubtful debts (s.20(1)(l))" },
@@ -82,5 +115,10 @@ export const RESERVE_TYPE_OPTIONS = [
 	{ value: "prepaidRent", label: "Prepaid rent" },
 	{ value: "returnableContainers", label: "Returnable containers" },
 	{ value: "unpaidAmounts", label: "Unpaid amounts" },
+	{
+		value: "insurancePolicyReserves",
+		label: "Insurance policy reserves (AT1-only)",
+	},
+	{ value: "bankReserves", label: "Bank reserves (AT1-only)" },
 	{ value: "otherTaxReserves", label: "Other tax reserves" },
 ];

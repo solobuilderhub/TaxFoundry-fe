@@ -9,6 +9,15 @@ import type { ReturnInput } from "../_lib/return-input";
 import { alberta } from "./schedules/alberta";
 import { albertaContinuity } from "./schedules/alberta-continuity";
 import { albertaIeg } from "./schedules/alberta-ieg";
+import { albertaOtherCredits3 } from "./schedules/alberta-schedule3";
+import { albertaForeignInvestment4 } from "./schedules/alberta-schedule4";
+import { albertaRoyaltyDeduction5 } from "./schedules/alberta-schedule5";
+import { albertaRoyaltyCredit6 } from "./schedules/alberta-schedule6";
+import { albertaRoyaltySupplemental7 } from "./schedules/alberta-schedule7";
+import { albertaPoliticalContributions8 } from "./schedules/alberta-schedule8";
+import { albertaSredCredit9 } from "./schedules/alberta-schedule9";
+import { albertaManufacturing11 } from "./schedules/alberta-schedule11";
+import { albertaResourceDeductions15 } from "./schedules/alberta-schedule15";
 import { balanceSheet } from "./schedules/balance-sheet";
 import { capital } from "./schedules/capital";
 import { capitalGains } from "./schedules/capital-gains";
@@ -58,6 +67,15 @@ export const SCHEDULES = [
 	alberta,
 	albertaContinuity,
 	albertaIeg,
+	albertaOtherCredits3,
+	albertaForeignInvestment4,
+	albertaRoyaltyDeduction5,
+	albertaRoyaltyCredit6,
+	albertaRoyaltySupplemental7,
+	albertaPoliticalContributions8,
+	albertaSredCredit9,
+	albertaManufacturing11,
+	albertaResourceDeductions15,
 	payments,
 	internetBusiness,
 	firstReturn,
@@ -90,17 +108,47 @@ export const SCHEDULE_TREE: {
 	num: string;
 	label: string;
 	hint: string;
-}[] = SCHEDULES.map(({ key, num, label, hint }) => ({ key, num, label, hint }));
+	programs?: readonly ScheduleProgram[];
+}[] = SCHEDULES.map(({ key, num, label, hint, programs }) => ({
+	key,
+	num,
+	label,
+	hint,
+	...(programs ? { programs } : {}),
+}));
 
 /**
  * The schedule tree for one filing program — drops schedules that don't apply
  * (a `programs`-less schedule applies to every program). So a CO17 engagement
  * shows the Québec block and hides nothing federal it still consumes, while a T2
  * engagement never sees the Québec block.
+ *
+ * `programs` rides along on each entry so a consumer can filter further client-
+ * side (e.g. "show only this program's OWN schedules, not the federal ones it
+ * also consumes as input") — see `isProgramSpecific` below.
  */
 export const scheduleTreeFor = (program: string) =>
 	SCHEDULES.filter(
 		(s) => !s.programs || s.programs.includes(program as ScheduleProgram),
-	).map(({ key, num, label, hint }) => ({ key, num, label, hint }));
+	).map(({ key, num, label, hint, programs }) => ({
+		key,
+		num,
+		label,
+		hint,
+		...(programs ? { programs } : {}),
+	}));
+
+/**
+ * True for a schedule that belongs ONLY to `program` — e.g. an AT1 engagement's
+ * "Alberta AT1 — required fields" block, as opposed to Schedule 8 (CCA), which
+ * has no `programs` restriction because Alberta's own CCA reconciliation needs
+ * the federal figures entered there too. Drives the sidebar's program filter:
+ * narrowing to "just AT1" should hide the shared federal schedules, not the
+ * whole return.
+ */
+export const isProgramSpecific = (
+	s: { programs?: readonly ScheduleProgram[] },
+	program: string,
+) => !!s.programs && s.programs.every((p) => p === program);
 
 export const schemaFor = (key: ScheduleKey) => BY_KEY[key].schema;

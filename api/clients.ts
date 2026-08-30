@@ -16,6 +16,12 @@ export interface Client {
     province?: string;
     postalCode?: string;
   };
+  /** AT1 jacket identity — mandatory to FILE an AT1, absent on a federal-only client. */
+  contactPerson?: string;
+  contactTelephone?: string;
+  natureOfBusiness?: string;
+  typeOfCorporation?: string;
+  authorizedEmail?: string;
   createdAt?: string;
   updatedAt?: string;
 }

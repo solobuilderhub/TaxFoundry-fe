@@ -35,8 +35,8 @@ const f = fieldsFor<AlbertaValues>();
 export const alberta = defineSchedule({
 	key: "alberta",
 	num: "AT1",
-	label: "Alberta AT1 jacket",
-	hint: "Mandatory answers TRA requires",
+	label: "Alberta AT1 — required fields",
+	hint: "Not the full return — see the Jacket button above",
 	programs: ["AT1"],
 	schema: defineSchema({
 		sections: [
@@ -57,7 +57,7 @@ export const alberta = defineSchedule({
 					variant: "card",
 					cols: 2,
 					description:
-						"Mandatory on the Alberta return. These are not defaulted to zero — a corporation has revenue, and filing nil would state something untrue rather than leave a gap.",
+						"This schedule is only the handful of Alberta-specific answers nothing else on the return supplies — not the full AT1 return. For the complete document (identification, tax calculation, credits, everything derived), use the Jacket button in the toolbar above, or open it after computing. These two fields are mandatory on the Alberta return and are not defaulted to zero — a corporation has revenue, and filing nil would state something untrue rather than leave a gap.",
 				},
 			),
 			section(

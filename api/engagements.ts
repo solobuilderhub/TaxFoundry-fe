@@ -23,6 +23,14 @@ export interface EngagementYear {
   engineVersion?: string | null;
   /** The working return the preparer edits in the schedule editor. */
   returnInput?: Record<string, unknown> | null;
+  /**
+   * The engagement this one amends (TRA AT1 Net File EDI071/EDI073), or null
+   * for an ordinary filing. Presence IS the amendment flag — validated at
+   * Net File preparation time against the same client/program/tax-year-end.
+   */
+  amendsEngagementYearId?: string | null;
+  /** EDI073 — mandatory once amendsEngagementYearId is set. */
+  amendmentDescription?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -33,6 +41,8 @@ export interface EngagementInput {
   taxYearStart: string;
   taxYearEnd: string;
   firstReturn?: boolean;
+  amendsEngagementYearId?: string | null;
+  amendmentDescription?: string | null;
 }
 
 /** Authorized-signer block required by prepare-netfile / transmit. */

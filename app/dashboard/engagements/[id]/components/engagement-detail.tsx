@@ -316,6 +316,15 @@ export function EngagementDetail({ id }: { id: string }) {
           { label: "First return", value: engagement.firstReturn ? "Yes" : "No" },
           // Version traceability for the audit trail, without the internal package slug.
           { label: "Calculation version", value: engagement.engineVersion ? `TaxFoundry ${engagement.engineVersion.split("@").pop()}` : "—" },
+          ...(engagement.amendsEngagementYearId
+            ? [
+                { label: "Amends", value: <Badge variant="outline">Amended return</Badge> },
+                {
+                  label: "Description of changes",
+                  value: engagement.amendmentDescription || "—",
+                },
+              ]
+            : []),
         ]}
       />
 

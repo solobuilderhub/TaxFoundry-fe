@@ -36,6 +36,14 @@ export function ccaClassPreview(c: CcaClass): CcaPreview {
   const uccBefore = opening + additions - dispositions;
   if (uccBefore < 0) return { rate, cca: 0, closingUCC: 0, recapture: -uccBefore, terminalLoss: 0 };
   if (c.classEmptied && uccBefore > 0) return { rate, cca: 0, closingUCC: 0, recapture: 0, terminalLoss: uccBefore };
+  // Class 13/14 (`rate: -1` sentinel, see cca-rates.ts): opening-balance
+  // drawdown only, mirroring `computeStraightLineOpeningBalanceClass` in the
+  // engine — no rate, no half-year/AIIP/immediate-expensing. Additions are
+  // refused server-side on compute, not previewed as claimable here.
+  if (rate < 0) {
+    const claimed = c.claim != null && c.claim !== 0 ? Math.min(Math.max(0, n(c.claim)), uccBefore) : uccBefore;
+    return { rate, cca: claimed, closingUCC: uccBefore - claimed, recapture: 0, terminalLoss: 0 };
+  }
   const net = Math.max(0, additions - dispositions);
   const ie = Math.min(Math.max(0, n(c.immediateExpensing)), net, uccBefore);
   const rem = net - ie;

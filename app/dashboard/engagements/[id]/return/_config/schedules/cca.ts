@@ -27,7 +27,13 @@ export const cca = defineSchedule({
             }),
             field.switch("aiip", "AIIP (accelerated investment)"),
             field.switch("classEmptied", "Class emptied (no assets left)"),
-            money("claim", "CCA claim", { description: "Blank = maximum" }),
+            money("claim", "CCA claim", { description: "Blank = maximum; 0 = claim nothing" }),
+            money("albertaOpeningUCC", "Alberta opening UCC (S13 line 003)", {
+              description: "Blank = same as federal",
+            }),
+            money("albertaClaim", "Alberta CCA claim (S13 line 019)", {
+              description: "Blank = same as federal; 0 = claim nothing for Alberta",
+            }),
           ]),
         ],
         {

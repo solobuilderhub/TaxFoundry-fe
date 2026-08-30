@@ -26,6 +26,16 @@ export const reserves = defineSchedule({
 						money("opening", "Balance at beginning of year (line 002)"),
 						money("transfer", "Transfer on amalgamation / wind-up (line 003)"),
 						money("closing", "Balance at end of year (line 004)"),
+						money("albertaOpening", "Alberta opening balance (S17)", {
+							description:
+								"Blank = same as federal. Insurance policy / bank reserves have no federal line, so federal always reads 0 here.",
+						}),
+						money("albertaTransfer", "Alberta transfer on wind-up (S17)", {
+							description: "Blank = same as federal",
+						}),
+						money("albertaClosing", "Alberta closing balance (S17)", {
+							description: "Blank = same as federal; 0 = no Alberta reserve",
+						}),
 					]),
 				],
 				{

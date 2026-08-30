@@ -20,8 +20,24 @@ export type CcaClass = {
 	immediateExpensing?: number;
 	aiip?: boolean;
 	classEmptied?: boolean;
-	/** Amount to claim; blank = the maximum. */
+	/** Amount to claim; blank = the maximum. An explicit 0 claims nothing. */
 	claim?: number;
+
+	/**
+	 * AT1 Schedule 13 — the Alberta figures for this class, when they diverge
+	 * from federal. Both are OVERRIDES: blank takes the federal figure, so a
+	 * class that matches federally needs nothing here. An explicit `0` is a real
+	 * answer (claim nothing for Alberta), not an absent one.
+	 *
+	 * Alberta permits a different discretionary CCA claim from federal — a
+	 * corporation may claim a class federally and not provincially, or the
+	 * reverse. Filing these requires jacket line 000060 or 000061 to be "yes";
+	 * TRA forbids Schedule 13 outright when the return declares no divergence.
+	 */
+	/** 013003 — Alberta opening UCC, when it differs from federal. */
+	albertaOpeningUCC?: number;
+	/** 013019 — the Alberta discretionary claim. Blank = the same as federal. */
+	albertaClaim?: number;
 };
 
 /**
@@ -267,6 +283,8 @@ export const RESERVE_TYPES = [
 	"prepaidRent",
 	"returnableContainers",
 	"unpaidAmounts",
+	"insurancePolicyReserves",
+	"bankReserves",
 	"otherTaxReserves",
 ] as const;
 export type ReserveType = (typeof RESERVE_TYPES)[number];
@@ -279,6 +297,19 @@ export type ReserveRow = {
 	transfer?: number;
 	/** Balance at the end of the year (deducted this year). */
 	closing?: number;
+
+	/**
+	 * AT1 Schedule 17 — the Alberta figures for this reserve, when they diverge
+	 * from federal. All three are OVERRIDES: blank takes the federal figure, so
+	 * a reserve that matches federally needs nothing here. An explicit `0` is a
+	 * real answer, not an absent one. For `insurancePolicyReserves` /
+	 * `bankReserves` — Alberta-only kinds with no federal Part 2 equivalent —
+	 * federal always reads as 0, so these three fields are effectively the only
+	 * source of the figure.
+	 */
+	albertaOpening?: number;
+	albertaTransfer?: number;
+	albertaClosing?: number;
 };
 
 /** Schedule 13 — continuity of reserves (Part 2, other reserves). */
@@ -410,6 +441,24 @@ export type AlbertaValues = {
  * property has no federal equivalent at all, so its full continuity is
  * collected here.
  */
+/**
+ * The four pools with a federal equivalent (non-capital, capital, farm,
+ * restricted farm) each get the SAME five override/entry fields — applied
+ * and expired default to federal's own figure when left blank (AT1 spec:
+ * "if the Alberta amount differs from federal, enter it; otherwise the value
+ * equals the federal amount"); wind-up transfer, the s.80 adjustment and
+ * other adjustments have no federal equivalent to default from at all, so
+ * they are plain entries (blank = nil, not "same as federal").
+ */
+type AlbertaLossPoolOverrides<Prefix extends string> = {
+	[K in
+		| `${Prefix}Applied`
+		| `${Prefix}Expired`
+		| `${Prefix}WindUpTransfer`
+		| `${Prefix}Section80Adjustment`
+		| `${Prefix}OtherAdjustments`]?: number;
+};
+
 export type AlbertaContinuityValues = {
 	nonCapitalOpening?: number;
 	capitalOpening?: number;
@@ -420,6 +469,52 @@ export type AlbertaContinuityValues = {
 	lppCurrentYearLoss?: number;
 	lppApplied?: number;
 	lppExpired?: number;
+	lppOtherAdjustments?: number;
+	/** The sixth section of the live form — one row per partnership, not per jurisdiction. */
+	limitedPartnerships?: LimitedPartnershipLossRow[];
+	/**
+	 * The SEVENTH section — non-capital losses by year of origin. Row 0 (the
+	 * current year) is fully derived server-side (must equal the schedule's
+	 * own current-year loss and total carried-back) — only PRIOR vintages
+	 * (1-20 years ago) are entered here; that history cannot be derived.
+	 */
+	nonCapitalVintages?: NonCapitalLossVintageRow[];
+	/** The EIGHTH section — farm/restricted-farm/LPP by year of origin, one row per vintage (0-20). */
+	otherLossVintages?: OtherLossVintageRow[];
+} & AlbertaLossPoolOverrides<"nonCapital"> &
+	AlbertaLossPoolOverrides<"capital"> &
+	AlbertaLossPoolOverrides<"farm"> &
+	AlbertaLossPoolOverrides<"restrictedFarm">;
+
+/** AT1 Schedule 21, lines 151-169 — ONE prior vintage (1-20 years ago) of the non-capital loss pool. */
+export type NonCapitalLossVintageRow = {
+	/** 1 = the immediately preceding taxation year, up to 20 (the expiry limit). */
+	yearsAgo?: number;
+	taxYearEnd?: string;
+	balanceAtBeginning?: number;
+	/** Signed — an addition or a reduction to this vintage. */
+	adjustments?: number;
+	/** Applied to reduce taxable income this year, from THIS vintage specifically. */
+	applied?: number;
+};
+
+/** AT1 Schedule 21, lines 181-187 — one row per vintage year (0 = current, 1-20 = preceding). */
+export type OtherLossVintageRow = {
+	yearIndex?: number;
+	farmLosses?: number;
+	restrictedFarmLosses?: number;
+	/** Refused (zeroed) beyond yearIndex 7 — listed personal property expires after 7 years, not 20. */
+	listedPersonalPropertyLosses?: number;
+};
+
+/** AT1 Schedule 21, lines 131-141 — one row per limited partnership. */
+export type LimitedPartnershipLossRow = {
+	identifier?: string;
+	precedingYearBalance?: number;
+	transferredOnWindUp?: number;
+	currentYearLoss?: number;
+	/** Capped at precedingYearBalance + transferredOnWindUp; blank = nothing applied. */
+	applied?: number;
 };
 
 /** One member of the group claiming the Innovation Employment Grant together. */
@@ -460,6 +555,60 @@ export type IegAgreementMember = {
 	taxableCapitalPriorYear?: number;
 	/** Days in THIS member's own current taxation year. Leave blank for a full (365-day) year. */
 	daysInTaxYear?: number;
+	/**
+	 * Whether this member has a permanent establishment in Alberta. A member
+	 * without one is not eligible for the IEG at all — line 268 is nil even
+	 * when this member's own figures would otherwise allow an amount — though
+	 * its figures still count toward the group's totals. Leave blank for a
+	 * member other than yourself only when genuinely unknown; the return
+	 * treats a blank answer as "no PE" (the direction that understates the
+	 * grant, not overstates it) and flags it rather than assuming.
+	 */
+	hasAlbertaPermanentEstablishment?: YesNo;
+};
+
+/**
+ * One project's Alberta SR&ED spending, for the AT4970 attachment (Listing
+ * of Innovation Employment Grant Projects Carried Out in Alberta) — a
+ * separate NetFile schedule from Schedule 29 itself, required whenever the
+ * IEG is claimed. The TOTAL row across every project transcribes onto
+ * Schedule 29 page 1's own eligible-expenditure lines automatically.
+ */
+export type IegProjectRow = {
+	/** Line 101 — same information as line 200 from Part 2 of federal T661. */
+	title?: string;
+	/** Line 103 — project code (federal T661 line 206). */
+	projectCode?: string;
+	/** Line 105 — portion of the federal figure incurred in Alberta, this project, before IEG. */
+	albertaPortion?: number;
+	/** Line 107 — portion NOT carried out in Alberta, this project. */
+	otherPortion?: number;
+	/** Line 109 — salaries and wages re SR&ED carried out in Alberta, this project. */
+	salariesAndWages?: number;
+	/** Line 111 — federal prescribed proxy amount included in the Alberta portion, if claimed federally. */
+	federalProxyAmount?: number;
+	/** Line 113 — Alberta proxy amount for this project, if line 111 applies. */
+	albertaProxyAmount?: number;
+};
+
+/** One row of AT4970's jurisdiction-breakdown table (135–161) — informational, entered directly. */
+export type IegJurisdictionAmount = {
+	jurisdiction?:
+		| "alberta"
+		| "britishColumbia"
+		| "manitoba"
+		| "newBrunswick"
+		| "newfoundlandAndLabrador"
+		| "northwestTerritories"
+		| "novaScotia"
+		| "nunavut"
+		| "ontario"
+		| "princeEdwardIsland"
+		| "quebec"
+		| "saskatchewan"
+		| "yukon"
+		| "other";
+	amountIncurred?: number;
 };
 
 /**
@@ -467,10 +616,56 @@ export type IegAgreementMember = {
  * federal tracks SR&ED spending Canada-wide, with no Alberta-specific split,
  * and the associated-group figures (taxable capital, prior-year Alberta
  * spending) have no federal source at all.
+ *
+ * "Eligible expenditures" (line 031) is DERIVED, not a number a preparer
+ * types in directly — Schedule 29 page 1 builds it from the federal T661
+ * figure below, adjusted by the AT4970 attachment's own totals (or by the
+ * override fields here, when there is no project to list). This mirrors the
+ * live form exactly; an earlier version of this return collected only a
+ * bare `eligibleExpenditures` number with nothing to derive it from.
  */
 export type AlbertaIegValues = {
-	/** Current-year eligible SR&ED carried out IN ALBERTA. */
-	eligibleExpenditures?: number;
+	/**
+	 * Line 003 — federal amount of qualified/current SR&ED expenditures.
+	 * Federal T661 line 559 for a taxation year ending on or before
+	 * 2024-12-15; T661 line 557 (a DIFFERENT federal figure) for a taxation
+	 * year ending on or after 2024-12-16.
+	 */
+	federalAmount?: number;
+	/**
+	 * Line 005 — portion of the federal amount carried out in Alberta. Leave
+	 * blank when `projects` below has at least one row — it defaults to the
+	 * AT4970 attachment's own total. Set it here only to override that
+	 * default, or when there are no projects to list individually.
+	 */
+	albertaPortion?: number;
+	/** Line 007 — deduct: federal prescribed proxy amount. Defaults from `projects`' total when omitted. */
+	federalProxyAmount?: number;
+	/** Line 009 — add: Alberta proxy amount. Defaults from `projects`' total when omitted. */
+	albertaProxyAmount?: number;
+	/**
+	 * Line 011 — add: IEG that reduced the federal expenditure IN THE
+	 * TAXATION YEAR. Leave blank for a first-time current-year claim reported
+	 * on the pre-deduction federal figures — the ordinary case.
+	 */
+	iegReducingFederalExpenditure?: number;
+	/**
+	 * Line 025 — add: the Alberta portion of a repayment of government
+	 * assistance (other than an IEG) or a contract payment, relating to
+	 * amounts in `albertaPortion` from the current year or any preceding
+	 * taxation year.
+	 */
+	repaymentOrContractPayment?: number;
+	/** Line 040 — primary field of science or technology. */
+	primaryFieldCode?: "1" | "2" | "3" | "4";
+	/**
+	 * AT4970 — one row per Alberta SR&ED project. The TOTAL row across every
+	 * project feeds `albertaPortion` / `federalProxyAmount` /
+	 * `albertaProxyAmount` above automatically.
+	 */
+	projects?: IegProjectRow[];
+	/** AT4970's jurisdiction-breakdown table — informational, entered directly. */
+	jurisdictions?: IegJurisdictionAmount[];
 	/**
 	 * Every member of the associated group, INCLUDING this corporation. Pass a
 	 * single-member list even when there is no association — an empty list
@@ -503,6 +698,29 @@ export type AlbertaIegValues = {
 	agreementMembers?: IegAgreementMember[];
 };
 
+/**
+ * The 9 AT1 schedules below (3/4/5/6/7/8/9/11/15) deviate from this file's own
+ * "written out explicitly, zero imports" discipline stated at the top: their
+ * `Values` types (and every row/member sub-type they need) are IMPORTED from
+ * each schedule's own `_config/schedules/alberta-scheduleN.ts` file instead of
+ * being retyped here by hand. Those types were authored in lockstep with each
+ * schedule's own `apps/server` composer during a large parallel build — hand-
+ * retyping ~15 nested row shapes (Schedule 15 alone has 13) back into this
+ * file risks a silent drift between the two copies that the compiler cannot
+ * catch, which is a worse failure mode than this file importing for once. Not
+ * a precedent for future schedules — a normal new schedule should still define
+ * its `Values` type here first, per this file's own header comment.
+ */
+import type { AlbertaOtherCredits3Values } from "../_config/schedules/alberta-schedule3";
+import type { AlbertaForeignInvestment4Values } from "../_config/schedules/alberta-schedule4";
+import type { AlbertaRoyaltyDeduction5Values } from "../_config/schedules/alberta-schedule5";
+import type { AlbertaRoyaltyCredit6Values } from "../_config/schedules/alberta-schedule6";
+import type { AlbertaRoyaltySupplemental7Values } from "../_config/schedules/alberta-schedule7";
+import type { AlbertaPoliticalContributions8Values } from "../_config/schedules/alberta-schedule8";
+import type { AlbertaSredCredit9Values } from "../_config/schedules/alberta-schedule9";
+import type { AlbertaManufacturing11Values } from "../_config/schedules/alberta-schedule11";
+import type { AlbertaResourceDeductions15Values } from "../_config/schedules/alberta-schedule15";
+
 export type ReturnInput = {
 	identification?: IdentificationValues;
 	balanceSheet?: BalanceSheetValues;
@@ -530,6 +748,15 @@ export type ReturnInput = {
 	alberta?: AlbertaValues;
 	albertaContinuity?: AlbertaContinuityValues;
 	albertaIeg?: AlbertaIegValues;
+	albertaOtherCredits3?: AlbertaOtherCredits3Values;
+	albertaForeignInvestment4?: AlbertaForeignInvestment4Values;
+	albertaRoyaltyDeduction5?: AlbertaRoyaltyDeduction5Values;
+	albertaRoyaltyCredit6?: AlbertaRoyaltyCredit6Values;
+	albertaRoyaltySupplemental7?: AlbertaRoyaltySupplemental7Values;
+	albertaPoliticalContributions8?: AlbertaPoliticalContributions8Values;
+	albertaSredCredit9?: AlbertaSredCredit9Values;
+	albertaManufacturing11?: AlbertaManufacturing11Values;
+	albertaResourceDeductions15?: AlbertaResourceDeductions15Values;
 };
 
 /** Numeric coercion shared by the calc + engine-mapping layers: blank ⇒ 0. */

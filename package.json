@@ -14,7 +14,7 @@
   "dependencies": {
     "@base-ui/react": "^1.3.0",
     "@classytic/arc-next": "^0.14.0",
-    "@classytic/fluid": "^1.13.0",
+    "@classytic/fluid": "^1.14.0",
     "@classytic/formkit": "^1.7.0",
     "@classytic/primitives": "^0.23.0",
     "@hookform/resolvers": "^5.2.2",
