@@ -4,30 +4,26 @@ import { AlertTriangle } from "lucide-react";
 import type { ComputedReturn } from "@/api/computed-returns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-const money = (n: number) =>
-	new Intl.NumberFormat("en-CA", {
-		style: "currency",
-		currency: "CAD",
-		maximumFractionDigits: 0,
-	}).format(n);
+import { at1Money as money, parseAt1LineItemId } from "../_config/schedules/at1/paper/at1-lines";
 
 /**
- * AT1's Net File line-item id is nine digits, `SSSFFFOOO` — schedule, field,
- * occurrence. Splitting it back out is how this component labels each row
- * without needing a second, hand-maintained line-number table: the id
- * already carries everything except the caption, and the caption is exactly
- * what the schedule's own entry form already shows next to each field's
- * `(line NNN)` citation.
+ * `computed.issues` is ONE flat array covering every schedule the engine
+ * touched — there is no per-schedule tag, only prose. Every issue message
+ * this engine raises names its own schedule as "Schedule N" somewhere in the
+ * text (confirmed across every `issues.push(...)` call site in
+ * `packages/ca-tax/src/t2/at1/schedules/`) — Schedule 1 is the one named
+ * exception ("Alberta SBD:", not "Alberta Schedule 1:"). Matching on that
+ * convention, rather than hand-maintaining a prefix-per-schedule table, is
+ * what lets this filter keep working as new schedules add their own issues
+ * without a second place to update. `\s+` (not `\s*`) before the number is
+ * required — without it, "Schedule 1" would also match inside "Schedule 11".
  */
-function parseAt1LineItemId(
-	lineItemId: string,
-): { field: string; occurrence: number } | undefined {
-	if (!/^\d{9}$/.test(lineItemId)) return undefined;
-	return {
-		field: lineItemId.slice(3, 6),
-		occurrence: Number(lineItemId.slice(6, 9)),
-	};
+function issuesForSchedule(issues: string[] | null | undefined, scheduleNum: string): string[] {
+	if (!issues || issues.length === 0) return [];
+	const bare = scheduleNum.replace(/^0+/, "") || "0";
+	const pattern = new RegExp(`Schedule\\s+0*${bare}\\b`, "i");
+	const isSbd = scheduleNum === "001";
+	return issues.filter((msg) => pattern.test(msg) || (isSbd && /\bSBD\b/.test(msg)));
 }
 
 /**
@@ -54,11 +50,13 @@ export function ScheduleFiledValues({
 	const payload = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === scheduleNum,
 	);
-	if (!payload || payload.values.length === 0) return null;
+	const issues = issuesForSchedule(computed?.issues, scheduleNum);
+	const hasRows = !!payload && payload.values.length > 0;
+	if (!hasRows && issues.length === 0) return null;
 
-	const rows = [...payload.values].sort((a, b) =>
-		a.lineItemId.localeCompare(b.lineItemId),
-	);
+	const rows = hasRows
+		? [...payload.values].sort((a, b) => a.lineItemId.localeCompare(b.lineItemId))
+		: [];
 
 	return (
 		<div className="space-y-2">
@@ -73,36 +71,50 @@ export function ScheduleFiledValues({
 					</span>
 				)}
 			</div>
-			<div className="divide-y rounded-lg border">
-				{rows.map((v) => {
-					const parsed = parseAt1LineItemId(v.lineItemId);
-					const isNumeric = typeof v.value === "number";
-					return (
-						<div
-							key={v.lineItemId}
-							className="flex items-center justify-between gap-4 px-4 py-2 text-sm"
-						>
-							<span className="text-muted-foreground">
-								{parsed
-									? `Line ${parsed.field}${parsed.occurrence > 1 ? ` (occurrence ${parsed.occurrence})` : ""}`
-									: v.lineItemId}
-							</span>
-							<span
-								className={cn(
-									"font-medium tabular-nums",
-									!isNumeric && "font-mono text-xs",
-								)}
-							>
-								{isNumeric ? money(v.value as number) : String(v.value)}
-							</span>
-						</div>
-					);
-				})}
-			</div>
-			<Badge variant="outline" className="font-normal text-muted-foreground">
-				{rows.length} line{rows.length === 1 ? "" : "s"} would be transmitted
-				for this schedule
-			</Badge>
+			{issues.length > 0 && (
+				<ul className="space-y-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+					{issues.map((msg) => (
+						<li key={msg} className="flex gap-1.5">
+							<AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+							<span>{msg}</span>
+						</li>
+					))}
+				</ul>
+			)}
+			{hasRows && (
+				<>
+					<div className="divide-y rounded-lg border">
+						{rows.map((v) => {
+							const parsed = parseAt1LineItemId(v.lineItemId);
+							const isNumeric = typeof v.value === "number";
+							return (
+								<div
+									key={v.lineItemId}
+									className="flex items-center justify-between gap-4 px-4 py-2 text-sm"
+								>
+									<span className="text-muted-foreground">
+										{parsed
+											? `Line ${parsed.field}${parsed.occurrence > 1 ? ` (occurrence ${parsed.occurrence})` : ""}`
+											: v.lineItemId}
+									</span>
+									<span
+										className={cn(
+											"font-medium tabular-nums",
+											!isNumeric && "font-mono text-xs",
+										)}
+									>
+										{isNumeric ? money(v.value as number) : String(v.value)}
+									</span>
+								</div>
+							);
+						})}
+					</div>
+					<Badge variant="outline" className="font-normal text-muted-foreground">
+						{rows.length} line{rows.length === 1 ? "" : "s"} would be transmitted
+						for this schedule
+					</Badge>
+				</>
+			)}
 		</div>
 	);
 }

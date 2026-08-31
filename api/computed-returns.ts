@@ -36,6 +36,13 @@ export interface ComputedReturn {
 	fields: ComputedField[];
 	/** Per-schedule filed line items, when the program files supporting schedules (AT1). */
 	schedulePayloads?: ComputedSchedulePayload[] | null;
+	/**
+	 * Validation notes the engine's own schedules raised while computing this
+	 * return — a fail-closed default, a capped claim, a missing input the
+	 * engine could not derive (AT1 only, for now). Absent/empty means no
+	 * schedule had anything to flag, not that nothing was checked.
+	 */
+	issues?: string[] | null;
 	totals?: Record<string, unknown> | null;
 	inputHash?: string | null;
 	createdAt?: string;

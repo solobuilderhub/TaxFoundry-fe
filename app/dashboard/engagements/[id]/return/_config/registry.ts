@@ -3,45 +3,55 @@
  *
  * This array is the single source of truth: the nav tree, the `ScheduleKey`
  * union and the key → schema lookup are all derived from it, so adding a
- * schedule is a new file in `./schedules/` plus one line here.
+ * schedule is a new file in `./schedules/{t2,at1,co17}/` plus one line here.
+ *
+ * The schedules directory is split by which program OWNS the schedule, not by
+ * who reads it: `t2/` holds the base federal schedules (AT1/CO17 both compose
+ * FROM these — e.g. AT1's own CCA reconciliation needs the federal Schedule 8
+ * entries from `t2/cca.ts` — that doesn't make CCA an AT1 schedule), `at1/`
+ * holds schedules that exist only because of the Alberta AT1 return, `co17/`
+ * the one Québec-only schedule, `shared/` the `ScheduleDef` infrastructure
+ * every schedule file imports regardless of program.
  */
 import type { ReturnInput } from "../_lib/return-input";
-import { alberta } from "./schedules/alberta";
-import { albertaContinuity } from "./schedules/alberta-continuity";
-import { albertaIeg } from "./schedules/alberta-ieg";
-import { albertaOtherCredits3 } from "./schedules/alberta-schedule3";
-import { albertaForeignInvestment4 } from "./schedules/alberta-schedule4";
-import { albertaRoyaltyDeduction5 } from "./schedules/alberta-schedule5";
-import { albertaRoyaltyCredit6 } from "./schedules/alberta-schedule6";
-import { albertaRoyaltySupplemental7 } from "./schedules/alberta-schedule7";
-import { albertaPoliticalContributions8 } from "./schedules/alberta-schedule8";
-import { albertaSredCredit9 } from "./schedules/alberta-schedule9";
-import { albertaManufacturing11 } from "./schedules/alberta-schedule11";
-import { albertaResourceDeductions15 } from "./schedules/alberta-schedule15";
-import { balanceSheet } from "./schedules/balance-sheet";
-import { capital } from "./schedules/capital";
-import { capitalGains } from "./schedules/capital-gains";
-import { cca } from "./schedules/cca";
-import { credits } from "./schedules/credits";
-import type { ScheduleDef, ScheduleProgram } from "./schedules/define";
-import { dividends } from "./schedules/dividends";
-import { donations } from "./schedules/donations";
-import { eifel } from "./schedules/eifel";
-import { firstReturn } from "./schedules/first-return";
-import { foreign } from "./schedules/foreign";
-import { gifiNotes } from "./schedules/gifi-notes";
-import { identification } from "./schedules/identification";
-import { incomeStatement } from "./schedules/income-statement";
-import { internetBusiness } from "./schedules/internet-business";
-import { losses } from "./schedules/losses";
-import { netIncome } from "./schedules/net-income";
-import { payments } from "./schedules/payments";
-import { preferredShares } from "./schedules/preferred-shares";
-import { provincialAllocation } from "./schedules/provincial-allocation";
-import { quebec } from "./schedules/quebec";
-import { reserves } from "./schedules/reserves";
-import { sbd } from "./schedules/sbd";
-import { shareholders } from "./schedules/shareholders";
+import { alberta } from "./schedules/at1/alberta";
+import { albertaContinuity } from "./schedules/at1/alberta-continuity";
+import { albertaDonations } from "./schedules/at1/alberta-donations";
+import { albertaSbd } from "./schedules/at1/alberta-sbd";
+import { albertaIeg } from "./schedules/at1/alberta-ieg";
+import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
+import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
+import { albertaRoyaltyDeduction5 } from "./schedules/at1/alberta-schedule5";
+import { albertaRoyaltyCredit6 } from "./schedules/at1/alberta-schedule6";
+import { albertaRoyaltySupplemental7 } from "./schedules/at1/alberta-schedule7";
+import { albertaPoliticalContributions8 } from "./schedules/at1/alberta-schedule8";
+import { albertaSredCredit9 } from "./schedules/at1/alberta-schedule9";
+import { albertaManufacturing11 } from "./schedules/at1/alberta-schedule11";
+import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
+import { balanceSheet } from "./schedules/t2/balance-sheet";
+import { capital } from "./schedules/t2/capital";
+import { capitalGains } from "./schedules/t2/capital-gains";
+import { cca } from "./schedules/t2/cca";
+import { credits } from "./schedules/t2/credits";
+import type { ScheduleDef, ScheduleProgram } from "./schedules/shared/define";
+import { dividends } from "./schedules/t2/dividends";
+import { donations } from "./schedules/t2/donations";
+import { eifel } from "./schedules/t2/eifel";
+import { firstReturn } from "./schedules/t2/first-return";
+import { foreign } from "./schedules/t2/foreign";
+import { gifiNotes } from "./schedules/t2/gifi-notes";
+import { identification } from "./schedules/t2/identification";
+import { incomeStatement } from "./schedules/t2/income-statement";
+import { internetBusiness } from "./schedules/t2/internet-business";
+import { losses } from "./schedules/t2/losses";
+import { netIncome } from "./schedules/t2/net-income";
+import { payments } from "./schedules/t2/payments";
+import { preferredShares } from "./schedules/t2/preferred-shares";
+import { provincialAllocation } from "./schedules/t2/provincial-allocation";
+import { quebec } from "./schedules/co17/quebec";
+import { reserves } from "./schedules/t2/reserves";
+import { sbd } from "./schedules/t2/sbd";
+import { shareholders } from "./schedules/t2/shareholders";
 
 /** In return order — this is the order the preparer sees in the schedule tree. */
 export const SCHEDULES = [
@@ -65,6 +75,8 @@ export const SCHEDULES = [
 	provincialAllocation,
 	quebec,
 	alberta,
+	albertaSbd,
+	albertaDonations,
 	albertaContinuity,
 	albertaIeg,
 	albertaOtherCredits3,
@@ -152,3 +164,6 @@ export const isProgramSpecific = (
 ) => !!s.programs && s.programs.every((p) => p === program);
 
 export const schemaFor = (key: ScheduleKey) => BY_KEY[key].schema;
+
+/** `undefined` when the schedule has no paper Form View yet — drives whether the editor shows the Guided/Form View toggle at all. */
+export const formViewFor = (key: ScheduleKey) => BY_KEY[key].formView;

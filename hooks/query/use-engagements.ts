@@ -84,13 +84,39 @@ export function useEngagementActions() {
       engagementsApi.dispatchAction({ id, action: "save-input", data: { returnInput } }),
     onSuccess: invalidate,
   });
+  /**
+   * Live CCA preview for the schedule-editor summary strip — runs the real
+   * engine `computeCcaClass` server-side, not a client-side approximation
+   * (see `_lib/use-cca-preview.ts`, the debounced hook that calls this).
+   * Read-only: does not invalidate the engagement list.
+   */
+  const previewCca = useMutation({
+    mutationFn: ({ id, classes }: { id: string; classes: unknown[] }) =>
+      engagementsApi.dispatchAction({
+        id,
+        action: "preview-cca",
+        data: { classes },
+      }) as Promise<{ previews: ({ ccaClaimed: number } | null)[] }>,
+  });
   const autoFill = useMutation({
     mutationFn: ({ id, programAccount }: { id: string; programAccount?: string }) =>
       engagementsApi.dispatchAction({ id, action: "auto-fill", data: { programAccount } }),
     onSuccess: invalidate,
   });
 
-  return { create, update, remove, compute, prepare, prepareCif, authorizeT183, transmit, saveInput, autoFill };
+  return {
+    create,
+    update,
+    remove,
+    compute,
+    prepare,
+    prepareCif,
+    authorizeT183,
+    transmit,
+    saveInput,
+    previewCca,
+    autoFill,
+  };
 }
 
 /** Single engagement detail (getById → the doc directly). */

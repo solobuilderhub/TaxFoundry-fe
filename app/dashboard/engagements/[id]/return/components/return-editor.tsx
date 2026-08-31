@@ -15,10 +15,13 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import type { Client } from "@/api/clients";
+import type { EngagementYear } from "@/api/engagements";
 import type { GifiImportResult } from "@/api/gifi";
 import { FORM_COMPONENTS } from "@/components/form/money-field";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useClient } from "@/hooks/query/use-clients";
 import { useLatestComputedReturn } from "@/hooks/query/use-computed-returns";
 import {
@@ -32,14 +35,19 @@ import {
 	labelForLine,
 } from "../_config/line-labels";
 import {
+	formViewFor,
 	isProgramSpecific,
 	SCHEDULE_TREE,
 	type ScheduleKey,
 	scheduleTreeFor,
 	schemaFor,
 } from "../_config/registry";
-import { bookNetIncomeOf, ccaTotalOf } from "../_lib/calc";
+import { Schedule10View } from "../_config/schedules/at1/paper/schedule10-view";
+import { Schedule12View } from "../_config/schedules/at1/paper/schedule12-view";
+import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
+import { bookNetIncomeOf } from "../_lib/calc";
 import type { ReturnInput } from "../_lib/return-input";
+import { useCcaPreviewTotal } from "../_lib/use-cca-preview";
 import { AutoFillDialog } from "./auto-fill-dialog";
 import { GifiImportDialog } from "./gifi-import-dialog";
 import { ScheduleFiledValues } from "./schedule-filed-values";
@@ -50,6 +58,37 @@ const money = (n: number) =>
 		currency: "CAD",
 		maximumFractionDigits: 0,
 	}).format(n);
+
+/**
+ * AT1 schedules with no `ScheduleDef`/editable side at all — each is fully
+ * computed from OTHER schedules' fields (Schedule 12), or has no dedicated
+ * `ReturnInput` slice to write to (Schedules 2 and 10). Special-cased nav
+ * entries, the same pattern already used for "Tax Summary (jacket)", rather
+ * than the normal registry (which requires a real `ReturnInput` key).
+ */
+const READ_ONLY_SCHEDULES = [
+	{
+		key: "schedule2" as const,
+		num: "002",
+		label: "Alberta Income Allocation Factor (S2)",
+		hint: "Read-only — Area A only, carried in from federal Schedule 5",
+		View: Schedule2View,
+	},
+	{
+		key: "schedule10" as const,
+		num: "010",
+		label: "Alberta Loss Carry-Back Application (S10)",
+		hint: "Read-only — non-capital and capital carrybacks, as filed",
+		View: Schedule10View,
+	},
+	{
+		key: "schedule12" as const,
+		num: "012",
+		label: "Alberta Income/Loss Reconciliation (S12)",
+		hint: "Read-only — computed from the Alberta-override fields on CCA, Reserves, Dispositions and Loss Continuity",
+		View: Schedule12View,
+	},
+];
 
 /** True if a schedule slice carries any entered value (drives the nav "has data" dot). */
 const hasData = (v: unknown): boolean =>
@@ -65,9 +104,9 @@ export function ReturnEditor({ id }: { id: string }) {
 	const { latest: computed } = useLatestComputedReturn(id);
 	const { data: client } = useClient(engagement?.clientId);
 
-	const [active, setActive] = useState<ScheduleKey | "summary">(
-		"incomeStatement",
-	);
+	const [active, setActive] = useState<
+		ScheduleKey | "summary" | "schedule12" | "schedule2" | "schedule10"
+	>("incomeStatement");
 	const [onlyProgramSpecific, setOnlyProgramSpecific] = useState(false);
 	const [ri, setRi] = useState<ReturnInput | null>(null);
 	// Inputs edited since the last compute → the summary is stale until recomputed.
@@ -82,6 +121,11 @@ export function ReturnEditor({ id }: { id: string }) {
 	const seeded =
 		ri ?? (engagement?.returnInput as ReturnInput | undefined) ?? {};
 	const clientName = client?.name ?? engagement?.clientId ?? "";
+	// Called unconditionally, ABOVE the loading early-return below — a hook
+	// placed after a conditional return fires on some renders and not others
+	// (nothing to preview before `engagement` loads anyway), which breaks
+	// React's "same hooks, same order, every render" rule and throws.
+	const { total: cca } = useCcaPreviewTotal(id, seeded.cca?.classes);
 
 	if (isLoading || !engagement) {
 		return <div className="text-muted-foreground">Loading return…</div>;
@@ -153,7 +197,6 @@ export function ReturnEditor({ id }: { id: string }) {
 	};
 
 	const bookNI = bookNetIncomeOf(seeded);
-	const cca = ccaTotalOf(seeded);
 	// Computed once, but inputs have changed since → the shown numbers are stale.
 	const stale = !!computed && dirty;
 	const computeLabel = compute.isPending
@@ -309,6 +352,28 @@ export function ReturnEditor({ id }: { id: string }) {
 										</span>
 									</button>
 								))}
+								{engagement.program === "AT1" &&
+									READ_ONLY_SCHEDULES.map((s) => (
+										<button
+											type="button"
+											key={s.key}
+											onClick={() => setActive(s.key)}
+											className={cn(
+												"flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
+												active === s.key && "bg-accent",
+											)}
+										>
+											<span className="mt-0.5 inline-flex w-9 shrink-0 justify-center rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-muted-foreground">
+												{s.num}
+											</span>
+											<span className="min-w-0 flex-1">
+												<span className="truncate font-medium">{s.label}</span>
+												<span className="block truncate text-xs text-muted-foreground">
+													Read-only — as filed
+												</span>
+											</span>
+										</button>
+									))}
 								<button
 									type="button"
 									onClick={() => setActive("summary")}
@@ -340,15 +405,36 @@ export function ReturnEditor({ id }: { id: string }) {
 										computeLabel={computeLabel}
 										computing={compute.isPending}
 									/>
+								) : READ_ONLY_SCHEDULES.some((s) => s.key === active) ? (
+									(() => {
+										const meta = READ_ONLY_SCHEDULES.find((s) => s.key === active)!;
+										const View = meta.View;
+										return (
+											<div className="space-y-4">
+												<div>
+													<div className="flex items-center gap-2">
+														<Badge variant="secondary" className="font-mono">
+															{meta.num}
+														</Badge>
+														<h2 className="text-lg font-semibold">{meta.label}</h2>
+													</div>
+													<p className="text-sm text-muted-foreground">{meta.hint}</p>
+												</div>
+												<View computed={computed} stale={stale} />
+											</div>
+										);
+									})()
 								) : (
 									<ScheduleForm
 										key={`${active}-${formVersion}`}
-										schedule={active}
-										value={(seeded[active] as Record<string, unknown>) ?? {}}
+										schedule={active as ScheduleKey}
+										value={(seeded[active as ScheduleKey] as Record<string, unknown>) ?? {}}
 										saving={saveInput.isPending}
-										onSave={(v) => saveSlice(active, v)}
+										onSave={(v) => saveSlice(active as ScheduleKey, v)}
 										computed={computed}
 										stale={stale}
+										engagement={engagement}
+										client={client}
 										footer={
 											active === "incomeStatement" ? (
 												<p className="text-sm text-muted-foreground">
@@ -385,6 +471,8 @@ function ScheduleForm({
 	footer,
 	computed,
 	stale,
+	engagement,
+	client,
 }: {
 	schedule: ScheduleKey;
 	value: Record<string, unknown>;
@@ -393,32 +481,80 @@ function ScheduleForm({
 	footer?: React.ReactNode;
 	computed: ReturnType<typeof useLatestComputedReturn>["latest"];
 	stale: boolean;
+	engagement?: EngagementYear;
+	client?: Client;
 }) {
 	const meta = SCHEDULE_TREE.find((s) => s.key === schedule)!;
+	const formView = formViewFor(schedule);
+	const [viewMode, setViewMode] = useState<"guided" | "form">("guided");
+
 	return (
 		<div className="space-y-4">
-			<div>
-				<div className="flex items-center gap-2">
-					<Badge variant="secondary" className="font-mono">
-						{meta.num}
-					</Badge>
-					<h2 className="text-lg font-semibold">{meta.label}</h2>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<div className="flex items-center gap-2">
+						<Badge variant="secondary" className="font-mono">
+							{meta.num}
+						</Badge>
+						<h2 className="text-lg font-semibold">{meta.label}</h2>
+					</div>
+					<p className="text-sm text-muted-foreground">{meta.hint}</p>
 				</div>
-				<p className="text-sm text-muted-foreground">{meta.hint}</p>
+				{formView && (
+					<ToggleGroup
+						value={[viewMode]}
+						onValueChange={(v) => {
+							const next = v[0];
+							if (next === "guided" || next === "form") setViewMode(next);
+						}}
+						variant="outline"
+						size="sm"
+						aria-label="Schedule view"
+					>
+						<ToggleGroupItem value="guided">Guided</ToggleGroupItem>
+						<ToggleGroupItem value="form">Form View</ToggleGroupItem>
+					</ToggleGroup>
+				)}
 			</div>
-			<SchemaForm
-				schema={schemaFor(schedule)}
-				defaultValues={value}
-				components={FORM_COMPONENTS}
-				onSubmit={(v: Record<string, unknown>) => onSave(v)}
-			>
-				<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-					{footer ?? <span />}
-					<Button type="submit" disabled={saving}>
-						{saving ? "Saving…" : "Save schedule"}
-					</Button>
-				</div>
-			</SchemaForm>
+			{/*
+			 * `SchemaForm` always mounts its guided `FormGenerator` (there is no
+			 * prop to suppress it — see its own source), so Form View is a CSS
+			 * visibility swap rather than a conditional mount: both views read the
+			 * SAME `form.control` from `SchemaForm`'s `children(form)` render-prop,
+			 * so toggling never drops an in-progress edit the way remounting a
+			 * second `SchemaForm` would. `[data-formkit-root]` is `FormGenerator`'s
+			 * own wrapper element.
+			 */}
+			<div className={viewMode === "form" ? "[&_[data-formkit-root]]:hidden" : undefined}>
+				<SchemaForm
+					schema={schemaFor(schedule)}
+					defaultValues={value}
+					components={FORM_COMPONENTS}
+					onSubmit={(v: Record<string, unknown>) => onSave(v)}
+				>
+					{(form) => (
+						<>
+							{formView && (
+								<div className={viewMode === "guided" ? "hidden" : "mt-4"}>
+									{formView({
+										control: form.control,
+										disabled: saving,
+										computed,
+										engagement,
+										client,
+									})}
+								</div>
+							)}
+							<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+								{footer ?? <span />}
+								<Button type="submit" disabled={saving}>
+									{saving ? "Saving…" : "Save schedule"}
+								</Button>
+							</div>
+						</>
+					)}
+				</SchemaForm>
+			</div>
 			<ScheduleFiledValues
 				computed={computed}
 				stale={stale}
