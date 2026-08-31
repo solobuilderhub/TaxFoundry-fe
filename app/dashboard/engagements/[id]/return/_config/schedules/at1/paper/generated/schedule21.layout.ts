@@ -47,7 +47,7 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021007001", caption: "Part VI.1 tax deductible", kind: "money", role: "input", section: "current-year" },
   { line: "021011001", caption: "Prospector's and grubstaker's shares", kind: "money", role: "input", section: "current-year" },
   { line: "021012001", caption: "Employer deduction for non-qualified securities under ITA paragraph 110(1)(e)", kind: "money", role: "input", section: "current-year" },
-  { line: "021013001", caption: "Subtotal of lines 003 to 011", kind: "money", role: "total", section: "current-year" },
+  { line: "021013001", caption: "Subtotal of lines 002 to 012", kind: "money", role: "total", section: "current-year" },
   { line: "021015001", caption: "Line 001 minus line 013", kind: "money", role: "computed", section: "current-year" },
   { line: "021017001", caption: "Additions under ITA section 110.5 or subparagraph 115(1)(a)(vii) for foreign tax credits", kind: "money", role: "input", section: "current-year" },
   { line: "021019001", caption: "Current-year farm loss", kind: "money", role: "input", section: "current-year" },
