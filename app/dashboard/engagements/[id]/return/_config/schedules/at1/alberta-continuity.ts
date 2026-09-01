@@ -140,6 +140,10 @@ export const albertaContinuity = defineSchedule({
 				],
 				{
 					variant: "card",
+					// A card section defaults to a 2-column field grid — cols: 1 so the
+					// array's row cards get the section's FULL width instead of being
+					// squeezed into one grid cell.
+					cols: 1,
 					description:
 						"Alberta-only request — federal has no net-capital carry-back input to default from, even when (as here) the current-year net-capital loss matches federal's. Carry this year's Alberta net-capital loss back to up to 3 preceding years; the total reduces the closing balance that carries forward. Applied at the ½ inclusion rate on Schedule 10, same as the gross amount entered here.",
 				},
@@ -167,6 +171,10 @@ export const albertaContinuity = defineSchedule({
 				],
 				{
 					variant: "card",
+					// A card section defaults to a 2-column field grid — cols: 1 so the
+					// array's row cards get the section's FULL width instead of being
+					// squeezed into one grid cell.
+					cols: 1,
 					description:
 						"Alberta-only request — federal has no farm loss carry-back input of its own. Carry this year's Alberta farm loss back to up to 3 preceding years; the total reduces the closing balance that carries forward.",
 				},
@@ -202,10 +210,18 @@ export const albertaContinuity = defineSchedule({
 						"Include listed personal property loss? (line 025)",
 						YES_NO,
 					),
-					f.array("otherLossCarrybacks", "Carry back to prior years", [
-						field.date("taxYearEnd", "Prior year-end"),
-						money("amount", "Amount"),
-					]),
+					f.array(
+						"otherLossCarrybacks",
+						"Carry back to prior years",
+						[
+							field.date("taxYearEnd", "Prior year-end"),
+							money("amount", "Amount"),
+						],
+						// The two radios above benefit from this section's 2-column grid —
+						// fullWidth spans just this array across both columns instead of
+						// squeezing it into one grid cell.
+						{ fullWidth: true },
+					),
 				],
 				{
 					variant: "card",

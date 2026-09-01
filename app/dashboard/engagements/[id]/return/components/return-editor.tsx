@@ -45,6 +45,7 @@ import {
 import { Schedule10View } from "../_config/schedules/at1/paper/schedule10-view";
 import { Schedule12View } from "../_config/schedules/at1/paper/schedule12-view";
 import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
+import type { NavigateToLine } from "../_config/schedules/shared/define";
 import { bookNetIncomeOf } from "../_lib/calc";
 import type { ReturnInput } from "../_lib/return-input";
 import { useCcaPreviewTotal } from "../_lib/use-cca-preview";
@@ -90,6 +91,42 @@ const READ_ONLY_SCHEDULES = [
 	},
 ];
 
+/**
+ * A paper Form View's cross-reference badges point at a `FormDefinition.id`
+ * (`"AT1SCH12"`), not a `ScheduleKey` — the two vocabularies are deliberately
+ * different (see `../_config/schedules/at1/forms` in `@classytic/ca-tax` for
+ * the former). A schedule missing here just means its `to` badges render
+ * inert (no `onNavigate` match) rather than throwing — safe by construction.
+ * Two AT1 schedules fold into a FEDERAL schedule's own form-view rather than
+ * getting their own `ScheduleKey` (Schedule 13's Alberta CCA override lives
+ * under `"cca"`, Schedule 17's reserves under `"reserves"`) — confirmed by
+ * reading each schedule file's own `formView:` wiring, not guessed.
+ */
+const FORM_ID_TO_SCHEDULE_KEY: Record<
+	string,
+	ScheduleKey | "schedule2" | "schedule10" | "schedule12"
+> = {
+	AT1: "alberta",
+	AT1SCH1: "albertaSbd",
+	AT1SCH2: "schedule2",
+	AT1SCH03: "albertaOtherCredits3",
+	AT1SCH04: "albertaForeignInvestment4",
+	AT1SCH05: "albertaRoyaltyDeduction5",
+	AT1SCH06: "albertaRoyaltyCredit6",
+	AT1SCH07: "albertaRoyaltySupplemental7",
+	AT1SCH08: "albertaPoliticalContributions8",
+	AT1SCH09: "albertaSredCredit9",
+	AT1SCH10: "schedule10",
+	AT1SCH11: "albertaManufacturing11",
+	AT1SCH12: "schedule12",
+	AT1SCH13: "cca",
+	AT1SCH15: "albertaResourceDeductions15",
+	AT1SCH17: "reserves",
+	AT1SCH20: "albertaDonations",
+	AT1SCH21: "albertaContinuity",
+	AT1SCH29: "albertaIeg",
+};
+
 /** True if a schedule slice carries any entered value (drives the nav "has data" dot). */
 const hasData = (v: unknown): boolean =>
 	!!v &&
@@ -107,6 +144,19 @@ export function ReturnEditor({ id }: { id: string }) {
 	const [active, setActive] = useState<
 		ScheduleKey | "summary" | "schedule12" | "schedule2" | "schedule10"
 	>("incomeStatement");
+	// The line to scroll to and briefly highlight after a paper Form View's
+	// cross-reference badge switches `active` to another schedule — cleared on
+	// a timer so clicking the same badge again re-triggers the highlight (a
+	// second `setHighlightLine` to the same value wouldn't otherwise change
+	// state and re-fire the effect).
+	const [highlightLine, setHighlightLine] = useState<string | undefined>(undefined);
+	const onNavigate: NavigateToLine = (form, line) => {
+		const key = FORM_ID_TO_SCHEDULE_KEY[form];
+		if (!key) return;
+		setActive(key);
+		setHighlightLine(line);
+		setTimeout(() => setHighlightLine(undefined), 2500);
+	};
 	const [onlyProgramSpecific, setOnlyProgramSpecific] = useState(false);
 	const [ri, setRi] = useState<ReturnInput | null>(null);
 	// Inputs edited since the last compute → the summary is stale until recomputed.
@@ -420,7 +470,12 @@ export function ReturnEditor({ id }: { id: string }) {
 													</div>
 													<p className="text-sm text-muted-foreground">{meta.hint}</p>
 												</div>
-												<View computed={computed} stale={stale} />
+												<View
+													computed={computed}
+													stale={stale}
+													onNavigate={onNavigate}
+													highlightLine={active === meta.key ? highlightLine : undefined}
+												/>
 											</div>
 										);
 									})()
@@ -435,6 +490,8 @@ export function ReturnEditor({ id }: { id: string }) {
 										stale={stale}
 										engagement={engagement}
 										client={client}
+										onNavigate={onNavigate}
+										highlightLine={highlightLine}
 										footer={
 											active === "incomeStatement" ? (
 												<p className="text-sm text-muted-foreground">
@@ -473,6 +530,8 @@ function ScheduleForm({
 	stale,
 	engagement,
 	client,
+	onNavigate,
+	highlightLine,
 }: {
 	schedule: ScheduleKey;
 	value: Record<string, unknown>;
@@ -483,6 +542,8 @@ function ScheduleForm({
 	stale: boolean;
 	engagement?: EngagementYear;
 	client?: Client;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const meta = SCHEDULE_TREE.find((s) => s.key === schedule)!;
 	const formView = formViewFor(schedule);
@@ -542,6 +603,8 @@ function ScheduleForm({
 										computed,
 										engagement,
 										client,
+										onNavigate,
+										highlightLine,
 									})}
 								</div>
 							)}

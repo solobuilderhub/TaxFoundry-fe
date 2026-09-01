@@ -43,6 +43,10 @@ export const reserves = defineSchedule({
 				],
 				{
 					variant: "card",
+					// A card section defaults to a 2-column field grid — cols: 1 so the
+					// array's row cards get the section's FULL width instead of being
+					// squeezed into one grid cell.
+					cols: 1,
 					description:
 						"A tax reserve deducted last year is added back to income this year, and this year's reserve is re-deducted. Enter each reserve's opening and closing balance. The engine reverses the opening (an addition on Schedule 1) and deducts the closing. Capital-gains reserves belong on Schedule 6, not here.",
 				},

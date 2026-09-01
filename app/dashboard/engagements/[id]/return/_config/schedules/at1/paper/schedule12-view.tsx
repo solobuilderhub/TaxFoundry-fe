@@ -3,6 +3,7 @@
 import type { ComputedReturn } from "@/api/computed-returns";
 import { AT1_SCHEDULE_12_FIELDS, AT1_SCHEDULE_12_SECTIONS } from "./generated/schedule12.layout";
 import { ReadOnlyScheduleView } from "./read-only-schedule-view";
+import type { NavigateToLine } from "./resolve-line";
 
 /**
  * AT1 Schedule 12 — read-only, always. There is no editable side because
@@ -17,15 +18,29 @@ import { ReadOnlyScheduleView } from "./read-only-schedule-view";
  * OMITTED from the filed payload, not a gap — shown blank without flagging
  * it, same as any other genuinely-nil line.
  */
-export function Schedule12View({ computed, stale }: { computed?: ComputedReturn; stale?: boolean }) {
+export function Schedule12View({
+	computed,
+	stale,
+	onNavigate,
+	highlightLine,
+}: {
+	computed?: ComputedReturn;
+	stale?: boolean;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
+}) {
 	return (
 		<ReadOnlyScheduleView
 			scheduleId="012"
+			formId="AT1SCH12"
 			sections={AT1_SCHEDULE_12_SECTIONS}
 			fields={AT1_SCHEDULE_12_FIELDS}
 			computed={computed}
 			stale={stale}
-			emptyMessage="Not yet computed, or nothing to reconcile this filing — Schedule 12 only files when Alberta figures diverge from federal on another schedule. Compute the return first."
+			onNavigate={onNavigate}
+			highlightLine={highlightLine}
+			notComputedMessage="Not yet computed. Compute the return to see Schedule 12."
+			nothingToReportMessage="Computed, and Schedule 12 has nothing to reconcile — Alberta and federal figures agree on Schedules 13, 17, 18 and 21 this filing. That's a real result, not a gap: the form itself says only to report a pair where the amounts differ."
 		/>
 	);
 }

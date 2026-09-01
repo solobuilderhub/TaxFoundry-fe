@@ -6,11 +6,14 @@ import type { CcaClass, CcaValues } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperClassGrid,
+	PaperFootnotes,
+	PaperLeaderRow,
 	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_13_GRID_COLUMNS } from "./generated/schedule13.layout";
+import { AT1_SCHEDULE_13_FIELDS, AT1_SCHEDULE_13_FOOTNOTES, AT1_SCHEDULE_13_GRID_COLUMNS } from "./generated/schedule13.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 /** The two Alberta-specific override fields Schedule 13 collects — everything else is assumed equal to federal (or computed by the engine) and shown read-only. */
 const FIELD_NAME: Partial<Record<string, keyof CcaClass>> = {
@@ -20,6 +23,14 @@ const FIELD_NAME: Partial<Record<string, keyof CcaClass>> = {
 };
 
 const SCHEDULE_ID = "013";
+
+/** The three totals (023/025/027) — always engine-computed, never a box a preparer fills; resolved from the last filed values the same way Schedule 21's read-only Part 1 is. */
+function buildTotalsResolveLine(filedByFieldOccurrence: Map<string, string | number>): ResolveLine {
+	return (line: string): LineValue => {
+		const field = parseAt1LineItemId(line)?.field ?? line;
+		return { editable: false, value: filedByFieldOccurrence.get(`${field}-1`) as string | number | undefined };
+	};
+}
 
 /**
  * AT1 Schedule 13 paper Form View — one row per CCA class the preparer
@@ -33,10 +44,14 @@ export function Schedule13FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const ccaControl = control as unknown as Control<CcaValues>;
 	const classes = useWatch({ control: ccaControl, name: "classes" }) ?? [];
@@ -48,6 +63,8 @@ export function Schedule13FormView({
 			return parsed ? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const] : [];
 		}),
 	);
+	const resolveTotalsLine = buildTotalsResolveLine(filedByFieldOccurrence);
+	const totalsFields = AT1_SCHEDULE_13_FIELDS.filter((f) => f.section === "totals");
 
 	const rows: ClassGridRow[] = classes.map((c, i) => ({
 		key: `class-${i}`,
@@ -65,6 +82,7 @@ export function Schedule13FormView({
 			<PaperSection
 				title="Alberta capital cost allowance by class"
 				description="One row per class. Class number, Alberta opening UCC, and the Alberta claim override are editable; the rest is assumed equal to federal — see the last computed return where available."
+				formId="AT1SCH13"
 			>
 				<div className="p-2">
 					<PaperClassGrid
@@ -92,6 +110,25 @@ export function Schedule13FormView({
 					No CCA classes entered yet — add one in Guided view first.
 				</p>
 			)}
+			<PaperSection title="Totals carried to Schedule 12">
+				{totalsFields.map((f) => (
+					<PaperLeaderRow
+						key={f.line}
+						line={parseAt1LineItemId(f.line)?.field ?? f.line}
+						caption={f.caption}
+						kind={f.kind}
+						role={f.role}
+						note={f.note}
+						to={f.to}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+						control={ccaControl}
+						resolveLine={resolveTotalsLine}
+						disabled={disabled}
+					/>
+				))}
+				<PaperFootnotes notes={AT1_SCHEDULE_13_FOOTNOTES} />
+			</PaperSection>
 		</div>
 	);
 }

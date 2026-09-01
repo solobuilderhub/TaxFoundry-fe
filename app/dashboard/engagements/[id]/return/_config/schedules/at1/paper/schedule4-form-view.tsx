@@ -6,11 +6,14 @@ import type { AlbertaForeignInvestment4Values } from "../../../../_lib/return-in
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperClassGrid,
+	PaperFootnotes,
+	PaperLeaderRow,
 	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_4_FIELDS, AT1_SCHEDULE_4_SECTIONS } from "./generated/schedule4.layout";
+import { AT1_SCHEDULE_4_FIELDS, AT1_SCHEDULE_4_FOOTNOTES, AT1_SCHEDULE_4_SECTIONS } from "./generated/schedule4.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "004";
 
@@ -33,10 +36,14 @@ export function Schedule4FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const s4Control = control as unknown as Control<AlbertaForeignInvestment4Values>;
 	const countries = useWatch({ control: s4Control, name: "countries" }) ?? [];
@@ -48,6 +55,11 @@ export function Schedule4FormView({
 			return parsed ? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const] : [];
 		}),
 	);
+	const resolveTotalsLine: ResolveLine = (line): LineValue => {
+		const field = parseAt1LineItemId(line)?.field ?? line;
+		return { editable: false, value: filedByFieldOccurrence.get(`${field}-1`) as string | number | undefined };
+	};
+	const totalsFields = AT1_SCHEDULE_4_FIELDS.filter((f) => f.section === "total");
 
 	const rows: ClassGridRow[] = countries.map((c, i) => ({
 		key: `country-${i}`,
@@ -65,6 +77,7 @@ export function Schedule4FormView({
 			<PaperSection
 				title={AT1_SCHEDULE_4_SECTIONS[0]?.title ?? "Foreign Investment Credits"}
 				description={AT1_SCHEDULE_4_SECTIONS[0]?.description}
+				formId="AT1SCH04"
 			>
 				<div className="p-2">
 					<PaperClassGrid
@@ -88,6 +101,25 @@ export function Schedule4FormView({
 					No countries entered yet — add one in Guided view first.
 				</p>
 			)}
+			<PaperSection title="Total and Alberta Foreign Investment Income Tax Credit">
+				{totalsFields.map((f) => (
+					<PaperLeaderRow
+						key={f.line}
+						line={parseAt1LineItemId(f.line)?.field ?? f.line}
+						caption={f.caption}
+						kind={f.kind}
+						role={f.role}
+						note={f.note}
+						to={f.to}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+						control={s4Control}
+						resolveLine={resolveTotalsLine}
+						disabled={disabled}
+					/>
+				))}
+			</PaperSection>
+			<PaperFootnotes notes={AT1_SCHEDULE_4_FOOTNOTES} />
 		</div>
 	);
 }

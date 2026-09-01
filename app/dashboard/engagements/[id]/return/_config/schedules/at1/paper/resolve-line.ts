@@ -1,3 +1,5 @@
+export type { NavigateToLine } from "../../shared/define";
+
 /**
  * Structurally identical to the `PaperFieldKind`/`PaperFieldRole` declared
  * inside each GENERATED `paper/generated/*.layout.ts` file — those are kept
@@ -17,6 +19,7 @@ export interface PaperField {
 	requirement?: "mandatory" | "optional" | "conditional";
 	note?: string;
 	from?: { form: string; line: string; note?: string };
+	to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {

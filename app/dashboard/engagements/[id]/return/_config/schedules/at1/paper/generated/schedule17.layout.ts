@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -62,8 +63,12 @@ export const AT1_SCHEDULE_17_FIELDS: readonly PaperField[] = [
   { line: "017073001", caption: "Insurance corporations policy reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional" },
   { line: "017075001", caption: "Bank reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional" },
   { line: "017077001", caption: "Other tax reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional" },
-  { line: "017081001", caption: "Total of the closing balances", kind: "money", role: "total", section: "totals", note: "This year’s reserves, deducted from Alberta income." },
-  { line: "017091001", caption: "Total of line 021 plus line 051", kind: "money", role: "computed", section: "totals", note: "Opening balances plus transfers — everything that comes BACK INTO income. Filing this without line 081, or the reverse, misstates Alberta income by the other half of the swing." },
+  { line: "017081001", caption: "Total of the closing balances", kind: "money", role: "total", section: "totals", note: "This year’s reserves, deducted from Alberta income.", to: { form: "AT1SCH12", line: "012038001" } },
+  { line: "017091001", caption: "Total of line 021 plus line 051", kind: "money", role: "computed", section: "totals", note: "Opening balances plus transfers — everything that comes BACK INTO income. Filing this without line 081, or the reverse, misstates Alberta income by the other half of the swing.", to: { form: "AT1SCH12", line: "012036001" } },
+];
+
+export const AT1_SCHEDULE_17_FOOTNOTES: readonly string[] = [
+  "This schedule is required if the opening balance or the claim for Alberta purposes differs from that for federal purposes.",
 ];
 
 export interface Schedule17ReserveKind {

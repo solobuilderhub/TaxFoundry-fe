@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {

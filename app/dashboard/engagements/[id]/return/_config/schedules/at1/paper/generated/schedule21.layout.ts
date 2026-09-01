@@ -26,6 +26,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -57,7 +58,7 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021033001", caption: "Non-capital losses — Balance at the beginning of the taxation year", kind: "money", role: "input", section: "continuity" },
   { line: "021035001", caption: "Non-capital losses — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "continuity" },
   { line: "021037001", caption: "Non-capital losses — Current-year loss", kind: "money", role: "input", section: "continuity" },
-  { line: "021041001", caption: "Non-capital losses — Applied against income", kind: "money", role: "input", section: "continuity" },
+  { line: "021041001", caption: "Non-capital losses — Applied against income", kind: "money", role: "input", section: "continuity", to: { form: "AT1SCH12", line: "012064001", note: "Printed on the form directly beside this line." } },
   { line: "021043001", caption: "Non-capital losses — Adjustment under ITA section 80", kind: "money", role: "input", section: "continuity" },
   { line: "021045001", caption: "Non-capital losses — Other adjustments", kind: "money", role: "input", section: "continuity" },
   { line: "021047001", caption: "Non-capital losses — Total carried back to prior years", kind: "money", role: "input", section: "continuity", note: "A carry-back also requires Schedule 10 to be completed." },
@@ -65,7 +66,7 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021051001", caption: "Net capital losses — Carried forward from the preceding year", kind: "money", role: "input", section: "continuity" },
   { line: "021055001", caption: "Net capital losses — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "continuity" },
   { line: "021057001", caption: "Net capital losses — Current-year loss", kind: "money", role: "input", section: "continuity" },
-  { line: "021061001", caption: "Net capital losses — Applied against income", kind: "money", role: "input", section: "continuity" },
+  { line: "021061001", caption: "Net capital losses — Applied against income", kind: "money", role: "input", section: "continuity", to: { form: "AT1SCH12", line: "012066001", note: "Carry forward this amount × the inclusion rate. Schedule 21 tracks capital losses at their full amount; Schedule 12 wants the allowable portion — carrying the raw figure over-deducts by roughly two." } },
   { line: "021063001", caption: "Net capital losses — Adjustment under ITA section 80", kind: "money", role: "input", section: "continuity" },
   { line: "021065001", caption: "Net capital losses — Other adjustments", kind: "money", role: "input", section: "continuity" },
   { line: "021067001", caption: "Net capital losses — Total carried back to prior years", kind: "money", role: "input", section: "continuity", note: "A carry-back also requires Schedule 10 to be completed." },
@@ -75,7 +76,7 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021073001", caption: "Farm losses — Balance at the beginning of the taxation year", kind: "money", role: "input", section: "continuity" },
   { line: "021075001", caption: "Farm losses — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "continuity" },
   { line: "021077001", caption: "Farm losses — Current-year loss", kind: "money", role: "input", section: "continuity" },
-  { line: "021079001", caption: "Farm losses — Applied against income", kind: "money", role: "input", section: "continuity" },
+  { line: "021079001", caption: "Farm losses — Applied against income", kind: "money", role: "input", section: "continuity", to: { form: "AT1SCH12", line: "012070001", note: "Printed on the form directly beside this line." } },
   { line: "021081001", caption: "Farm losses — Adjustment under ITA section 80", kind: "money", role: "input", section: "continuity" },
   { line: "021083001", caption: "Farm losses — Other adjustments", kind: "money", role: "input", section: "continuity" },
   { line: "021085001", caption: "Farm losses — Total carried back to prior years", kind: "money", role: "input", section: "continuity", note: "A carry-back also requires Schedule 10 to be completed." },
@@ -85,6 +86,7 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021093001", caption: "Restricted farm losses — Balance at the beginning of the taxation year", kind: "money", role: "input", section: "continuity" },
   { line: "021095001", caption: "Restricted farm losses — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "continuity" },
   { line: "021097001", caption: "Restricted farm losses — Current-year loss", kind: "money", role: "input", section: "continuity" },
+  { line: "021099001", caption: "Restricted farm losses — Applied against income", kind: "money", role: "input", section: "continuity", to: { form: "AT1SCH12", line: "012068001", note: "Printed on the form directly beside this line." } },
   { line: "021101001", caption: "Restricted farm losses — Adjustment under ITA section 80", kind: "money", role: "input", section: "continuity" },
   { line: "021103001", caption: "Restricted farm losses — Other adjustments", kind: "money", role: "input", section: "continuity" },
   { line: "021105001", caption: "Restricted farm losses — Total carried back to prior years", kind: "money", role: "input", section: "continuity", note: "A carry-back also requires Schedule 10 to be completed." },
@@ -93,10 +95,18 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021113001", caption: "Listed personal property losses — Losses expired", kind: "money", role: "input", section: "continuity" },
   { line: "021115001", caption: "Listed personal property losses — Balance at the beginning of the taxation year", kind: "money", role: "input", section: "continuity" },
   { line: "021117001", caption: "Listed personal property losses — Current-year loss", kind: "money", role: "input", section: "continuity" },
-  { line: "021119001", caption: "Listed personal property losses — Applied against income", kind: "money", role: "input", section: "continuity" },
+  { line: "021119001", caption: "Listed personal property losses — Applied against income", kind: "money", role: "input", section: "continuity", note: "If Schedule 18 exists, carry forward the amount from Schedule 18 line 060. Otherwise, carry forward the amount from federal Schedule 6 line 655." },
   { line: "021121001", caption: "Listed personal property losses — Other adjustments", kind: "money", role: "input", section: "continuity" },
   { line: "021123001", caption: "Listed personal property losses — Total carried back to prior years", kind: "money", role: "input", section: "continuity", note: "A carry-back also requires Schedule 10 to be completed." },
   { line: "021125001", caption: "Listed personal property losses — Closing balance", kind: "money", role: "computed", section: "continuity" },
+];
+
+export const AT1_SCHEDULE_21_FOOTNOTES: readonly string[] = [
+  "This schedule is required if the opening balance or the claim for Alberta purposes differs from that for federal purposes.",
+  "The corporation may choose whether or not to deduct an available loss from income in a taxation year. It can deduct losses in any order. However, for each type of loss, ensure that the oldest loss is deducted first.",
+  "A non-capital loss expires after 7 taxation years if it arose in a taxation year ending before March 23, 2004, or after 10 taxation years if it arose in a taxation year ending after March 22, 2004 and before 2006, or after 20 years if it arose in a taxation year after 2005.",
+  "An allowable business investment loss becomes a net capital loss after 7 taxation years if it arose in a taxation year ending before March 23, 2004, or after 10 taxation years if it arose in a taxation year ending after March 22, 2004.",
+  "A farm loss or restricted farm loss expires after 10 tax years if it arose in a tax year ending before 2006, and after 20 tax years if it arose in a tax year ending after 2005.",
 ];
 
 export interface Schedule21PoolRow {
@@ -104,12 +114,14 @@ export interface Schedule21PoolRow {
   caption: string;
   line: string;
   role: PaperFieldRole;
+  /** Where this row carries to on another schedule — printed on the form beside the "applied against income" row only. */
+  to?: { form: string; line: string; note?: string };
+  note?: string;
 }
 
 export interface Schedule21Pool {
   key: string;
   label: string;
-  toSchedule12?: string;
   rows: readonly Schedule21PoolRow[];
 }
 
@@ -117,14 +129,13 @@ export const AT1_SCHEDULE_21_POOL_TABLE: readonly Schedule21Pool[] = [
   {
     key: "non-capital",
     label: "Non-capital losses",
-    toSchedule12: "012064001",
     rows: [
       { kind: "carriedForward", caption: "Carried forward from the preceding year", line: "021031001", role: "input" },
       { kind: "expired", caption: "Losses expired", line: "021032001", role: "input" },
       { kind: "opening", caption: "Balance at the beginning of the taxation year", line: "021033001", role: "input" },
       { kind: "windUpTransfer", caption: "Transfer on a wind-up or amalgamation", line: "021035001", role: "input" },
       { kind: "currentYearLoss", caption: "Current-year loss", line: "021037001", role: "input" },
-      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021041001", role: "input" },
+      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021041001", role: "input", to: { form: "AT1SCH12", line: "012064001" } },
       { kind: "section80Adjustment", caption: "Adjustment under ITA section 80", line: "021043001", role: "input" },
       { kind: "otherAdjustments", caption: "Other adjustments", line: "021045001", role: "input" },
       { kind: "carryBack", caption: "Total carried back to prior years", line: "021047001", role: "input" },
@@ -134,12 +145,11 @@ export const AT1_SCHEDULE_21_POOL_TABLE: readonly Schedule21Pool[] = [
   {
     key: "capital",
     label: "Net capital losses",
-    toSchedule12: "012066001",
     rows: [
       { kind: "carriedForward", caption: "Carried forward from the preceding year", line: "021051001", role: "input" },
       { kind: "windUpTransfer", caption: "Transfer on a wind-up or amalgamation", line: "021055001", role: "input" },
       { kind: "currentYearLoss", caption: "Current-year loss", line: "021057001", role: "input" },
-      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021061001", role: "input" },
+      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021061001", role: "input", to: { form: "AT1SCH12", line: "012066001", note: "Carry forward this amount × the inclusion rate. Schedule 21 tracks capital losses at their full amount; Schedule 12 wants the allowable portion — carrying the raw figure over-deducts by roughly two." } },
       { kind: "section80Adjustment", caption: "Adjustment under ITA section 80", line: "021063001", role: "input" },
       { kind: "otherAdjustments", caption: "Other adjustments", line: "021065001", role: "input" },
       { kind: "carryBack", caption: "Total carried back to prior years", line: "021067001", role: "input" },
@@ -149,14 +159,13 @@ export const AT1_SCHEDULE_21_POOL_TABLE: readonly Schedule21Pool[] = [
   {
     key: "farm",
     label: "Farm losses",
-    toSchedule12: "012070001",
     rows: [
       { kind: "carriedForward", caption: "Carried forward from the preceding year", line: "021071001", role: "input" },
       { kind: "expired", caption: "Losses expired", line: "021072001", role: "input" },
       { kind: "opening", caption: "Balance at the beginning of the taxation year", line: "021073001", role: "input" },
       { kind: "windUpTransfer", caption: "Transfer on a wind-up or amalgamation", line: "021075001", role: "input" },
       { kind: "currentYearLoss", caption: "Current-year loss", line: "021077001", role: "input" },
-      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021079001", role: "input" },
+      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021079001", role: "input", to: { form: "AT1SCH12", line: "012070001" } },
       { kind: "section80Adjustment", caption: "Adjustment under ITA section 80", line: "021081001", role: "input" },
       { kind: "otherAdjustments", caption: "Other adjustments", line: "021083001", role: "input" },
       { kind: "carryBack", caption: "Total carried back to prior years", line: "021085001", role: "input" },
@@ -166,13 +175,13 @@ export const AT1_SCHEDULE_21_POOL_TABLE: readonly Schedule21Pool[] = [
   {
     key: "restricted-farm",
     label: "Restricted farm losses",
-    toSchedule12: "012068001",
     rows: [
       { kind: "carriedForward", caption: "Carried forward from the preceding year", line: "021091001", role: "input" },
       { kind: "expired", caption: "Losses expired", line: "021092001", role: "input" },
       { kind: "opening", caption: "Balance at the beginning of the taxation year", line: "021093001", role: "input" },
       { kind: "windUpTransfer", caption: "Transfer on a wind-up or amalgamation", line: "021095001", role: "input" },
       { kind: "currentYearLoss", caption: "Current-year loss", line: "021097001", role: "input" },
+      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021099001", role: "input", to: { form: "AT1SCH12", line: "012068001" } },
       { kind: "section80Adjustment", caption: "Adjustment under ITA section 80", line: "021101001", role: "input" },
       { kind: "otherAdjustments", caption: "Other adjustments", line: "021103001", role: "input" },
       { kind: "carryBack", caption: "Total carried back to prior years", line: "021105001", role: "input" },
@@ -187,7 +196,7 @@ export const AT1_SCHEDULE_21_POOL_TABLE: readonly Schedule21Pool[] = [
       { kind: "expired", caption: "Losses expired", line: "021113001", role: "input" },
       { kind: "opening", caption: "Balance at the beginning of the taxation year", line: "021115001", role: "input" },
       { kind: "currentYearLoss", caption: "Current-year loss", line: "021117001", role: "input" },
-      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021119001", role: "input" },
+      { kind: "appliedAgainstIncome", caption: "Applied against income", line: "021119001", role: "input", note: "If Schedule 18 exists, carry forward the amount from Schedule 18 line 060. Otherwise, carry forward the amount from federal Schedule 6 line 655." },
       { kind: "otherAdjustments", caption: "Other adjustments", line: "021121001", role: "input" },
       { kind: "carryBack", caption: "Total carried back to prior years", line: "021123001", role: "input" },
       { kind: "closing", caption: "Closing balance", line: "021125001", role: "computed" },

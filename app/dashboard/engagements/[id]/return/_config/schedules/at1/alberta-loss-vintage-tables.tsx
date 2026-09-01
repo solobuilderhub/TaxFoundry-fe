@@ -1,6 +1,8 @@
 "use client";
 
 import type { FieldComponentProps } from "@classytic/formkit";
+import { Pill } from "@classytic/fluid/client/pill";
+import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import { Plus, Trash2 } from "lucide-react";
 import {
 	type Control,
@@ -20,6 +22,64 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { AlbertaContinuityValues } from "../../../_lib/return-input";
+import type { NavigateToLine } from "./paper/resolve-line";
+
+/** `021FFF001` — this file is Schedule 21 only, so the schedule prefix is fixed. */
+const line = (field: string): string => `021${field}001`;
+
+/**
+ * A `TableHead` with the printed form's own line number as a small mono
+ * sub-label, matching the badge convention `PaperLeaderRow`/`PaperContinuityGrid`
+ * already use elsewhere on this schedule's paper Form View — this file
+ * predates that convention (it's shared with the GUIDED editor too, not paper-
+ * view-only), so it gets its own copy rather than importing the paper
+ * components into a file the guided editor also renders.
+ */
+function HeadWithLine({
+	lineId,
+	children,
+	align,
+}: {
+	lineId: string;
+	children: React.ReactNode;
+	align?: "right";
+}) {
+	return (
+		<TableHead className={align === "right" ? "text-right" : undefined}>
+			<span className="block font-mono text-[10px] font-normal text-muted-foreground">{lineId}</span>
+			{children}
+		</TableHead>
+	);
+}
+
+/** The small "→ Schedule X, line Y" badge used inline in a `TableHead`, for a column whose value carries forward — same visual language as `ProvenanceBadge`'s `to` badge, without depending on the paper-view-only primitives file. */
+function CarriesToBadge({
+	to,
+	onNavigate,
+}: {
+	to: { form: string; line: string; note?: string };
+	onNavigate?: NavigateToLine;
+}) {
+	const label = `→ ${to.form} line ${to.line}`;
+	const tooltip = to.note || `Carries forward to ${to.form}, line ${to.line}.`;
+	return (
+		<TooltipWrapper content={tooltip} side="top">
+			{onNavigate ? (
+				<button type="button" onClick={() => onNavigate(to.form, to.line)} className="ml-1 inline-flex align-middle">
+					<Pill variant="outline" className="cursor-pointer text-[10px] font-normal hover:bg-accent">
+						{label}
+					</Pill>
+				</button>
+			) : (
+				<span className="ml-1 inline-flex align-middle">
+					<Pill variant="outline" className="cursor-help text-[10px] font-normal">
+						{label}
+					</Pill>
+				</span>
+			)}
+		</TooltipWrapper>
+	);
+}
 
 /**
  * AT1 Schedule 21's two "by year of origin" ledgers (page 3: non-capital
@@ -247,7 +307,8 @@ function TextCell({
 
 export function LimitedPartnershipTable({
 	control,
-}: FieldComponentProps<AlbertaContinuityValues>) {
+	onNavigate,
+}: FieldComponentProps<AlbertaContinuityValues> & { onNavigate?: NavigateToLine }) {
 	const { fields, append, remove } = useFieldArray({
 		control,
 		name: "limitedPartnerships",
@@ -275,12 +336,18 @@ export function LimitedPartnershipTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Partnership</TableHead>
-							<TableHead className="text-right">Opening balance</TableHead>
-							<TableHead className="text-right">Wind-up transfer</TableHead>
-							<TableHead className="text-right">Current-year loss</TableHead>
-							<TableHead className="text-right">Applied</TableHead>
-							<TableHead className="text-right">Closing balance</TableHead>
+							<HeadWithLine lineId={line("131")}>Partnership</HeadWithLine>
+							<HeadWithLine lineId={line("133")} align="right">Opening balance</HeadWithLine>
+							<HeadWithLine lineId={line("135")} align="right">Wind-up transfer</HeadWithLine>
+							<HeadWithLine lineId={line("137")} align="right">Current-year loss</HeadWithLine>
+							<HeadWithLine lineId={line("139")} align="right">
+								Applied
+								<CarriesToBadge
+									to={{ form: "AT1SCH12", line: "012072001", note: "Carry forward the total of this column to Schedule 12, line 072." }}
+									onNavigate={onNavigate}
+								/>
+							</HeadWithLine>
+							<HeadWithLine lineId={line("141")} align="right">Closing balance</HeadWithLine>
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
@@ -422,12 +489,12 @@ export function NonCapitalVintageTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Year of origin</TableHead>
-							<TableHead>Tax year end</TableHead>
-							<TableHead className="text-right">Opening balance</TableHead>
-							<TableHead className="text-right">Adjustments</TableHead>
-							<TableHead className="text-right">Applied</TableHead>
-							<TableHead className="text-right">Closing balance</TableHead>
+							<HeadWithLine lineId={line("151")}>Year of origin</HeadWithLine>
+							<HeadWithLine lineId={line("153")}>Tax year end</HeadWithLine>
+							<HeadWithLine lineId={line("155")} align="right">Opening balance</HeadWithLine>
+							<HeadWithLine lineId={line("159")} align="right">Adjustments</HeadWithLine>
+							<HeadWithLine lineId={line("167")} align="right">Applied</HeadWithLine>
+							<HeadWithLine lineId={line("169")} align="right">Closing balance</HeadWithLine>
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
@@ -576,10 +643,10 @@ export function OtherLossVintageTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Year of origin</TableHead>
-							<TableHead className="text-right">Farm losses</TableHead>
-							<TableHead className="text-right">Restricted farm</TableHead>
-							<TableHead className="text-right">LPP losses</TableHead>
+							<HeadWithLine lineId={line("181")}>Year of origin</HeadWithLine>
+							<HeadWithLine lineId={line("183")} align="right">Farm losses</HeadWithLine>
+							<HeadWithLine lineId={line("185")} align="right">Restricted farm</HeadWithLine>
+							<HeadWithLine lineId={line("187")} align="right">LPP losses</HeadWithLine>
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>

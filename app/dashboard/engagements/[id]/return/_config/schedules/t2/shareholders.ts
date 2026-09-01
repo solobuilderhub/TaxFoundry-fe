@@ -25,6 +25,10 @@ export const shareholders = defineSchedule({
         ],
         {
           variant: "card",
+          // A card section defaults to a 2-column field grid — cols: 1 so the
+          // array's row cards get the section's FULL width instead of being
+          // squeezed into one grid cell.
+          cols: 1,
           description: "Any shareholder holding 10% or more of any class of shares.",
         },
       ),

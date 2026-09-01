@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -60,7 +61,7 @@ export const AT1_SCHEDULE_29_FIELDS: readonly PaperField[] = [
   { line: "029128001", caption: "Taxable-capital reduction factor", kind: "rate", role: "computed", section: "grant", note: "1 at $10,000,000 taxable capital or below, straight-line down to 0 at $50,000,000. Multiplies lines 110 + 112 at line 130 — it does not reduce the $4,000,000 expenditure limit." },
   { line: "029130001", caption: "Grant before recapture", kind: "money", role: "computed", section: "grant", note: "(Line 110 + line 112) × line 128." },
   { line: "029132001", caption: "Recapture", kind: "money", role: "input", section: "grant", note: "Where IEG-funded property was sold or converted to commercial use in the year. Blank, not zero, when there is none to report." },
-  { line: "029134001", caption: "Net Innovation Employment Grant", kind: "money", role: "total", section: "grant", note: "Line 130 minus line 132. Carried to AT1 page 2, line 129." },
+  { line: "029134001", caption: "Net Innovation Employment Grant", kind: "money", role: "total", section: "grant", note: "Line 130 minus line 132.", to: { form: "AT1", line: "000129001", note: "Carried to AT1 page 2, line 129." } },
   { line: "029200001", caption: "CAN of the associated corporation with the longest taxation year", kind: "text", role: "input", section: "agreement", note: "9 or 10 digit Alberta Corporate Account Number." },
   { line: "029202001", caption: "Taxation year beginning", kind: "date", role: "input", section: "agreement", note: "The longest-year member’s own tax year — not necessarily the claimant’s." },
   { line: "029204001", caption: "Taxation year ending", kind: "date", role: "input", section: "agreement", note: "The longest-year member’s own tax year end." },
@@ -84,4 +85,8 @@ export const AT1_SCHEDULE_29_FIELDS: readonly PaperField[] = [
   { line: "029310001", caption: "Group Allowed Amount", kind: "money", role: "computed", section: "agreement", note: "Line 275 − (average of line 280 and line 290). \"X − ((Y + Z) / 2)\"." },
   { line: "029320001", caption: "Total allocated allowed amount", kind: "money", role: "total", section: "agreement", note: "Σ line 268. Must be less than or equal to line 310." },
   { line: "029325001", caption: "Corporation Allocated Allowed amount", kind: "money", role: "total", section: "agreement", note: "The claiming corporation’s own line 268, restated — used to calculate line 125 on page 2." },
+];
+
+export const AT1_SCHEDULE_29_FOOTNOTES: readonly string[] = [
+  "Schedule 29 must be received by Alberta Treasury Board and Finance, Tax and Revenue Administration within 15 months after the day on or before which the corporation is required to file its AT1 for the year.",
 ];

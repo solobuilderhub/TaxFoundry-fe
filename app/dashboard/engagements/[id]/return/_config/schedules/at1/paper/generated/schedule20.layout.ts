@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -46,7 +47,7 @@ export const AT1_SCHEDULE_20_FIELDS: readonly PaperField[] = [
   { line: "020012001", caption: "Charitable donations — Subtotal", kind: "money", role: "computed", section: "charitable" },
   { line: "020013001", caption: "Charitable donations — Adjustment on an acquisition of control", kind: "money", role: "input", section: "charitable", note: "An acquisition of control EXTINGUISHES unused carryforwards. A pool that survives a change of control has not applied this adjustment." },
   { line: "020014001", caption: "Charitable donations — Amount available for deduction", kind: "money", role: "computed", section: "charitable" },
-  { line: "020016001", caption: "Charitable donations — Amount applied against income", kind: "money", role: "input", section: "charitable", note: "Capped by the Area B maximum at line 048." },
+  { line: "020016001", caption: "Charitable donations — Amount applied against income", kind: "money", role: "input", section: "charitable", note: "Capped by the Area B maximum at line 048.", to: { form: "AT1SCH12", line: "012056001" } },
   { line: "020018001", caption: "Charitable donations — Closing balance carried forward", kind: "money", role: "computed", section: "charitable", note: "Becomes next year's opening balance." },
   { line: "020030001", caption: "Income component of the maximum", kind: "money", role: "computed", section: "maximum", note: "75% of Alberta net income for the year." },
   { line: "020032001", caption: "Taxable capital gains arising on gifts of capital property", kind: "money", role: "input", section: "maximum" },
@@ -66,7 +67,7 @@ export const AT1_SCHEDULE_20_FIELDS: readonly PaperField[] = [
   { line: "020072001", caption: "Gifts to Canada or a province, cultural property and ecologically sensitive land — Subtotal", kind: "money", role: "computed", section: "gifts" },
   { line: "020073001", caption: "Gifts to Canada or a province, cultural property and ecologically sensitive land — Adjustment on an acquisition of control", kind: "money", role: "input", section: "gifts", note: "An acquisition of control EXTINGUISHES unused carryforwards. A pool that survives a change of control has not applied this adjustment." },
   { line: "020074001", caption: "Gifts to Canada or a province, cultural property and ecologically sensitive land — Amount available for deduction", kind: "money", role: "computed", section: "gifts" },
-  { line: "020076001", caption: "Gifts to Canada or a province, cultural property and ecologically sensitive land — Amount applied against income", kind: "money", role: "input", section: "gifts", note: "Capped by the Area B maximum at line 048." },
+  { line: "020076001", caption: "Gifts to Canada or a province, cultural property and ecologically sensitive land — Amount applied against income", kind: "money", role: "input", section: "gifts", note: "Capped by the Area B maximum at line 048.", to: { form: "AT1SCH12", line: "012058001" } },
   { line: "020078001", caption: "Gifts to Canada or a province, cultural property and ecologically sensitive land — Closing balance carried forward", kind: "money", role: "computed", section: "gifts", note: "Becomes next year's opening balance." },
   { line: "020090001", caption: "Year of origin", kind: "date", role: "input", section: "carryforward", requirement: "conditional", note: "Mandatory whenever 092, 094, 096, 098 or 100 has a value." },
   { line: "020092001", caption: "Charitable donations available for carryforward", kind: "money", role: "input", section: "carryforward", requirement: "optional" },
@@ -74,6 +75,12 @@ export const AT1_SCHEDULE_20_FIELDS: readonly PaperField[] = [
   { line: "020096001", caption: "Gifts of certified cultural property available for carryforward", kind: "money", role: "input", section: "carryforward", requirement: "optional" },
   { line: "020098001", caption: "Gifts of certified ecologically sensitive land available for carryforward", kind: "money", role: "input", section: "carryforward", requirement: "optional" },
   { line: "020100001", caption: "Additional deduction for gifts of medicine available for carryforward", kind: "money", role: "input", section: "carryforward", requirement: "optional", note: "ITA s.110.1(1)(a.1). Not modelled anywhere else in this engine — accepted here as a direct entry." },
+];
+
+export const AT1_SCHEDULE_20_FOOTNOTES: readonly string[] = [
+  "This schedule is required if the opening balance or the claim for Alberta purposes differs from that for federal purposes.",
+  "If the corporation is reporting nil net income or a loss for the year, donations cannot be claimed.",
+  "If the corporation elects to differ its Alberta claim for the additional deduction for gifts of medicine (federal T2 Schedule 2, line 660), enter the Alberta amount on Schedule 12, line 40, the federal amount on Schedule 12, line 41, and provide the explanation of the difference on Schedule 12, line 48.",
 ];
 
 export interface Schedule20PoolRow {

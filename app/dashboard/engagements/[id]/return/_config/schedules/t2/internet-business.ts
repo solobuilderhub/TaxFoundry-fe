@@ -61,6 +61,10 @@ export const internetBusiness = defineSchedule({
             "Site addresses",
             [field.text("url", "URL", { placeholder: "https://example.com" })],
             {
+              // The two scalar number fields above benefit from this section's
+              // 2-column grid — fullWidth spans just this array across both
+              // columns instead of squeezing it into one grid cell.
+              fullWidth: true,
               description:
                 "CRA asks for the five sites generating the most gross revenue. Extra rows are dropped on compute.",
               condition: { watch: "hasInternetBusiness", operator: "truthy" },

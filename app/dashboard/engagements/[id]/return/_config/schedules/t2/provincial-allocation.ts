@@ -25,6 +25,10 @@ export const provincialAllocation = defineSchedule({
         ],
         {
           variant: "card",
+          // A card section defaults to a 2-column field grid — cols: 1 so the
+          // array's row cards get the section's FULL width instead of being
+          // squeezed into one grid cell.
+          cols: 1,
           description:
             "For a corporation with establishments in more than one province, taxable income is allocated by Regulation 402. The average of each province's share of gross revenue and of salaries & wages. Each province is then taxed at its own rate. Alberta and Quebec shares are allocated here but filed on their own AT1 / CO-17 returns. Leave empty for a single-province return (uses the province on Identification). On Schedule 5 each jurisdiction has its own boxes: the tick is the jurisdiction code (Ontario 013, Alberta 019, BC 021), salaries are that code plus 100, and gross revenue is that code plus 140 — so Ontario's payroll is line 113 and its revenue line 153.",
         },

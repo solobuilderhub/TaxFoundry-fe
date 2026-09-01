@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -46,9 +47,9 @@ export const AT1_SCHEDULE_13_FIELDS: readonly PaperField[] = [
   { line: "013017001", caption: "Terminal loss", kind: "money", role: "input", section: "grid" },
   { line: "013019001", caption: "Capital cost allowance", kind: "money", role: "input", section: "grid", note: "Declining balance, or a lower amount — the claim is optional." },
   { line: "013021001", caption: "UCC at the end of the year", kind: "money", role: "input", section: "grid" },
-  { line: "013023001", caption: "Total recapture of capital cost allowance", kind: "money", role: "total", section: "totals", note: "Recapture is INCOME on Schedule 12 — the opposite sign to the allowance." },
-  { line: "013025001", caption: "Total terminal loss", kind: "money", role: "total", section: "totals", note: "A deduction." },
-  { line: "013027001", caption: "Total capital cost allowance", kind: "money", role: "total", section: "totals", note: "Schedule 12 line 004 is the sum of every occurrence of 013019. The form footer lists 006, 008 and 004 out of order, and filing positionally puts the allowance on the recapture line." },
+  { line: "013023001", caption: "Total recapture of capital cost allowance", kind: "money", role: "total", section: "totals", note: "Recapture is INCOME on Schedule 12 — the opposite sign to the allowance.", to: { form: "AT1SCH12", line: "012006001" } },
+  { line: "013025001", caption: "Total terminal loss", kind: "money", role: "total", section: "totals", note: "A deduction.", to: { form: "AT1SCH12", line: "012008001" } },
+  { line: "013027001", caption: "Total capital cost allowance", kind: "money", role: "total", section: "totals", note: "Schedule 12 line 004 is the sum of every occurrence of 013019. The form footer lists 006, 008 and 004 out of order, and filing positionally puts the allowance on the recapture line.", to: { form: "AT1SCH12", line: "012004001" } },
   { line: "013029001", caption: "Of which AIIP or property in classes 54 to 56", kind: "money", role: "input", section: "grid" },
   { line: "013031001", caption: "Assistance received or receivable, subsequent to disposition", kind: "money", role: "input", section: "grid" },
   { line: "013033001", caption: "Assistance repaid, subsequent to disposition", kind: "money", role: "input", section: "grid" },
@@ -59,6 +60,11 @@ export const AT1_SCHEDULE_13_FIELDS: readonly PaperField[] = [
   { line: "013043001", caption: "UCC of the DIEP", kind: "money", role: "input", section: "grid" },
   { line: "013045001", caption: "Immediate expensing", kind: "money", role: "input", section: "grid" },
   { line: "013125001", caption: "Immediate expensing limit", kind: "money", role: "input", section: "grid", note: "Per RETURN, not per class. Relevant only where associated with other eligible persons or partnerships." },
+];
+
+export const AT1_SCHEDULE_13_FOOTNOTES: readonly string[] = [
+  "This schedule is required if the opening UCC or the CCA claimed for Alberta purposes for any class of assets differs from that for federal purposes.",
+  "All federal notes listed on the T2 Schedule 8 — Capital Cost Allowance — also apply for Alberta purposes.",
 ];
 
 export interface Schedule13GridColumn {

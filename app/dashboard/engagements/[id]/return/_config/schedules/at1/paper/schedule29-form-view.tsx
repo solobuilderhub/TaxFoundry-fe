@@ -6,13 +6,14 @@ import type { AlbertaIegValues, IegAgreementMember } from "../../../../_lib/retu
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperClassGrid,
+	PaperFootnotes,
 	PaperLeaderRow,
 	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_29_FIELDS, AT1_SCHEDULE_29_SECTIONS } from "./generated/schedule29.layout";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import { AT1_SCHEDULE_29_FIELDS, AT1_SCHEDULE_29_FOOTNOTES, AT1_SCHEDULE_29_SECTIONS } from "./generated/schedule29.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "029";
 
@@ -96,10 +97,14 @@ export function Schedule29FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const iegControl = control as unknown as Control<AlbertaIegValues>;
 	const resolveLine = buildResolveLine(computed);
@@ -117,11 +122,11 @@ export function Schedule29FormView({
 
 	return (
 		<div className="space-y-4">
-			{(["eligible", "limit", "grant"] as const).map((id) => {
+			{(["eligible", "limit", "grant"] as const).map((id, i) => {
 				const meta = sectionMeta(id);
 				if (!meta) return null;
 				return (
-					<PaperSection key={id} title={meta.title} description={meta.description}>
+					<PaperSection key={id} title={meta.title} description={meta.description} formId={i === 0 ? "AT1SCH29" : undefined}>
 						{sectionFields(id).map((f) => (
 							<PaperLeaderRow
 								key={f.line}
@@ -131,6 +136,9 @@ export function Schedule29FormView({
 								role={f.role}
 								note={f.note}
 								from={f.from}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
 								control={iegControl}
 								resolveLine={resolveLine}
 								disabled={disabled}
@@ -152,6 +160,9 @@ export function Schedule29FormView({
 						role={f.role}
 						note={f.note}
 						from={f.from}
+						to={f.to}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
 						control={iegControl}
 						resolveLine={resolveLine}
 						disabled={disabled}
@@ -176,12 +187,16 @@ export function Schedule29FormView({
 						role={f.role}
 						note={f.note}
 						from={f.from}
+						to={f.to}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
 						control={iegControl}
 						resolveLine={resolveLine}
 						disabled={disabled}
 					/>
 				))}
 			</PaperSection>
+			<PaperFootnotes notes={AT1_SCHEDULE_29_FOOTNOTES} />
 		</div>
 	);
 }

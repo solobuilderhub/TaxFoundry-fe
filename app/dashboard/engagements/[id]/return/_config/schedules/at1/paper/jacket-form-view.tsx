@@ -5,10 +5,10 @@ import type { Client } from "@/api/clients";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { EngagementYear } from "@/api/engagements";
 import type { AlbertaValues } from "../../../../_lib/return-input";
-import { PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_JACKET_FIELDS, AT1_JACKET_SECTIONS } from "./generated/jacket.layout";
+import { PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
+import { AT1_JACKET_FIELDS, AT1_JACKET_FOOTNOTES, AT1_JACKET_SECTIONS } from "./generated/jacket.layout";
 import { parseAt1LineItemId } from "./at1-lines";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 /**
  * The AT1 jacket's own 3-digit line → this schedule's editable field. Only
@@ -123,23 +123,32 @@ export function JacketFormView({
 	computed,
 	engagement,
 	client,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
 	engagement?: EngagementYear;
 	client?: Client;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const resolveLine = buildResolveLine(computed, engagement, client);
 	const albertaControl = control as unknown as Control<AlbertaValues>;
 
 	return (
 		<div className="space-y-4">
-			{AT1_JACKET_SECTIONS.map((section) => {
+			{AT1_JACKET_SECTIONS.map((section, i) => {
 				const fields = AT1_JACKET_FIELDS.filter((f) => f.section === section.id);
 				if (fields.length === 0) return null;
 				return (
-					<PaperSection key={section.id} title={section.title} description={section.description}>
+					<PaperSection
+						key={section.id}
+						title={section.title}
+						description={section.description}
+						formId={i === 0 ? "AT1" : undefined}
+					>
 						{fields.map((f) => (
 							<PaperLeaderRow
 								key={f.line}
@@ -149,6 +158,9 @@ export function JacketFormView({
 								role={f.role}
 								note={f.note}
 								from={f.from}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
 								control={albertaControl}
 								resolveLine={resolveLine}
 								disabled={disabled}
@@ -157,6 +169,7 @@ export function JacketFormView({
 					</PaperSection>
 				);
 			})}
+			<PaperFootnotes notes={AT1_JACKET_FOOTNOTES} />
 		</div>
 	);
 }

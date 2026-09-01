@@ -5,11 +5,12 @@ import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaResourceDeductions15Values } from "../../../../_lib/return-input";
 import {
 	PaperClassGrid,
+	PaperFootnotes,
 	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_15_FIELDS } from "./generated/schedule15.layout";
+import { AT1_SCHEDULE_15_FIELDS, AT1_SCHEDULE_15_FOOTNOTES } from "./generated/schedule15.layout";
 
 const ARRAYS = [
 	{ key: "sfedeRegular" as const, field: "241", label: "SFEDE regular" },
@@ -47,6 +48,7 @@ export function Schedule15FormView({
 			<PaperSection
 				title="SFEDE / CFRE — per-country lines this schedule models"
 				description="One row per country the corporation entered on the guided editor. Every other field on these rows (opening balances, transfers, additions/deductions, foreign resource income) — and the eight resource-expense pools this schedule computes — is not covered by a numbered paper-view line yet."
+				formId="AT1SCH15"
 			>
 				<div className="space-y-3 p-2">
 					{ARRAYS.map((a) => (
@@ -54,6 +56,7 @@ export function Schedule15FormView({
 					))}
 				</div>
 			</PaperSection>
+			<PaperFootnotes notes={AT1_SCHEDULE_15_FOOTNOTES} />
 		</div>
 	);
 }

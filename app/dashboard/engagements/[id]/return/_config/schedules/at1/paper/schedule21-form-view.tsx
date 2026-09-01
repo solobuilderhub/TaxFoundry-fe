@@ -7,9 +7,9 @@ import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaContinuityValues } from "../../../../_lib/return-input";
 import { LimitedPartnershipTable, NonCapitalVintageTable, OtherLossVintageTable } from "../alberta-loss-vintage-tables";
 import { parseAt1LineItemId } from "./at1-lines";
-import { PaperContinuityGrid, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_SCHEDULE_21_FIELDS, AT1_SCHEDULE_21_POOL_TABLE } from "./generated/schedule21.layout";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import { PaperContinuityGrid, PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
+import { AT1_SCHEDULE_21_FIELDS, AT1_SCHEDULE_21_FOOTNOTES, AT1_SCHEDULE_21_POOL_TABLE } from "./generated/schedule21.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "021";
 
@@ -40,12 +40,19 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 /**
  * `LimitedPartnershipTable`/`NonCapitalVintageTable`/`OtherLossVintageTable`
  * are typed for the full `FieldComponentProps<AlbertaContinuityValues>` (the
- * shape `field.custom` hands them) but only ever destructure `control` —
- * confirmed by reading all three. This builds just enough of that shape to
- * satisfy the type without fabricating a fake `field`/`error`/etc.
+ * shape `field.custom` hands them) but only ever destructure `control` (plus
+ * `onNavigate`, which `LimitedPartnershipTable` alone accepts, for its
+ * carries-to-Schedule-12 badge) — confirmed by reading all three. This builds
+ * just enough of that shape to satisfy the type without fabricating a fake
+ * `field`/`error`/etc.
  */
-function tableProps(control: Control<AlbertaContinuityValues>): FieldComponentProps<AlbertaContinuityValues> {
-	return { control } as FieldComponentProps<AlbertaContinuityValues>;
+function tableProps(
+	control: Control<AlbertaContinuityValues>,
+	onNavigate: NavigateToLine | undefined,
+): FieldComponentProps<AlbertaContinuityValues> & { onNavigate?: NavigateToLine } {
+	return { control, onNavigate } as FieldComponentProps<AlbertaContinuityValues> & {
+		onNavigate?: NavigateToLine;
+	};
 }
 
 /**
@@ -131,10 +138,14 @@ export function Schedule21FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const c = control as unknown as Control<AlbertaContinuityValues>;
 	const resolvePart1Line = buildResolveLine(computed);
@@ -145,6 +156,7 @@ export function Schedule21FormView({
 			<PaperSection
 				title="Calculation of current year non-capital loss"
 				description="Starts from Alberta net income on Schedule 12 line 054 and works down through the Division C deductions to the loss for the year. Not collected as separate entries in this app — read-only, from the last computed return."
+				formId="AT1SCH21"
 			>
 				{part1Fields.map((f) => (
 					<PaperLeaderRow
@@ -155,6 +167,9 @@ export function Schedule21FormView({
 						role={f.role}
 						note={f.note}
 						from={f.from}
+						to={f.to}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
 						control={c}
 						resolveLine={resolvePart1Line}
 						disabled={disabled}
@@ -163,23 +178,32 @@ export function Schedule21FormView({
 			</PaperSection>
 			<PaperSection title="Continuity of losses">
 				<div className="p-2">
-					<PaperContinuityGrid pools={AT1_SCHEDULE_21_POOL_TABLE} rowOrder={ROW_ORDER} control={c} fieldName={fieldName} disabled={disabled} />
+					<PaperContinuityGrid
+						pools={AT1_SCHEDULE_21_POOL_TABLE}
+						rowOrder={ROW_ORDER}
+						control={c}
+						fieldName={fieldName}
+						disabled={disabled}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+					/>
 				</div>
+				<PaperFootnotes notes={AT1_SCHEDULE_21_FOOTNOTES} />
 			</PaperSection>
 			<PaperSection
 				title="Continuity of limited partnership losses"
 				description="A sixth pool, laid out per partnership rather than by jurisdiction."
 			>
-				<div className="p-3">{createElement(LimitedPartnershipTable, tableProps(c))}</div>
+				<div className="p-3">{createElement(LimitedPartnershipTable, tableProps(c, onNavigate))}</div>
 			</PaperSection>
 			<PaperSection
 				title="Non-capital losses by year of origin"
 				description="The current year's row is derived from the grid above; only prior vintages are entered here."
 			>
-				<div className="p-3">{createElement(NonCapitalVintageTable, tableProps(c))}</div>
+				<div className="p-3">{createElement(NonCapitalVintageTable, tableProps(c, onNavigate))}</div>
 			</PaperSection>
 			<PaperSection title="Farm, restricted farm & listed personal property losses by year of origin">
-				<div className="p-3">{createElement(OtherLossVintageTable, tableProps(c))}</div>
+				<div className="p-3">{createElement(OtherLossVintageTable, tableProps(c, onNavigate))}</div>
 			</PaperSection>
 		</div>
 	);

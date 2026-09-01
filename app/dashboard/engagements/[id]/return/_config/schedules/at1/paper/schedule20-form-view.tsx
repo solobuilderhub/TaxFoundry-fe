@@ -4,9 +4,9 @@ import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaDonationsValues } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
-import { PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_SCHEDULE_20_FIELDS, AT1_SCHEDULE_20_SECTIONS } from "./generated/schedule20.layout";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import { PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
+import { AT1_SCHEDULE_20_FIELDS, AT1_SCHEDULE_20_FOOTNOTES, AT1_SCHEDULE_20_SECTIONS } from "./generated/schedule20.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "020";
 
@@ -76,21 +76,30 @@ export function Schedule20FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const donationsControl = control as unknown as Control<AlbertaDonationsValues>;
 	const resolveLine = buildResolveLine(computed);
 
 	return (
 		<div className="space-y-4">
-			{AT1_SCHEDULE_20_SECTIONS.map((section) => {
+			{AT1_SCHEDULE_20_SECTIONS.map((section, i) => {
 				const fields = AT1_SCHEDULE_20_FIELDS.filter((f) => f.section === section.id);
 				if (fields.length === 0) return null;
 				return (
-					<PaperSection key={section.id} title={section.title} description={section.description}>
+					<PaperSection
+						key={section.id}
+						title={section.title}
+						description={section.description}
+						formId={i === 0 ? "AT1SCH20" : undefined}
+					>
 						{fields.map((f) => (
 							<PaperLeaderRow
 								key={f.line}
@@ -100,6 +109,9 @@ export function Schedule20FormView({
 								role={f.role}
 								note={f.note}
 								from={f.from}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
 								control={donationsControl}
 								resolveLine={resolveLine}
 								disabled={disabled}
@@ -108,6 +120,7 @@ export function Schedule20FormView({
 					</PaperSection>
 				);
 			})}
+			<PaperFootnotes notes={AT1_SCHEDULE_20_FOOTNOTES} />
 		</div>
 	);
 }

@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -47,4 +48,11 @@ export const AT1_SCHEDULE_1_FIELDS: readonly PaperField[] = [
   { line: "001041001", caption: "Name of the Associated Canadian-controlled Private Corporation", kind: "text", role: "input", section: "agreement", requirement: "mandatory", note: "One occurrence per associated corp, this corporation first. Required whenever line 001 is Yes." },
   { line: "001043001", caption: "Corporate Account Number", kind: "code", role: "input", section: "agreement", requirement: "optional", note: "Alberta CAN. Must equal the same corporation's fed 023100 (federal Schedule 23) — not enforced here." },
   { line: "001045001", caption: "Allocation of the Base Amount", kind: "money", role: "input", section: "agreement", requirement: "mandatory", note: "Required whenever 041 has a value. Total across all occurrences is capped by the group's base amount." },
+];
+
+export const AT1_SCHEDULE_1_FOOTNOTES: readonly string[] = [
+  "For corporations which were Canadian-controlled private corporations throughout the taxation year and which had income from active businesses carried on in Canada.",
+  "If the corporation has income (loss) from a partnership with a fiscal period ending after March 31, 2001, the income from active businesses must be recalculated for Alberta purposes by increasing the partnership's business limit for the period straddling that date — see the Guide for the full calculation.",
+  "Area A: the percentage allocated in column 044 must be the same percentage used to determine the business limit on federal Schedule 23 for all taxation years ending after December 4, 2002. The total of all percentages cannot exceed 100%.",
+  "Area A: the amount in column 045 must be rounded to the nearest dollar, rounding up at $.50 and over.",
 ];

@@ -26,6 +26,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -118,4 +119,10 @@ export const AT1_JACKET_FIELDS: readonly PaperField[] = [
   { line: "000110001", caption: "Tax Certificate Number", kind: "text", role: "input", section: "credits", requirement: "conditional" },
   { line: "000115001", caption: "Alberta Film and Television Tax Credit (FTTC)", kind: "money", role: "input", section: "credits", requirement: "mandatory" },
   { line: "000129001", caption: "Innovation Employment Grant", kind: "money", role: "carried-in", section: "credits", requirement: "mandatory", note: "The Innovation Employment Grant is mandatory to report but is deliberately NOT in the 090 formula — netting it would understate what is owing.", from: { form: "AT1SCH29", line: "029110001", note: "Innovation Employment Grant" } },
+];
+
+export const AT1_JACKET_FOOTNOTES: readonly string[] = [
+  "The AT1 and applicable schedules must be received by Tax and Revenue Administration (TRA) within 6 months of the corporation's taxation year end. If the corporation is not exempt from filing, it must file electronically using Net File unless it is an insurance corporation, a non-resident corporation, or reports in functional currency.",
+  "Taxable income: the calculation for federal purposes can differ from the calculation for Alberta purposes if the corporation chooses different discretionary deduction amounts (e.g. different application of losses, CCA, charitable donations).",
+  "If line 060 and/or 061 is \"Yes\", Schedule 12 and supporting schedules must be completed to reconcile federal and Alberta taxable income. If both are \"No\", line 062 must equal federal T2 lines 360-370 (or federal Schedule 4 lines 110+310 for a loss).",
 ];

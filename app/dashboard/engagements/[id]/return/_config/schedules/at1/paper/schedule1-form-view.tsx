@@ -6,13 +6,14 @@ import type { AlbertaSbdValues } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperClassGrid,
+	PaperFootnotes,
 	PaperLeaderRow,
 	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_1_FIELDS, AT1_SCHEDULE_1_SECTIONS } from "./generated/schedule1.layout";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import { AT1_SCHEDULE_1_FIELDS, AT1_SCHEDULE_1_FOOTNOTES, AT1_SCHEDULE_1_SECTIONS } from "./generated/schedule1.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "001";
 
@@ -63,10 +64,14 @@ export function Schedule1FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const sbdControl = control as unknown as Control<AlbertaSbdValues>;
 	const resolveLine = buildResolveLine(computed);
@@ -86,12 +91,13 @@ export function Schedule1FormView({
 
 	return (
 		<div className="space-y-4">
-			{AT1_SCHEDULE_1_SECTIONS.map((section) => {
+			{AT1_SCHEDULE_1_SECTIONS.map((section, i) => {
 				const fields = AT1_SCHEDULE_1_FIELDS.filter((f) => f.section === section.id);
 				if (fields.length === 0) return null;
+				const formId = i === 0 ? "AT1SCH1" : undefined;
 				if (section.id === "agreement") {
 					return (
-						<PaperSection key={section.id} title={section.title} description={section.description}>
+						<PaperSection key={section.id} title={section.title} description={section.description} formId={formId}>
 							<div className="p-2">
 								<PaperClassGrid
 									arrayName="associatedCorpAgreement"
@@ -111,7 +117,7 @@ export function Schedule1FormView({
 					);
 				}
 				return (
-					<PaperSection key={section.id} title={section.title} description={section.description}>
+					<PaperSection key={section.id} title={section.title} description={section.description} formId={formId}>
 						{fields.map((f) => (
 							<PaperLeaderRow
 								key={f.line}
@@ -121,6 +127,9 @@ export function Schedule1FormView({
 								role={f.role}
 								note={f.note}
 								from={f.from}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
 								control={sbdControl}
 								resolveLine={resolveLine}
 								disabled={disabled}
@@ -129,6 +138,7 @@ export function Schedule1FormView({
 					</PaperSection>
 				);
 			})}
+			<PaperFootnotes notes={AT1_SCHEDULE_1_FOOTNOTES} />
 		</div>
 	);
 }

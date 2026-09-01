@@ -33,6 +33,10 @@ export const capitalGains = defineSchedule({
 				],
 				{
 					variant: "card",
+					// A card section defaults to a 2-column field grid — cols: 1 so the
+					// array's row cards get the section's FULL width instead of being
+					// squeezed into one grid cell.
+					cols: 1,
 					description:
 						"Gain (loss) = proceeds − ACB − outlays. The engine applies the ½ inclusion rate: a net gain is taxed; a net loss becomes a net-capital loss that carries forward (Schedule 4) to offset future capital gains.",
 				},

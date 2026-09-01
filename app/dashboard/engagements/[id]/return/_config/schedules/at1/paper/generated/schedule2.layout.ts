@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -39,4 +40,10 @@ export const AT1_SCHEDULE_2_FIELDS: readonly PaperField[] = [
   { line: "002004001", caption: "Total salaries and wages paid in all jurisdictions", kind: "money", role: "carried-in", section: "general", requirement: "mandatory", from: { form: "T2SCH5", line: "", note: "Every jurisdiction's row, summed." } },
   { line: "002006001", caption: "Gross revenue in Alberta", kind: "money", role: "carried-in", section: "general", requirement: "mandatory", from: { form: "T2SCH5", line: "", note: "The Alberta row of the federal establishments allocation." } },
   { line: "002008001", caption: "Gross revenue in all jurisdictions", kind: "money", role: "carried-in", section: "general", requirement: "mandatory", from: { form: "T2SCH5", line: "", note: "Every jurisdiction's row, summed." } },
+];
+
+export const AT1_SCHEDULE_2_FOOTNOTES: readonly string[] = [
+  "For corporations with taxable income that is in part allocable to permanent establishments outside Alberta.",
+  "Non-resident corporations (ITA Regulation 413): salaries and wages paid in all jurisdictions does not include amounts paid to employees of a permanent establishment outside Canada; gross revenue in all jurisdictions does not include revenue reasonably attributable to a permanent establishment outside Canada.",
+  "If either amount B or D is nil, do not multiply by 1/2.",
 ];

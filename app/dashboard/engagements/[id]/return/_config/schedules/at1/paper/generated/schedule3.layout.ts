@@ -4,7 +4,7 @@
  * GENERATED from the form definition in @classytic/ca-tax:
  *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
  *
- * Ultimately from research/sources/tra-spec/AT1-Chapter3-2025.2-full.txt, retrieved 2026-08-29.
+ * Ultimately from research/sources/tra-forms/pdf/AT1SCH03-other-tax-deductions-credits-TRA11725.pdf, retrieved 2026-09-01.
  *
  * Carries EVERY field, not just `input` ones — a paper view shows the whole
  * form. The paper renderer, not this file, is responsible for keeping
@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -59,5 +60,10 @@ export const AT1_SCHEDULE_3_FIELDS: readonly PaperField[] = [
   { line: "003316001", caption: "APITC — available for carryforward", kind: "money", role: "computed", section: "apitc", note: "= 300 + 302 − 312 − 314." },
   { line: "003600001", caption: "MAD — total credits applied (104 + 204 + 312)", kind: "money", role: "computed", section: "mad" },
   { line: "003602001", caption: "MAD — room (AT1 jacket line 068 minus lines 070+071+072+074)", kind: "money", role: "computed", section: "mad" },
-  { line: "003604001", caption: "MAD — maximum allowable deduction for the year", kind: "money", role: "computed", section: "mad", note: "Lesser of line 600 and the room at line 602 (AT1 jacket line 068 minus lines 070+071+072+074); floored at nil." },
+  { line: "003604001", caption: "MAD — maximum allowable deduction for the year", kind: "money", role: "computed", section: "mad", note: "Lesser of line 600 and the room at line 602 (AT1 jacket line 068 minus lines 070+071+072+074); floored at nil.", to: { form: "AT1", line: "000076001", note: "Printed on the form: \"Enter this amount on AT1 page 2, line 076.\"" } },
+];
+
+export const AT1_SCHEDULE_3_FOOTNOTES: readonly string[] = [
+  "In order to be eligible for any deduction on this schedule, the corporation must have Investor Tax Credit Certificates, Capital Investment Tax Credit Certificates, or an Agri-processing Investment Tax Credit Certificate issued by the appropriate ministry.",
+  "Capital Investment Tax Credit: the Investor Tax Credit must be fully utilized, including any carry-forward amounts, before the Capital Investment Tax Credit can be claimed.",
 ];

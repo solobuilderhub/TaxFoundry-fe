@@ -3,6 +3,7 @@
 import type { ComputedReturn } from "@/api/computed-returns";
 import { AT1_SCHEDULE_10_FIELDS, AT1_SCHEDULE_10_SECTIONS } from "./generated/schedule10.layout";
 import { ReadOnlyScheduleView } from "./read-only-schedule-view";
+import type { NavigateToLine } from "./resolve-line";
 
 /**
  * AT1 Schedule 10 — read-only. No dedicated editor of its own: every loss
@@ -12,15 +13,29 @@ import { ReadOnlyScheduleView } from "./read-only-schedule-view";
  * sections) — this view just shows what actually got filed. Special-cased
  * nav entry like Schedule 12.
  */
-export function Schedule10View({ computed, stale }: { computed?: ComputedReturn; stale?: boolean }) {
+export function Schedule10View({
+	computed,
+	stale,
+	onNavigate,
+	highlightLine,
+}: {
+	computed?: ComputedReturn;
+	stale?: boolean;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
+}) {
 	return (
 		<ReadOnlyScheduleView
 			scheduleId="010"
+			formId="AT1SCH10"
 			sections={AT1_SCHEDULE_10_SECTIONS}
 			fields={AT1_SCHEDULE_10_FIELDS}
 			computed={computed}
 			stale={stale}
-			emptyMessage="Not yet computed, or no loss carry-back requested this filing. Compute the return first."
+			onNavigate={onNavigate}
+			highlightLine={highlightLine}
+			notComputedMessage="Not yet computed. Compute the return first."
+			nothingToReportMessage="Computed, and no loss carry-back was requested this filing."
 		/>
 	);
 }

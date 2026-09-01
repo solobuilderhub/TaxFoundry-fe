@@ -4,9 +4,9 @@ import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaOtherCredits3Values } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
-import { PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_SCHEDULE_3_FIELDS, AT1_SCHEDULE_3_SECTIONS } from "./generated/schedule3.layout";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import { PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
+import { AT1_SCHEDULE_3_FIELDS, AT1_SCHEDULE_3_FOOTNOTES, AT1_SCHEDULE_3_SECTIONS } from "./generated/schedule3.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "003";
 
@@ -78,29 +78,36 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 
 /**
  * AT1 Schedule 3 paper Form View — three independent investment-tax-credit
- * continuities (ITC, CITC, APITC) sharing one ceiling (MAD). No fillable PDF
- * exists for this schedule (see `schedule3.ts`'s doc comment), so section
- * grouping and line order follow the TRA specification text directly rather
- * than a printed layout.
+ * continuities (ITC, CITC, APITC) sharing one ceiling (MAD), following
+ * `AT1SCH03-...-TRA11725.pdf`'s own section grouping and line order.
  */
 export function Schedule3FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const s3Control = control as unknown as Control<AlbertaOtherCredits3Values>;
 	const resolveLine = buildResolveLine(computed);
 
 	return (
 		<div className="space-y-4">
-			{AT1_SCHEDULE_3_SECTIONS.map((section) => {
+			{AT1_SCHEDULE_3_SECTIONS.map((section, i) => {
 				const fields = AT1_SCHEDULE_3_FIELDS.filter((f) => f.section === section.id);
 				return (
-					<PaperSection key={section.id} title={section.title} description={section.description}>
+					<PaperSection
+						key={section.id}
+						title={section.title}
+						description={section.description}
+						formId={i === 0 ? "AT1SCH03" : undefined}
+					>
 						{section.id === "mad" &&
 							MAD_JACKET_ROWS.map((row) => (
 								<PaperLeaderRow
@@ -122,6 +129,9 @@ export function Schedule3FormView({
 								role={f.role}
 								note={f.note}
 								from={f.from}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
 								control={s3Control}
 								resolveLine={resolveLine}
 								disabled={disabled}
@@ -130,6 +140,7 @@ export function Schedule3FormView({
 					</PaperSection>
 				);
 			})}
+			<PaperFootnotes notes={AT1_SCHEDULE_3_FOOTNOTES} />
 		</div>
 	);
 }

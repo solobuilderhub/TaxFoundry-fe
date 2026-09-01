@@ -15,6 +15,15 @@ import type { ReturnInput } from "../../../_lib/return-input";
 /** The filing programs a schedule applies to. */
 export type ScheduleProgram = "T2" | "AT1" | "CO17";
 
+/**
+ * Switch the active schedule and briefly highlight one of its lines — the
+ * "jump" behind a paper Form View's "→ Schedule X, line Y" cross-reference
+ * badges (`ProvenanceBadge`'s `to`). `form` is a `FormDefinition.id`
+ * (`"AT1SCH12"`), not a `ScheduleKey` — resolving one to the other is
+ * `return-editor.tsx`'s `FORM_ID_TO_SCHEDULE_KEY`'s job, not the caller's.
+ */
+export type NavigateToLine = (form: string, line: string) => void;
+
 export type ScheduleDef<K extends keyof ReturnInput = keyof ReturnInput> = {
   /** The `ReturnInput` slice this schedule reads and writes. */
   key: K;
@@ -44,6 +53,10 @@ export type ScheduleDef<K extends keyof ReturnInput = keyof ReturnInput> = {
     computed?: ComputedReturn;
     engagement?: EngagementYear;
     client?: Client;
+    /** Jump to another schedule and highlight one of its lines — undefined when the host hasn't wired navigation (falls back to an inert badge). */
+    onNavigate?: NavigateToLine;
+    /** The line to scroll to and briefly highlight on THIS schedule, when navigation just landed here. */
+    highlightLine?: string;
   }) => ReactNode;
 };
 

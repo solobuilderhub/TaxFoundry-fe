@@ -131,6 +131,10 @@ export const albertaIeg = defineSchedule({
 				],
 				{
 					variant: "card",
+					// A card section defaults to a 2-column field grid — cols: 1 so
+					// these two arrays' row cards get the section's FULL width instead
+					// of being squeezed into one grid cell each.
+					cols: 1,
 					description:
 						"A separate attachment required whenever the IEG is claimed. The project rows' totals feed the eligible-expenditures section above automatically. The jurisdiction table is informational and does not affect the credit calculation.",
 				},
@@ -176,6 +180,10 @@ export const albertaIeg = defineSchedule({
 				],
 				{
 					variant: "card",
+					// A card section defaults to a 2-column field grid — cols: 1 so the
+					// array's row cards get the section's FULL width instead of being
+					// squeezed into one grid cell.
+					cols: 1,
 					description:
 						"Every member's taxable capital drives the grind that reduces the grant; every member's prior-two-years spending sets the base level below which only the 8% base rate applies (non-associated claims only — see the Agreement below for associated ones). Add just this corporation if it is not associated with anyone for IEG purposes.",
 				},
@@ -246,6 +254,10 @@ export const albertaIeg = defineSchedule({
 								},
 							),
 						],
+						// The 4 scalar fields above this array benefit from this section's
+						// 2-column grid — fullWidth spans just the array across both
+						// columns instead of squeezing it into one grid cell.
+						{ fullWidth: true },
 					),
 				],
 				{

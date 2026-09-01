@@ -41,6 +41,10 @@ export const cca = defineSchedule({
         ],
         {
           variant: "card",
+          // A card section defaults to a 2-column field grid — cols: 1 so the
+          // array's row cards get the section's FULL width instead of being
+          // squeezed into one grid cell.
+          cols: 1,
           description:
             "Schedule 8. Depreciable property by class. The engine applies the half-year rule (or AIIP/immediate expensing), and computes recapture / terminal loss on dispositions. Closing UCC carries forward automatically.",
         },

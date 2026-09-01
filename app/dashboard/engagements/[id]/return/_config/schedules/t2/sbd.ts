@@ -59,6 +59,10 @@ export const sbd = defineSchedule({
         ],
         {
           variant: "card",
+          // A card section defaults to a 2-column field grid — cols: 1 so the
+          // array's row cards get the section's FULL width instead of being
+          // squeezed into one grid cell.
+          cols: 1,
           description:
             "List the OTHER associated corporations and their share of the $500k limit. This corp's share is the 'Business limit' above; the total across the group can't exceed $500,000.",
         },

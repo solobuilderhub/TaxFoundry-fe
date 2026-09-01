@@ -2,10 +2,11 @@
 
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
+import { useEffect, useRef, useState } from "react";
 import { Controller, type Control, type Path } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { at1Money } from "../at1-lines";
-import type { LineValue, PaperFieldKind, PaperFieldRole, ResolveLine } from "../resolve-line";
+import type { LineValue, NavigateToLine, PaperFieldKind, PaperFieldRole, ResolveLine } from "../resolve-line";
 
 /**
  * The shared visual primitives every paper Form View composes from — a
@@ -21,22 +22,69 @@ import type { LineValue, PaperFieldKind, PaperFieldRole, ResolveLine } from "../
  * brittle pixel-positioned recreation of a form TRA can revise.
  */
 
+/**
+ * A schedule's own vendored TRA PDF, under `/tra-forms/` — a fixed, checked-in
+ * copy in THIS repo's `public/` dir, not a cross-repo reference to
+ * `research/sources/tra-forms/pdf/` (that directory lives outside every one of
+ * the three independent repos here, including this one, so nothing in
+ * `apps/web` can depend on it at build or run time). Add an entry when a
+ * schedule's paper Form View is built; the source PDF is the same one already
+ * cited in that schedule's `provenance.document`.
+ */
+const OFFICIAL_PDF: Record<string, string> = {
+	AT1: "/tra-forms/AT1-jacket-TRA11722.pdf",
+	AT1SCH1: "/tra-forms/AT1SCH01-small-business-deduction-TRA11723.pdf",
+	AT1SCH2: "/tra-forms/AT1SCH02-income-allocation-factor-TRA11724.pdf",
+	AT1SCH03: "/tra-forms/AT1SCH03-other-tax-deductions-credits-TRA11725.pdf",
+	AT1SCH04: "/tra-forms/AT1SCH04-foreign-investment-income-tax-credit-TRA11728.pdf",
+	AT1SCH10: "/tra-forms/AT1SCH10-loss-carryback-TRA11731.pdf",
+	AT1SCH12: "/tra-forms/AT1SCH12-income-loss-reconciliation-TRA11732.pdf",
+	AT1SCH13: "/tra-forms/AT1SCH13-cca-TRA11733.pdf",
+	AT1SCH15: "/tra-forms/AT1SCH15-resource-related-deductions-TRA11736.pdf",
+	AT1SCH17: "/tra-forms/AT1SCH17-reserves-TRA11738.pdf",
+	AT1SCH20: "/tra-forms/AT1SCH20-charitable-donations-TRA11740.pdf",
+	AT1SCH21: "/tra-forms/AT1SCH21-loss-continuity-TRA11741.pdf",
+	AT1SCH29: "/tra-forms/AT1SCH29-innovation-employment-grant-TRA14637.pdf",
+};
+
+/** A small "View official PDF" link for a `PaperSection` header — `undefined` when this schedule has no vendored copy yet (see `OFFICIAL_PDF`). */
+export function OfficialPdfLink({ formId }: { formId: string }) {
+	const href = OFFICIAL_PDF[formId];
+	if (!href) return null;
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="noreferrer"
+			className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+		>
+			View official PDF
+		</a>
+	);
+}
+
 export function PaperSection({
 	title,
 	description,
+	formId,
 	children,
 }: {
 	title: string;
 	description?: string;
+	/** When set and a vendored PDF exists for it (see `OFFICIAL_PDF`), shows a "View official PDF" link in the header. */
+	formId?: string;
 	children: React.ReactNode;
 }) {
 	return (
 		<div className="rounded-lg border bg-card">
-			<div className="border-b bg-muted/40 px-4 py-2">
-				<h3 className="text-sm font-semibold">{title}</h3>
-				{description && (
-					<p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-				)}
+			<div className="flex items-start justify-between gap-3 border-b bg-muted/40 px-4 py-2">
+				<div>
+					<h3 className="text-sm font-semibold">{title}</h3>
+					{description && (
+						<p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+					)}
+				</div>
+				{formId && <OfficialPdfLink formId={formId} />}
 			</div>
 			<div className="divide-y">{children}</div>
 		</div>
@@ -69,32 +117,90 @@ function ProvenanceBadge({
 	role,
 	note,
 	from,
+	to,
+	onNavigate,
 	sourceLabel,
 }: {
 	role?: PaperFieldRole;
 	note?: string;
 	from?: { form: string; line: string; note?: string };
+	to?: { form: string; line: string; note?: string };
+	onNavigate?: NavigateToLine;
 	sourceLabel?: string;
 }) {
-	if (!role || role === "input") return null;
+	const fromBadge = (() => {
+		if (!role || role === "input") return null;
+		const isCarriedIn = role === "carried-in";
+		const label = isCarriedIn ? sourceLabel || from?.form || "Carried in" : role === "total" ? "Total" : "Computed";
+		const tooltip = isCarriedIn
+			? [from?.form && `From ${from.form}${from.line ? ` line ${from.line}` : ""}`, from?.note]
+					.filter(Boolean)
+					.join(" — ") || sourceLabel || "Carried in from another schedule."
+			: note || "Computed by the engine from this schedule's other lines.";
 
-	const isCarriedIn = role === "carried-in";
-	const label = isCarriedIn ? sourceLabel || from?.form || "Carried in" : role === "total" ? "Total" : "Computed";
-	const tooltip = isCarriedIn
-		? [from?.form && `From ${from.form}${from.line ? ` line ${from.line}` : ""}`, from?.note]
-				.filter(Boolean)
-				.join(" — ") || sourceLabel || "Carried in from another schedule."
-		: note || "Computed by the engine from this schedule's other lines.";
+		return (
+			<TooltipWrapper content={tooltip} side="top">
+				<span className="inline-flex shrink-0">
+					<Pill variant={isCarriedIn ? "secondary" : "outline"} className="cursor-help text-[10px]">
+						{label}
+					</Pill>
+				</span>
+			</TooltipWrapper>
+		);
+	})();
 
-	return (
-		<TooltipWrapper content={tooltip} side="top">
-			<span className="inline-flex shrink-0">
-				<Pill variant={isCarriedIn ? "secondary" : "outline"} className="cursor-help text-[10px]">
-					{label}
-				</Pill>
-			</span>
+	if (!to) return fromBadge;
+
+	const toLabel = `→ ${to.form} line ${to.line}`;
+	const toTooltip = to.note || `Carries forward to ${to.form}, line ${to.line}.`;
+	const toBadge = (
+		<TooltipWrapper content={toTooltip} side="top">
+			{onNavigate ? (
+				<button
+					type="button"
+					onClick={() => onNavigate(to.form, to.line)}
+					className="inline-flex shrink-0"
+				>
+					<Pill variant="outline" className="cursor-pointer text-[10px] hover:bg-accent">
+						{toLabel}
+					</Pill>
+				</button>
+			) : (
+				<span className="inline-flex shrink-0">
+					<Pill variant="outline" className="cursor-help text-[10px]">
+						{toLabel}
+					</Pill>
+				</span>
+			)}
 		</TooltipWrapper>
 	);
+
+	return (
+		<span className="inline-flex shrink-0 items-center gap-1">
+			{fromBadge}
+			{toBadge}
+		</span>
+	);
+}
+
+/**
+ * Scrolls the row into view and briefly highlights it when `highlightLine`
+ * (from a `ProvenanceBadge`'s "→ Schedule X" click, via `return-editor.tsx`'s
+ * `onNavigate`) matches this row's own line — the "jump" half of jump +
+ * highlight navigation. `highlightLine` clears itself in the parent after a
+ * beat, so clicking the same cross-reference again re-triggers the effect.
+ */
+export function useLineHighlight<E extends HTMLElement>(line: string, highlightLine?: string) {
+	const ref = useRef<E>(null);
+	const [active, setActive] = useState(false);
+	useEffect(() => {
+		if (!highlightLine || highlightLine !== line) return;
+		ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+		setActive(true);
+		const t = setTimeout(() => setActive(false), 2000);
+		return () => clearTimeout(t);
+	}, [highlightLine, line]);
+	return { ref, active };
 }
 
 /**
@@ -121,6 +227,9 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	role,
 	note,
 	from,
+	to,
+	onNavigate,
+	highlightLine,
 }: {
 	line: string;
 	caption: string;
@@ -131,11 +240,21 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	role?: PaperFieldRole;
 	note?: string;
 	from?: { form: string; line: string; note?: string };
+	to?: { form: string; line: string; note?: string };
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const resolved: LineValue = resolveLine(line);
+	const { ref, active } = useLineHighlight<HTMLDivElement>(line, highlightLine);
 
 	return (
-		<div className="flex items-center gap-3 px-4 py-2 text-sm">
+		<div
+			ref={ref}
+			className={cn(
+				"flex items-center gap-3 px-4 py-2 text-sm transition-colors duration-500",
+				active && "bg-amber-100 dark:bg-amber-900/40",
+			)}
+		>
 			<span className="w-16 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center font-mono text-[11px] text-muted-foreground">
 				{line}
 			</span>
@@ -209,9 +328,22 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 					</TooltipWrapper>
 				</span>
 			)}
-			{!resolved.editable && (
-				<ProvenanceBadge role={role} note={note} from={from} sourceLabel={resolved.sourceLabel} />
-			)}
+			{
+				// The `to` cross-reference badge belongs on an EDITABLE row too — the
+				// applied-against-income lines that carry to Schedule 12 are genuine
+				// inputs in this app, not computed/carried-in figures. Only the
+				// role-driven "Computed"/"Carried in" badge is read-only-specific.
+				(to || !resolved.editable) && (
+					<ProvenanceBadge
+						role={role}
+						note={note}
+						from={from}
+						to={to}
+						onNavigate={onNavigate}
+						sourceLabel={!resolved.editable ? resolved.sourceLabel : undefined}
+					/>
+				)
+			}
 		</div>
 	);
 }
@@ -220,7 +352,91 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 export interface ContinuityPoolInput {
 	key: string;
 	label: string;
-	rows: readonly { kind: string; caption: string; line: string; role: string }[];
+	rows: readonly {
+		kind: string;
+		caption: string;
+		line: string;
+		role: string;
+		to?: { form: string; line: string; note?: string };
+		note?: string;
+	}[];
+}
+
+/** One cell of `PaperContinuityGrid` — its own component so `useLineHighlight` (a hook) can run per cell, not once for the whole grid. */
+function ContinuityCell<T extends Record<string, unknown>>({
+	pool,
+	row,
+	poolRow,
+	name,
+	control,
+	disabled,
+	onNavigate,
+	highlightLine,
+}: {
+	pool: ContinuityPoolInput;
+	row: { kind: string; caption: string };
+	poolRow: ContinuityPoolInput["rows"][number] | undefined;
+	name: string | undefined;
+	control: Control<T>;
+	disabled?: boolean;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
+}) {
+	const { ref, active } = useLineHighlight<HTMLTableCellElement>(poolRow?.line ?? "", highlightLine);
+
+	return (
+		<td ref={ref} className={cn("px-3 py-1.5 transition-colors duration-500", active && "bg-amber-100 dark:bg-amber-900/40")}>
+			{!poolRow ? (
+				<TooltipWrapper content={`${pool.label} has no line for "${row.caption}" on the printed form — this pool's continuity genuinely skips this row.`} side="top">
+					<span className="block cursor-help text-center text-muted-foreground">—</span>
+				</TooltipWrapper>
+			) : (
+				<div className="space-y-0.5">
+					<div className="flex items-center justify-between gap-1">
+						<span className="font-mono text-[10px] text-muted-foreground">{poolRow.line}</span>
+						{poolRow.to && (
+							<ProvenanceBadge to={poolRow.to} onNavigate={onNavigate} />
+						)}
+					</div>
+					{name ? (
+						<Controller
+							control={control}
+							name={name as Path<T>}
+							render={({ field }) => (
+								<input
+									type="number"
+									inputMode="decimal"
+									step="any"
+									disabled={disabled || poolRow.role !== "input"}
+									aria-label={`${pool.label} — ${row.caption}`}
+									className={cn(
+										"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none",
+										"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
+										"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
+									)}
+									value={(field.value as number | undefined) ?? ""}
+									onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+									onBlur={field.onBlur}
+								/>
+							)}
+						/>
+					) : (
+						<TooltipWrapper
+							content={
+								poolRow.note ||
+								`This app doesn't collect ${pool.label.toLowerCase()} — ${row.caption.toLowerCase()} as its own entry yet — line ${poolRow.line} exists on the form but has no field here.`
+							}
+							side="top"
+						>
+							<span className="block h-8 cursor-help rounded-md border border-dashed bg-muted/50 text-center text-xs leading-8 text-muted-foreground">
+								not collected
+							</span>
+						</TooltipWrapper>
+					)}
+				</div>
+			)}
+		</td>
+	);
 }
 
 /**
@@ -237,6 +453,8 @@ export function PaperContinuityGrid<T extends Record<string, unknown>>({
 	control,
 	fieldName,
 	disabled,
+	onNavigate,
+	highlightLine,
 }: {
 	pools: readonly ContinuityPoolInput[];
 	/** Row kinds in print order — the union of every pool's row kinds, deduped. */
@@ -245,6 +463,8 @@ export function PaperContinuityGrid<T extends Record<string, unknown>>({
 	/** `undefined` return means this (pool, row) has no app-side field — render a blank, non-editable cell. */
 	fieldName: (poolKey: string, rowKind: string) => string | undefined;
 	disabled?: boolean;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	return (
 		<div className="overflow-x-auto rounded-lg border bg-card">
@@ -271,39 +491,17 @@ export function PaperContinuityGrid<T extends Record<string, unknown>>({
 								const poolRow = pool.rows.find((r) => r.kind === row.kind);
 								const name = poolRow ? fieldName(pool.key, row.kind) : undefined;
 								return (
-									<td key={pool.key} className="px-3 py-1.5">
-										{!poolRow ? (
-											<span className="block text-center text-muted-foreground">—</span>
-										) : name ? (
-											<Controller
-												control={control}
-												name={name as Path<T>}
-												render={({ field }) => (
-													<input
-														type="number"
-														inputMode="decimal"
-														step="any"
-														disabled={disabled || poolRow.role !== "input"}
-														aria-label={`${pool.label} — ${row.caption}`}
-														className={cn(
-															"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none",
-															"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-															"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
-														)}
-														value={(field.value as number | undefined) ?? ""}
-														onChange={(e) =>
-															field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
-														}
-														onBlur={field.onBlur}
-													/>
-												)}
-											/>
-										) : (
-											<span className="block h-8 rounded-md border border-dashed bg-muted/50 text-center text-xs leading-8 text-muted-foreground">
-												not collected
-											</span>
-										)}
-									</td>
+									<ContinuityCell
+										key={pool.key}
+										pool={pool}
+										row={row}
+										poolRow={poolRow}
+										name={name}
+										control={control}
+										disabled={disabled}
+										onNavigate={onNavigate}
+										highlightLine={highlightLine}
+									/>
 								);
 							})}
 						</tr>
@@ -417,13 +615,26 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 													/>
 												)}
 											/>
-										) : (
+										) : readOnlyText ? (
 											<span
 												className="block h-8 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right leading-8 text-muted-foreground"
-												title={readOnlyText || undefined}
+												title={readOnlyText}
 											>
-												{readOnlyText || (row.arrayIndex === undefined ? "not added" : "—")}
+												{readOnlyText}
 											</span>
+										) : (
+											<TooltipWrapper
+												content={
+													row.arrayIndex === undefined
+														? `${row.label} has not been added to this return yet -- there's no row to show a value for.`
+														: `No value yet for ${row.label} -- ${col.caption.toLowerCase()}.`
+												}
+												side="top"
+											>
+												<span className="block h-8 cursor-help rounded-md border border-dashed bg-muted/50 text-center leading-8 text-muted-foreground">
+													{row.arrayIndex === undefined ? "not added" : "—"}
+												</span>
+											</TooltipWrapper>
 										)}
 									</td>
 								);
@@ -433,5 +644,26 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 				</tbody>
 			</table>
 		</div>
+	);
+}
+
+/**
+ * The form's own asterisked notes and filing-requirement text — from
+ * `FormDefinition.footnotes` via a schedule's generated `_FOOTNOTES` export.
+ * Form-wide guidance, not tied to one line, so a plain numbered list at the
+ * foot of the section rather than a per-field tooltip.
+ */
+export function PaperFootnotes({ notes }: { notes: readonly string[] | undefined }) {
+	if (!notes || notes.length === 0) return null;
+	return (
+		<ol className="space-y-1 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+			{notes.map((note, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: static, generator-ordered content — never reordered at runtime
+				<li key={i} className="flex gap-2">
+					<span className="shrink-0 font-mono">*</span>
+					<span>{note}</span>
+				</li>
+			))}
+		</ol>
 	);
 }

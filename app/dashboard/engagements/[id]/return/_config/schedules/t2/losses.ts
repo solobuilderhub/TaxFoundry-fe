@@ -100,6 +100,11 @@ export const losses = defineSchedule({
         ],
         {
           variant: "card",
+          // A card section defaults to a 2-column field grid — cols: 1 so the
+          // array's row cards get the section's FULL width instead of being
+          // squeezed into one grid cell (see alberta-schedule4.ts for the
+          // same fix applied first).
+          cols: 1,
           description:
             "Carry this year's non-capital loss back to up to 3 preceding years (s.111(1)) to recover tax paid. The total reduces the loss that carries forward.",
         },

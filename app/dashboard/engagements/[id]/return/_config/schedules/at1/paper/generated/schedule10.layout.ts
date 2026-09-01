@@ -22,6 +22,7 @@ export interface PaperField {
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
   from?: { form: string; line: string; note?: string };
+  to?: { form: string; line: string; note?: string };
 }
 
 export interface PaperSectionDef {
@@ -59,4 +60,11 @@ export const AT1_SCHEDULE_10_FIELDS: readonly PaperField[] = [
   { line: "010044001", caption: "Capital loss applied — 1st preceding taxation year (at the inclusion rate)", kind: "money", role: "computed", section: "carryback", requirement: "conditional", note: "The gross carry-back request × the inclusion rate — not the raw entered amount." },
   { line: "010046001", caption: "Capital loss applied — 2nd preceding taxation year (at the inclusion rate)", kind: "money", role: "computed", section: "carryback", requirement: "conditional", note: "The gross carry-back request × the inclusion rate — not the raw entered amount." },
   { line: "010048001", caption: "Capital loss applied — 3rd preceding taxation year (at the inclusion rate)", kind: "money", role: "computed", section: "carryback", requirement: "conditional", note: "The gross carry-back request × the inclusion rate — not the raw entered amount." },
+];
+
+export const AT1_SCHEDULE_10_FOOTNOTES: readonly string[] = [
+  "The application of losses is at the corporation's discretion — the application of losses for federal purposes does not apply for Alberta purposes.",
+  "A Loss Carry-Back Application must be filed even if the corporation is exempt from filing its AT1.",
+  "Inclusion rate for the capital loss column: 3/4 for dispositions before February 28, 2000; 2/3 for dispositions after February 27, 2000 and before October 18, 2000; 1/2 for dispositions after October 17, 2000. Where a taxation year straddles more than one period, use the effective rate computed on federal Schedule 6 or the Schedule 18 supporting documentation.",
+  "The amount of loss claimed for Alberta purposes may differ from the amount claimed for federal purposes. Limitations on deductibility under the federal Act apply for Alberta purposes, except that an amount of non-capital or farm loss used to reduce the federal Part IV tax base does not reduce the loss balance available for Alberta purposes.",
 ];

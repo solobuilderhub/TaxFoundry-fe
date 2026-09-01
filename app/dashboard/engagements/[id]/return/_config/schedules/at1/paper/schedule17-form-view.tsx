@@ -6,13 +6,14 @@ import { RESERVE_TYPES, type ReservesValues } from "../../../../_lib/return-inpu
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperClassGrid,
+	PaperFootnotes,
 	PaperLeaderRow,
 	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_17_FIELDS, AT1_SCHEDULE_17_RESERVE_KINDS } from "./generated/schedule17.layout";
-import type { LineValue, ResolveLine } from "./resolve-line";
+import { AT1_SCHEDULE_17_FIELDS, AT1_SCHEDULE_17_FOOTNOTES, AT1_SCHEDULE_17_RESERVE_KINDS } from "./generated/schedule17.layout";
+import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "017";
 
@@ -38,10 +39,14 @@ export function Schedule17FormView({
 	control,
 	disabled,
 	computed,
+	onNavigate,
+	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	onNavigate?: NavigateToLine;
+	highlightLine?: string;
 }) {
 	const reservesControl = control as unknown as Control<ReservesValues>;
 	const rows = useWatch({ control: reservesControl, name: "rows" }) ?? [];
@@ -73,6 +78,7 @@ export function Schedule17FormView({
 			<PaperSection
 				title="Continuity of reserves"
 				description="Eight reserve kinds, matched by type against whatever's been added below in Guided view. A kind not yet added shows 'not added' — add it in Guided view first, then it becomes editable here."
+				formId="AT1SCH17"
 			>
 				<div className="p-2">
 					<PaperClassGrid
@@ -95,11 +101,15 @@ export function Schedule17FormView({
 						role={f.role}
 						note={f.note}
 						from={f.from}
+						to={f.to}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
 						control={reservesControl}
 						resolveLine={resolveTotalsLine}
 						disabled={disabled}
 					/>
 				))}
+				<PaperFootnotes notes={AT1_SCHEDULE_17_FOOTNOTES} />
 			</PaperSection>
 		</div>
 	);
