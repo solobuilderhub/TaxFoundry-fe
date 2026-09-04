@@ -4,7 +4,7 @@ import type { ReservesValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { RESERVE_TYPE_OPTIONS } from "../../options";
 import { defineSchedule } from "../shared/define";
-import { Schedule17FormView } from "../at1/paper/schedule17-form-view";
+import { ReservesFormView } from "./paper/reserves-form-view";
 
 const f = fieldsFor<ReservesValues>();
 
@@ -13,7 +13,7 @@ export const reserves = defineSchedule({
 	num: "013",
 	label: "Continuity of Reserves (S13)",
 	hint: "Tax reserves opening / closing",
-	formView: (props) => createElement(Schedule17FormView, props),
+	formView: (props) => createElement(ReservesFormView, props),
 	schema: defineSchema({
 		sections: [
 			section(

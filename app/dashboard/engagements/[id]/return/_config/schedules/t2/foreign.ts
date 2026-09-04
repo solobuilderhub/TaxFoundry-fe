@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { ForeignValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { ForeignFormView } from "./paper/foreign-form-view";
 
 const f = fieldsFor<ForeignValues>();
 
@@ -10,6 +12,7 @@ export const foreign = defineSchedule({
   num: "021",
   label: "Foreign Tax Credit (S21)",
   hint: "Foreign income & tax paid",
+  formView: (props) => createElement(ForeignFormView, props),
   schema: defineSchema({
     sections: [
       section(

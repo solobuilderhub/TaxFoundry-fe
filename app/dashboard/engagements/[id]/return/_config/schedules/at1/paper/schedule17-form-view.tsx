@@ -34,7 +34,23 @@ const COLUMNS: ClassGridColumn[] = [
  * (`albertaOpening`/`albertaTransfer`/`albertaClosing`) — Schedule 17 as
  * printed IS the Alberta figure; blank still means "same as federal" at
  * compute time, same semantics as the guided editor's own description text.
+ *
+ * Every one of the 6 federally-mirrored kinds' opening/transfer/closing
+ * fields genuinely defaults from the matching federal Schedule 13 figure
+ * unless overridden (`computeAlbertaSchedule17`'s `pick(alberta, federal)`
+ * on all three columns, not just opening — confirmed by reading that
+ * function directly). `PaperClassGrid` doesn't carry a per-cell provenance
+ * badge the way `PaperLeaderRow`/`ContinuityCell` do, so that federal-default
+ * relationship is surfaced below the grid instead, built directly from
+ * `AT1_SCHEDULE_17_FIELDS`' own `from` citations (not hand-typed, so it
+ * can't drift from the FormDefinition).
  */
+const FEDERAL_DEFAULT_LINES = new Map(
+	AT1_SCHEDULE_17_FIELDS.filter((f) => f.section === "reserves" && f.from).map((f) => [
+		parseAt1LineItemId(f.line)?.field ?? f.line,
+		f.from!.line,
+	]),
+);
 export function Schedule17FormView({
 	control,
 	disabled,
@@ -89,6 +105,38 @@ export function Schedule17FormView({
 						disabled={disabled}
 						resolveCell={() => undefined}
 					/>
+				</div>
+			</PaperSection>
+			<PaperSection
+				title="Federal defaults"
+				description="Each field above is blank-means-'same as federal', not blank-means-'zero' — the engine reads the matching federal Schedule 13 figure whenever no Alberta override is entered here. Insurance and bank reserves have no federal equivalent at all, so they're always a direct Alberta entry."
+			>
+				<div className="overflow-x-auto p-2">
+					<table className="w-full border-collapse text-xs">
+						<thead>
+							<tr className="border-b bg-muted/40">
+								<th className="px-3 py-2 text-left font-medium">Reserve kind</th>
+								<th className="px-3 py-2 text-left font-medium">T2SCH13 opening</th>
+								<th className="px-3 py-2 text-left font-medium">T2SCH13 transfer</th>
+								<th className="px-3 py-2 text-left font-medium">T2SCH13 closing</th>
+							</tr>
+						</thead>
+						<tbody>
+							{AT1_SCHEDULE_17_RESERVE_KINDS.map((kind) => {
+								const openingField = parseAt1LineItemId(kind.opening)?.field ?? kind.opening;
+								const transferField = parseAt1LineItemId(kind.transfer)?.field ?? kind.transfer;
+								const closingField = parseAt1LineItemId(kind.closing)?.field ?? kind.closing;
+								return (
+									<tr key={kind.label} className="border-b last:border-b-0">
+										<td className="px-3 py-1.5 text-muted-foreground">{kind.label}</td>
+										<td className="px-3 py-1.5 font-mono">{FEDERAL_DEFAULT_LINES.get(openingField) ?? "—"}</td>
+										<td className="px-3 py-1.5 font-mono">{FEDERAL_DEFAULT_LINES.get(transferField) ?? "—"}</td>
+										<td className="px-3 py-1.5 font-mono">{FEDERAL_DEFAULT_LINES.get(closingField) ?? "—"}</td>
+									</tr>
+								);
+							})}
+						</tbody>
+					</table>
 				</div>
 			</PaperSection>
 			<PaperSection title="Totals carried to Schedule 12">

@@ -4,35 +4,44 @@ import {
   Panel,
   PanelGroup,
   PanelResizeHandle,
+  type ImperativePanelGroupHandle,
   type PanelGroupProps,
   type PanelProps,
   type PanelResizeHandleProps,
 } from "react-resizable-panels"
+import type { Ref } from "react"
 
 import { cn } from "@/lib/utils"
 
 function ResizablePanelGroup({
   className,
   // Standard shadcn takes `direction`. fluid's ResponsiveSplitLayout instead
-  // passes `orientation` + `defaultLayout` + `onLayoutChanged` (its own naming),
-  // so accept both: map `orientation`→`direction`, `onLayoutChanged`→`onLayout`,
-  // and swallow `defaultLayout` (initial split comes from each Panel's
-  // `defaultSize`). This keeps vanilla `direction` usage working too.
+  // passes `orientation` + `defaultLayout` + `onLayoutChanged` + `groupRef`
+  // (its own naming), so accept all four: map `orientation`→`direction`,
+  // `onLayoutChanged`→`onLayout`, `groupRef`→the real `ref` PanelGroup's
+  // `forwardRef` expects (react-resizable-panels has no `groupRef` prop of
+  // its own — passing it through unmapped lands as an unrecognized DOM
+  // attribute), and swallow `defaultLayout` (initial split comes from each
+  // Panel's `defaultSize`). This keeps vanilla `direction`/`ref` usage
+  // working too.
   direction,
   orientation,
   defaultLayout: _defaultLayout,
   onLayout,
   onLayoutChanged,
+  groupRef,
   ...props
 }: Omit<PanelGroupProps, "direction"> & {
   direction?: PanelGroupProps["direction"]
   orientation?: "horizontal" | "vertical"
   defaultLayout?: number[]
   onLayoutChanged?: (layout: number[]) => void
+  groupRef?: Ref<ImperativePanelGroupHandle>
 }) {
   const resolvedDirection = direction ?? orientation ?? "horizontal"
   return (
     <PanelGroup
+      ref={groupRef}
       data-slot="resizable-panel-group"
       direction={resolvedDirection}
       className={cn(

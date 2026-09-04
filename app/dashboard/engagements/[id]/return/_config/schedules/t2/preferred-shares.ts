@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { PreferredSharesValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { PreferredSharesFormView } from "./paper/preferred-shares-form-view";
 
 const f = fieldsFor<PreferredSharesValues>();
 
@@ -10,6 +12,7 @@ export const preferredShares = defineSchedule({
   num: "043",
   label: "Preferred Share Dividends (S43)",
   hint: "Part VI.1 tax on taxable preferred shares",
+  formView: (props) => createElement(PreferredSharesFormView, props),
   schema: defineSchema({
     sections: [
       section(

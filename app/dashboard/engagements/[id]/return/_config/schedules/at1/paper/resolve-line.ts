@@ -7,7 +7,18 @@ export type { NavigateToLine } from "../../shared/define";
  * file), but the hand-authored primitive components below need one canonical
  * copy to import rather than picking an arbitrary generated file's.
  */
-export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";
+/**
+ * "flag" is AT1's own yes/no convention — the underlying field is a STRING,
+ * `"yes" | "no"` (or `undefined` for unanswered; see `at1YesNo` /
+ * `YES_NO` elsewhere in this app). "bool-flag" is for schedules whose
+ * underlying data is a genuine TypeScript `boolean` instead (most federal T2
+ * guided-editor `f.switch(...)` fields, e.g. `IdentificationValues`) — a real
+ * bug once bound "flag"'s string-typed radios to a boolean field: saved
+ * `true` answers rendered as unchecked (indistinguishable from unanswered),
+ * and clicking a radio wrote the STRING `"yes"` into a field the server
+ * schema requires to be `boolean`, which the API rejected on save.
+ */
+export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "bool-flag" | "code";
 export type PaperFieldRole = "input" | "computed" | "total" | "carried-in";
 
 export interface PaperField {

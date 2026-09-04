@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { EifelValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule130FormView } from "./paper/schedule130-form-view";
 
 const f = fieldsFor<EifelValues>();
 
@@ -10,6 +12,7 @@ export const eifel = defineSchedule({
   num: "18.2",
   label: "Interest Limitation (EIFEL)",
   hint: "Excluded-entity check, tax years from Oct 2023",
+  formView: (props) => createElement(Schedule130FormView, props),
   schema: defineSchema({
     sections: [
       section(

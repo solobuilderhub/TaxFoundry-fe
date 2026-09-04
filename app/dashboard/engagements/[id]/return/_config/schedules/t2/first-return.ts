@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { FirstReturnValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { FirstReturnFormView } from "./paper/first-return-form-view";
 
 const f = fieldsFor<FirstReturnValues>();
 
@@ -18,6 +20,7 @@ export const firstReturn = defineSchedule({
   num: "101",
   label: "First Return (S101 / S24)",
   hint: "Opening balance sheet and first-filer details",
+  formView: (props) => createElement(FirstReturnFormView, props),
   schema: defineSchema({
     sections: [
       section(
@@ -35,8 +38,10 @@ export const firstReturn = defineSchedule({
         "event",
         "The event (Schedule 24)",
         [
-          f.select("event", "What made this the first return? (line 100)", EVENTS, {
+          f.select("event", "What made this the first return?", EVENTS, {
             condition: shownWhenFirst,
+            description:
+              "S24 line 100 is the corporation's industry-type code, not this — the event itself is recorded on the T2 jacket (lines 070/071/072), not on Schedule 24.",
           }),
           f.date("eventDate", "Date of the event", { condition: shownWhenFirst }),
           f.text("predecessorBusinessNumbers", "Predecessor / subsidiary Business Numbers (lines 300 / 500)", {

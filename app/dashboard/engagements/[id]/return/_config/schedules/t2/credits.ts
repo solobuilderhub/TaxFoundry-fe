@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { CreditsValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule31FormView } from "./paper/schedule31-form-view";
 
 const f = fieldsFor<CreditsValues>();
 
@@ -10,6 +12,7 @@ export const credits = defineSchedule({
   num: "031",
   label: "SR&ED Tax Credit (S31)",
   hint: "Investment tax credit on R&D",
+  formView: (props) => createElement(Schedule31FormView, props),
   schema: defineSchema({
     sections: [
       section(

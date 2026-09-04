@@ -26,6 +26,25 @@ import { Schedule15FormView } from "./paper/schedule15-form-view";
  * (spec §3.2.3.16, lines 12394-15937 of the NetFile mapping text — this
  * schedule has no standalone form PDF in this engine's sources).
  *
+ * ── The `federal*` fields are NOT decorative ────────────────────────────────
+ *
+ * Every `federal<X>` field here was, until 2026-09-03, read ONLY by AT1's own
+ * `assembleSchedule15` as the baseline Alberta's figures are diffed against —
+ * federal T2 itself had ZERO resource-deduction tracking, so Schedule 1
+ * lines 340/341/342/344/345 stayed 0 regardless of what a preparer entered
+ * here. `apps/server/src/engine/assemble-t2-input.ts`'s `scheduleTwelve` now
+ * reads these SAME fields into the real federal computation
+ * (`@classytic/ca-tax/t2`'s `schedule12-resource-deductions.ts`) — filling
+ * in this page genuinely changes the filed federal return, not just the AT1
+ * reconciliation. A pure T2 (non-AT1) engagement has no equivalent entry
+ * point yet — this page is still gated `programs: ["AT1"]` below — so a
+ * plain federal filer with real resource deductions has no UI to claim them.
+ *
+ * The `claimed` field on each pool row is Alberta's OWN discretionary claim
+ * override (used only by the AT1 side) — the federal claim is always
+ * computed independently as the statutory maximum, since there is no
+ * separate "federal claimed" figure collected anywhere.
+ *
  * ── Captions are VERBATIM, not paraphrased ──────────────────────────────────
  *
  * Every field label below is the spec's own MAPPINGS table "Line Name" column

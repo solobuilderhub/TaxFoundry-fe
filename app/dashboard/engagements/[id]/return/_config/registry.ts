@@ -26,7 +26,6 @@ import { albertaRoyaltyCredit6 } from "./schedules/at1/alberta-schedule6";
 import { albertaRoyaltySupplemental7 } from "./schedules/at1/alberta-schedule7";
 import { albertaPoliticalContributions8 } from "./schedules/at1/alberta-schedule8";
 import { albertaSredCredit9 } from "./schedules/at1/alberta-schedule9";
-import { albertaManufacturing11 } from "./schedules/at1/alberta-schedule11";
 import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
 import { balanceSheet } from "./schedules/t2/balance-sheet";
 import { capital } from "./schedules/t2/capital";
@@ -86,7 +85,6 @@ export const SCHEDULES = [
 	albertaRoyaltySupplemental7,
 	albertaPoliticalContributions8,
 	albertaSredCredit9,
-	albertaManufacturing11,
 	albertaResourceDeductions15,
 	payments,
 	internetBusiness,

@@ -4,7 +4,7 @@ import type { CcaValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { CCA_CLASS_OPTIONS } from "../../options";
 import { defineSchedule } from "../shared/define";
-import { Schedule13FormView } from "../at1/paper/schedule13-form-view";
+import { Schedule8FormView } from "./paper/schedule8-form-view";
 
 const f = fieldsFor<CcaValues>();
 
@@ -13,7 +13,7 @@ export const cca = defineSchedule({
   num: "008",
   label: "Capital Cost Allowance (S8)",
   hint: "Depreciable property, by class",
-  formView: (props) => createElement(Schedule13FormView, props),
+  formView: (props) => createElement(Schedule8FormView, props),
   schema: defineSchema({
     sections: [
       section(
@@ -47,6 +47,49 @@ export const cca = defineSchedule({
           cols: 1,
           description:
             "Schedule 8. Depreciable property by class. The engine applies the half-year rule (or AIIP/immediate expensing), and computes recapture / terminal loss on dispositions. Closing UCC carries forward automatically.",
+        },
+      ),
+      section(
+        "class13",
+        "NEW class 13 leasehold improvement(s) added this year",
+        [
+          f.array("class13Layers", "Leasehold layers", [
+            field.text("description", "Description", { placeholder: "e.g. office fit-out" }),
+            money("capitalCost", "Capital cost"),
+            field.date("leaseEnd", "Lease termination date"),
+            field.date("firstRenewalEnd", "First renewal termination date (if the lease grants renewal rights)"),
+            field.switch("isFirstYear", "This is the layer's first tax year"),
+            field.switch("aiip", "AIIP property"),
+            money("claimedToDate", "CCA already claimed on this layer, prior years"),
+            money("proceeds", "Disposition proceeds attributed to this layer"),
+          ]),
+          money("class13OpeningUCC", "Class 13 opening UCC (existing pool + all layers)"),
+          money("class13Claim", "Class 13 claim", { description: "Blank = maximum" }),
+        ],
+        {
+          variant: "card",
+          cols: 1,
+          description:
+            "The classes array above only draws down an EXISTING class 13 opening balance — it refuses a current-year addition. Use this section for a NEW leasehold improvement instead: the engine derives the Schedule III 5-to-40-year period count from the lease-end date and the tax year start (Schedule III s.2), applies the s.3 constraints (the 5-year floor, the 40-period cap, the layer's own remaining balance), and the Reg 1100(2) half-year UCC-ceiling reduction for a first-year layer. Leave blank if there's no new leasehold improvement this year.",
+        },
+      ),
+      section(
+        "class14",
+        "NEW class 14 limited-life propert(y/ies) added this year",
+        [
+          f.array("class14Properties", "Limited-life properties", [
+            field.text("description", "Description", { placeholder: "e.g. 15-year patent" }),
+            money("capitalCost", "Capital cost"),
+            money("lifeDaysAtAcquisition", "Days of life REMAINING when the cost was incurred"),
+          ]),
+          money("class14OpeningUCC", "Class 14 opening UCC (existing pool + all properties)"),
+          money("class14Claim", "Class 14 claim", { description: "Blank = maximum" }),
+        ],
+        {
+          variant: "card",
+          cols: 1,
+          description:
+            "Patents, franchises, concessions and licences with a fixed life (not unlimited-life class 14.1). The engine amortises each property over its own remaining life in DAYS (Reg 1100(1)(c)) — 'days of life remaining' is fixed at acquisition, not the property's total life and not the days left today. No half-year rule; the day count already prorates a mid-year acquisition. Leave blank if there's no new limited-life property this year.",
         },
       ),
     ],

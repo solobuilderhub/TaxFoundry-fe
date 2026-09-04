@@ -1,8 +1,8 @@
 /**
  * Alberta Other Tax Deductions and Credits (AT1SCH03) — paper Form View layout.
  *
- * GENERATED from the form definition in @classytic/ca-tax:
- *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
+ * GENERATED from @classytic/ca-tax:
+ *   npx tsx scripts/emit-paper-layouts.ts
  *
  * Ultimately from research/sources/tra-forms/pdf/AT1SCH03-other-tax-deductions-credits-TRA11725.pdf, retrieved 2026-09-01.
  *
@@ -23,6 +23,7 @@ export interface PaperField {
   note?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
+  footnoteMarks?: readonly number[];
 }
 
 export interface PaperSectionDef {

@@ -128,11 +128,13 @@ const ROW_ORDER = (() => {
  *
  * Not included: page 5 (Restricted Interest and Financing Expenses
  * continuity) — unmodeled in the engine, needs `schedule21.ts` +
- * `assemble-at1-schedules.ts` work first, not just a UI layout. Computed
- * closing balances aren't shown as a grid cell either (this app doesn't
- * store them as a field to bind to) — they're visible in the "as filed"
- * panel below this schedule instead, which already reads real Schedule 12
- * figures scheduleId "021" correctly.
+ * `assemble-at1-schedules.ts` work first, not just a UI layout. Computed /
+ * carried-in rows (closing balance, opening-net-of-expiry, non-capital's
+ * current-year loss, capital's current-year loss) DO render as real grid
+ * cells now, read from the same filed-payload lookup as Part 1 above
+ * (`resolveLine`, threaded into `PaperContinuityGrid`) — they used to fall
+ * through to a "not collected" placeholder because the grid had no way to
+ * read a filed value at all, not because the figure wasn't real.
  */
 export function Schedule21FormView({
 	control,
@@ -148,6 +150,9 @@ export function Schedule21FormView({
 	highlightLine?: string;
 }) {
 	const c = control as unknown as Control<AlbertaContinuityValues>;
+	// Same lookup for both Part 1 (already read-only throughout) and the
+	// continuity grid's computed/carried-in rows — one filed-payload map
+	// for the whole schedule, not two.
 	const resolvePart1Line = buildResolveLine(computed);
 	const part1Fields = AT1_SCHEDULE_21_FIELDS.filter((f) => f.section === "current-year");
 
@@ -186,6 +191,15 @@ export function Schedule21FormView({
 						disabled={disabled}
 						onNavigate={onNavigate}
 						highlightLine={highlightLine}
+						resolveLine={resolvePart1Line}
+						// The printed form groups the additions (carried forward /
+						// expired / balance-at-beginning / wind-up transfer /
+						// current-year loss) above a plain "Subtotal" divider, then
+						// the "Deduct:" block below it. Not a numbered line — pure
+						// print layout, confirmed against the TRA spec (no field for
+						// it anywhere in §3.2.3.21).
+						dividerAfter={["currentYearLoss"]}
+						footnotes={AT1_SCHEDULE_21_FOOTNOTES}
 					/>
 				</div>
 				<PaperFootnotes notes={AT1_SCHEDULE_21_FOOTNOTES} />

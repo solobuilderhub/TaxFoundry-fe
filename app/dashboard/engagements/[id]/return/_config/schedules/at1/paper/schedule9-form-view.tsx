@@ -45,7 +45,17 @@ const GROUP_FIELD_NAME: Partial<Record<string, string>> = {
 	"240": "allocated",
 };
 
-function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
+/**
+ * `hasGroup` disables field 102's normally-editable binding: `assembleSchedule9`
+ * (`apps/server/.../schedule-9-compose.ts`) only reads the typed
+ * `allocatedExpenditureLimit` when the page-3 group is EMPTY — once a
+ * corporation is added there, 102 is instead derived from the group
+ * allocation's row-1 (`allocation.claimantAllocatedAmount`), and the typed
+ * value is silently ignored. Editing a box whose contents the composer never
+ * reads is worse than not offering it, so this falls through to the same
+ * read-only/filed-value branch every other carried-in field uses.
+ */
+function buildResolveLine(computed: ComputedReturn | undefined, hasGroup: boolean): ResolveLine {
 	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
 	const filedByField = new Map(
 		(filed?.values ?? []).flatMap((v) => {
@@ -57,7 +67,7 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 	return (line: string): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
 		const ownName = OWN_FIELD[field];
-		if (ownName) return { editable: true, name: ownName };
+		if (ownName && !(field === "102" && hasGroup)) return { editable: true, name: ownName };
 		return { editable: false, value: filedByField.get(field) as string | number | undefined };
 	};
 }
@@ -77,8 +87,8 @@ export function Schedule9FormView({
 	computed?: ComputedReturn;
 }) {
 	const s9Control = control as unknown as Control<AlbertaSredCredit9Values>;
-	const resolveLine = buildResolveLine(computed);
 	const group = useWatch({ control: s9Control, name: "group" }) ?? [];
+	const resolveLine = buildResolveLine(computed, group.length > 0);
 
 	const groupColumns: ClassGridColumn[] = AT1_SCHEDULE_9_FIELDS.filter(
 		(f) => ["220", "230", "240"].includes(parseAt1LineItemId(f.line)?.field ?? f.line),

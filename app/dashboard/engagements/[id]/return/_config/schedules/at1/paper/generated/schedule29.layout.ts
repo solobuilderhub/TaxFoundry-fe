@@ -1,8 +1,8 @@
 /**
  * Alberta Innovation Employment Grant (AT1SCH29) — paper Form View layout.
  *
- * GENERATED from the form definition in @classytic/ca-tax:
- *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
+ * GENERATED from @classytic/ca-tax:
+ *   npx tsx scripts/emit-paper-layouts.ts
  *
  * Ultimately from research/sources/tra-forms/pdf/AT1SCH29-innovation-employment-grant-TRA14637.pdf, retrieved 2026-08-28.
  *
@@ -23,6 +23,7 @@ export interface PaperField {
   note?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
+  footnoteMarks?: readonly number[];
 }
 
 export interface PaperSectionDef {
@@ -47,17 +48,17 @@ export const AT1_SCHEDULE_29_FIELDS: readonly PaperField[] = [
   { line: "029025001", caption: "Add: repayment of government assistance or a contract payment", kind: "money", role: "input", section: "eligible", note: "The Alberta portion of EITHER a repayment of government assistance (other than an IEG) OR a contract payment — two independent triggers — relating to amounts in line 005 from the current year or ANY PRECEDING taxation year." },
   { line: "029031001", caption: "Total: Eligible Expenditures for Alberta Purposes", kind: "money", role: "total", section: "eligible", note: "005 − 007 + 009 + 011 + 025. Feeds every other \"eligible expenditures\" figure on this schedule." },
   { line: "029040001", caption: "Primary field of science or technology", kind: "code", role: "input", section: "eligible", note: "1 = Natural and formal sciences, 2 = Engineering and technology, 3 = Medical and health sciences, 4 = Agricultural sciences." },
-  { line: "029100001", caption: "Associated with one or more corporations for IEG purposes?", kind: "flag", role: "input", section: "limit", note: "If \"Yes\", complete page 3 — the formal Agreement Among Associated Corporations." },
+  { line: "029100001", caption: "Associated with one or more corporations for IEG purposes?", kind: "flag", role: "computed", section: "limit", note: "Derived from whether an Agreement Among Associated Corporations (page 3) was supplied — not asked as its own question. If \"Yes\", page 3 must be complete." },
   { line: "029102001", caption: "Allocated expenditure limit, if associated", kind: "money", role: "input", section: "limit", note: "Transcribed from this corporation’s own line 240 on page 3 (row 1, the claiming corporation) — filled in here, not re-derived." },
-  { line: "029104001", caption: "Expenditure limit, if not associated", kind: "money", role: "computed", section: "limit", note: "$4,000,000 × (days in the tax year ÷ 365, or 366 if the year includes February 29) — this corporation’s own limit; there is no group to share it with." },
-  { line: "029108001", caption: "Maximum expenditure limit for the year", kind: "money", role: "computed", section: "limit", note: "Line 102 or line 104, as applicable. Feeds lines 110, 112 and 125." },
+  { line: "029104001", caption: "Expenditure limit, if not associated", kind: "money", role: "computed", section: "limit", note: "$4,000,000 × (days in the tax year ÷ 365, or 366 if the year includes February 29) — this corporation’s own limit; there is no group to share it with. NOT YET COMPUTED OR FILED: `computeIegGroupFigures` (`schedule29-ieg-group.ts`) hardcodes `groupExpenditureLimit` to the flat $4,000,000 with no day-of-year proration, and `schedule29Values` has no `put('104', …)` call at all — a short or long taxation year files an unprorated limit rather than a wrong one, which is deliberately safer than guessing, but the line itself is currently absent from the payload." },
+  { line: "029108001", caption: "Maximum expenditure limit for the year", kind: "money", role: "computed", section: "limit", note: "Line 102 or line 104, as applicable. Feeds lines 110, 112 and 125. NOT YET FILED as its own line — see line 104’s note; the resolved limit is used internally to compute 110/112/125 but never surfaced at 108 itself." },
   { line: "029110001", caption: "Grant at the base rate", kind: "money", role: "computed", section: "grant", note: "Eight per cent, on the LESSER of eligible expenditures (line 031) and line 108." },
   { line: "029112001", caption: "Grant at the enhanced rate — non-associated", kind: "money", role: "computed", section: "grant", note: "Twelve per cent, on the INCREMENT above the base level — (lesser of line 031 and line 108) minus the base amount at line 118. Applying it to the whole expenditure overstates the grant. Filed instead of line 125, never alongside it." },
-  { line: "029114001", caption: "Eligible expenditures — first preceding year", kind: "money", role: "input", section: "grant", note: "Non-associated only (see line 112’s note) — this corporation’s OWN prior year, not a group figure." },
-  { line: "029116001", caption: "Eligible expenditures — second preceding year", kind: "money", role: "input", section: "grant", note: "Non-associated only, this corporation’s own prior year — see line 114." },
-  { line: "029118001", caption: "Base amount", kind: "money", role: "computed", section: "grant", note: "Average of lines 114 and 116. Feeds line 112 only — the associated formula at line 125 does not subtract a base amount at all." },
+  { line: "029114001", caption: "Eligible expenditures — first preceding year", kind: "money", role: "computed", section: "grant", note: "Non-associated only (see line 112’s note) — this corporation’s OWN prior year, not a group figure. NOT YET COMPUTED OR FILED: `computeIegGroupFigures` only aggregates every member’s prior-year figures into one group total (`groupBaseAmount`); nothing in the engine isolates a single corporation’s own 114/116 at this grain, and `schedule29Values` never files either. No editable UI binding exists either — marked `computed`, not `input`, because there is nowhere on this schedule’s own form to type it." },
+  { line: "029116001", caption: "Eligible expenditures — second preceding year", kind: "money", role: "computed", section: "grant", note: "Non-associated only, this corporation’s own prior year — see line 114’s note." },
+  { line: "029118001", caption: "Base amount", kind: "money", role: "computed", section: "grant", note: "Average of lines 114 and 116. Feeds line 112 only — the associated formula at line 125 does not subtract a base amount at all. NOT YET FILED as its own line, for the same reason as 114/116: `schedule29-ieg-group.ts`’s own doc comment on `groupBaseAmount` states it \"does not correspond to anything a preparer could actually file\" — the group-aggregated figure the engine computes is not the same number the live form wants here." },
   { line: "029125001", caption: "Grant at the enhanced rate — associated", kind: "money", role: "computed", section: "grant", note: "(Lesser of line 108 or the allocated allowed amount at line 325) × 12%. A genuinely different formula from line 112 — no base amount is subtracted, and actual spending above base plays no part. Filed instead of line 112, never alongside it." },
-  { line: "029126001", caption: "Taxable capital employed in Canada", kind: "money", role: "input", section: "grant", note: "This corporation alone if not associated with anyone for IEG purposes; the associated group’s total otherwise. Drives the reduction factor at line 128." },
+  { line: "029126001", caption: "Taxable capital employed in Canada", kind: "money", role: "computed", section: "grant", note: "This corporation alone if not associated with anyone for IEG purposes; the associated group’s total otherwise (`iegGroup.groupTaxableCapital` or `iegAgreement.totalTaxableCapitalPriorYear`). Drives the reduction factor at line 128." },
   { line: "029128001", caption: "Taxable-capital reduction factor", kind: "rate", role: "computed", section: "grant", note: "1 at $10,000,000 taxable capital or below, straight-line down to 0 at $50,000,000. Multiplies lines 110 + 112 at line 130 — it does not reduce the $4,000,000 expenditure limit." },
   { line: "029130001", caption: "Grant before recapture", kind: "money", role: "computed", section: "grant", note: "(Line 110 + line 112) × line 128." },
   { line: "029132001", caption: "Recapture", kind: "money", role: "input", section: "grant", note: "Where IEG-funded property was sold or converted to commercial use in the year. Blank, not zero, when there is none to report." },

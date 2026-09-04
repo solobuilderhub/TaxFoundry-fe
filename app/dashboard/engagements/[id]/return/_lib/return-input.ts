@@ -64,7 +64,6 @@ export type ReturnInput = {
 	albertaRoyaltySupplemental7?: AlbertaRoyaltySupplemental7Values;
 	albertaPoliticalContributions8?: AlbertaPoliticalContributions8Values;
 	albertaSredCredit9?: AlbertaSredCredit9Values;
-	albertaManufacturing11?: AlbertaManufacturing11Values;
 	albertaResourceDeductions15?: AlbertaResourceDeductions15Values;
 };
 export type IdentificationValues = {
@@ -97,6 +96,10 @@ export type BalanceSheetValues = {
 	accountsReceivable?: number;
 	inventory?: number;
 	capitalAssetsNet?: number;
+	/**
+	 * GIFI 2009 — accumulated amortization on tangible capital assets. Optional: leave blank if unknown, and capitalAssetsNet still files (as a net figure) under GIFI 2008.
+	 */
+	accumulatedAmortization?: number;
 	otherAssets?: number;
 	accountsPayable?: number;
 	loansPayable?: number;
@@ -158,7 +161,7 @@ export type Disposition = {
 	/**
 	 * Feeds AT1 Schedule 18 only; the federal Schedule 6 computation ignores it.
 	 */
-	category?: At1DispositionCategory;
+	category?: At1DispositionCategory | "";
 };
 export type LossesValues = {
 	nonCapitalOpening?: number;
@@ -214,7 +217,96 @@ export type SbdValues = {
 	activeBusinessIncome?: number;
 	businessLimit?: number;
 	taxableCapital?: number;
+	/**
+	 * Adjusted aggregate investment income, PRIOR year (Schedule 7 Part 2, line 745) — the SBD passive-income grind only.
+	 */
 	aaii?: number;
+	/**
+	 * Aggregate investment income, CURRENT year (Schedule 7 Part 1, line 092 / jacket line 440) — feeds Part IV/RDTOH, not the grind. Defaults to `aaii` when omitted.
+	 */
+	aggregateInvestmentIncome?: number;
+	/**
+	 * Schedule 7 Part 1 detail — when entered and `aggregateInvestmentIncome` is left blank, AII is derived from these instead of typed in directly.
+	 */
+	aiiDetail?: {
+		/**
+		 * 002
+		 */
+		taxableCapitalGains?: number;
+		/**
+		 * 012
+		 */
+		allowableCapitalLosses?: number;
+		/**
+		 * 022 — T2 jacket line 332
+		 */
+		netCapitalLossesClaimed?: number;
+		/**
+		 * 032
+		 */
+		incomeFromProperty?: number;
+		/**
+		 * 042
+		 */
+		exemptIncome?: number;
+		/**
+		 * 052
+		 */
+		agriInvestFundReceived?: number;
+		/**
+		 * 062
+		 */
+		taxableDividendsDeductible?: number;
+		/**
+		 * 072
+		 */
+		trustPropertyIncome?: number;
+		/**
+		 * 082
+		 */
+		lossesFromProperty?: number;
+	};
+	/**
+	 * Schedule 7 Part 2 detail — when entered and `aaii` is left blank, AAII is derived from these instead of typed in directly.
+	 */
+	aaiiDetail?: {
+		/**
+		 * 705 — excludes active-asset dispositions
+		 */
+		taxableCapitalGains?: number;
+		/**
+		 * 710 — excludes active-asset dispositions
+		 */
+		allowableCapitalLosses?: number;
+		/**
+		 * 715
+		 */
+		incomeFromProperty?: number;
+		/**
+		 * 720
+		 */
+		exemptIncome?: number;
+		/**
+		 * 725
+		 */
+		agriInvestFundReceived?: number;
+		/**
+		 * 730
+		 */
+		dividendsFromConnectedCorporations?: number;
+		/**
+		 * 735
+		 */
+		trustPropertyIncome?: number;
+		/**
+		 * 740
+		 */
+		lossesFromProperty?: number;
+		/**
+		 * 741 — FAPI, s.91(4)
+		 */
+		subsection91_4Deduction?: number;
+	};
 	/**
 	 * Zero-emission technology manufacturing income — reduced rate (Schedule 27).
 	 */
@@ -229,6 +321,30 @@ export type SbdValues = {
 };
 export type CcaValues = {
 	classes?: CcaClass[];
+	/**
+	 * NEW class 13 leasehold-interest layers added this tax year (the full Schedule III mechanic).
+	 */
+	class13Layers?: Class13LeaseholdLayer[];
+	/**
+	 * Class 13 undepreciated capital cost before this year’s deduction.
+	 */
+	class13OpeningUCC?: number;
+	/**
+	 * Class 13 amount to claim; blank = the maximum.
+	 */
+	class13Claim?: number;
+	/**
+	 * NEW class 14 limited-life intangible properties added this tax year.
+	 */
+	class14Properties?: Class14LimitedLifeProperty[];
+	/**
+	 * Class 14 undepreciated capital cost before this year’s deduction.
+	 */
+	class14OpeningUCC?: number;
+	/**
+	 * Class 14 amount to claim; blank = the maximum.
+	 */
+	class14Claim?: number;
 };
 export type CcaClass = {
 	ccaClass?: string;
@@ -254,6 +370,42 @@ export type CcaClass = {
 	 * 013019 — the Alberta discretionary claim. Blank = the same as federal.
 	 */
 	albertaClaim?: number;
+};
+export type Class13LeaseholdLayer = {
+	description?: string;
+	capitalCost?: number;
+	/**
+	 * The date the lease is deemed to terminate. The engine derives the Schedule III period count from this and the tax year start — the number of 12-month periods is computed, not typed in.
+	 */
+	leaseEnd?: string;
+	/**
+	 * Where the lease grants renewal rights, the end of the term NEXT SUCCEEDING the one this cost was incurred in (Schedule III s.3(b)) — the first renewal only. When entered, this replaces leaseEnd for the period calculation.
+	 */
+	firstRenewalEnd?: string;
+	/**
+	 * This is the layer’s first tax year — triggers the Reg 1100(2) UCC-ceiling reduction.
+	 */
+	isFirstYear?: boolean;
+	/**
+	 * Accelerated investment incentive property — exempt from the 1100(2) reduction.
+	 */
+	aiip?: boolean;
+	/**
+	 * CCA already claimed on this layer in prior years.
+	 */
+	claimedToDate?: number;
+	/**
+	 * Disposition proceeds attributed to this layer.
+	 */
+	proceeds?: number;
+};
+export type Class14LimitedLifeProperty = {
+	description?: string;
+	capitalCost?: number;
+	/**
+	 * Days of life the property had REMAINING when the capital cost was incurred — not its total life, and not the days left today (Reg 1100(1)(c) fixes the denominator at acquisition).
+	 */
+	lifeDaysAtAcquisition?: number;
 };
 export type CreditsValues = {
 	/**
@@ -390,7 +542,7 @@ export type AlbertaValues = {
 	 */
 	totalAssets?: number;
 	/**
-	 * 000001 — associated with one or more CCPCs?
+	 * 000001 — associated with one or more Canadian-controlled private corporations? Not derived from Schedule 1's own association test: that derivation is undefined whenever the corporation is not claiming the Alberta SBD, but this jacket line is unconditionally mandatory.
 	 */
 	associatedWithCcpcs?: YesNo;
 	/**
@@ -1302,68 +1454,6 @@ export type AlbertaSredCredit9GroupMember = {
 	 * Line 009240 — this member’s agreed share of the expenditure limit.
 	 */
 	allocated?: number;
-};
-export type AlbertaManufacturing11Values = {
-	/**
-	 * For the spec’s 10% manufacturing-gross-revenue test (lines 9138-9142).
-	 */
-	manufacturingGrossRevenue?: number;
-	/**
-	 * Total gross revenue for the year, for the same 10% test.
-	 */
-	totalGrossRevenue?: number;
-	/**
-	 * Whether the corp qualifies as a "small manufacturing corp" per the AT1 Guide criteria. When "yes", lines 031-039 below do not apply — the form itself says they "must not exist" for a small manufacturer.
-	 */
-	isSmallManufacturingCorp?: YesNo;
-	/**
-	 * Line 042 supplied directly for a small manufacturing corp. The transcribed spec range gives no alternative formula for this case, so none is derived — enter the figure per the AT1 Guide.
-	 */
-	smallManufacturerAmpp?: number;
-	/**
-	 * 027130 — federal Schedule 27 ADJUBI. Used for line 001 unless Alberta calculates it differently.
-	 */
-	federalAdjubi?: number;
-	/**
-	 * Schedule 12, line 112 — only when Alberta computes ADJUBI differently than federal.
-	 */
-	albertaAdjubiLine112?: number;
-	/**
-	 * Schedule 12, line 114 — only when Alberta computes ADJUBI differently than federal.
-	 */
-	albertaAdjubiLine114?: number;
-	/**
-	 * 000029 = 1 or 2 — a Canadian-controlled private corporation. Gates line 013.
-	 */
-	isCcpc?: YesNo;
-	/**
-	 * Whether an Alberta Schedule 12 exists for this return.
-	 */
-	schedule12Exists?: YesNo;
-	/**
-	 * Aggregate investment income for Alberta purposes, used when Schedule 12 exists.
-	 */
-	albertaAggregateInvestmentIncome?: number;
-	/**
-	 * fed 200440 — federal aggregate investment income, used when Schedule 12 does not exist.
-	 */
-	federalAggregateInvestmentIncome?: number;
-	/**
-	 * 011031 — Cost of Capital. Must equal fed 027140 for a corp other than a small manufacturer.
-	 */
-	costOfCapital?: number;
-	/**
-	 * 011033 — the Alberta portion of Cost of Capital. Cannot exceed line 031.
-	 */
-	albertaCostOfCapital?: number;
-	/**
-	 * 011037 — Cost of Labour. Must equal fed 027160 for a corp other than a small manufacturer.
-	 */
-	costOfLabour?: number;
-	/**
-	 * 011039 — the Alberta portion of Cost of Labour. Cannot exceed line 037.
-	 */
-	albertaCostOfLabour?: number;
 };
 export type AlbertaResourceDeductions15Values = {
 	/**

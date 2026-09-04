@@ -1,8 +1,8 @@
 /**
  * Alberta Corporate Income Tax Return — AT1 (AT1) — paper Form View layout.
  *
- * GENERATED from the form definition in @classytic/ca-tax:
- *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
+ * GENERATED from @classytic/ca-tax:
+ *   npx tsx scripts/emit-paper-layouts.ts
  *
  * Ultimately from research/sources/tra-spec/AT1-Chapter3-2025.2-full.txt, retrieved 2026-08-14.
  *
@@ -27,6 +27,7 @@ export interface PaperField {
   note?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
+  footnoteMarks?: readonly number[];
 }
 
 export interface PaperSectionDef {
@@ -45,10 +46,8 @@ export const AT1_JACKET_SECTIONS: readonly PaperSectionDef[] = [
 ];
 
 export const AT1_JACKET_FIELDS: readonly PaperField[] = [
-  { line: "000001001", caption: "Is the corporation associated with one or more Canadian- controlled private corporations?", kind: "flag", role: "input", section: "identification", requirement: "mandatory" },
-  { line: "000003001", caption: "Inc. from active business carried on in Canada as reported on the T2 line 400 OR schedule 12, line 106", kind: "money", role: "input", section: "identification", requirement: "mandatory" },
+  { line: "000001001", caption: "Is the corporation associated with one or more Canadian-controlled private corporations?", kind: "flag", role: "input", section: "status", requirement: "mandatory" },
   { line: "000005001", caption: "Software Approval Code", kind: "text", role: "input", section: "identification", requirement: "mandatory" },
-  { line: "000009001", caption: "Taxable Income (less adj. For foreign tax credits. See Guide for calc. Details)", kind: "money", role: "input", section: "identification", requirement: "mandatory" },
   { line: "000010001", caption: "Legal Name of Corporation", kind: "text", role: "input", section: "identification", requirement: "mandatory" },
   { line: "000011001", caption: "Operating Name of Corporation", kind: "text", role: "input", section: "identification", requirement: "optional" },
   { line: "000012001", caption: "Mailing Address of Business Line 1", kind: "text", role: "input", section: "identification", requirement: "mandatory" },
@@ -91,13 +90,13 @@ export const AT1_JACKET_FIELDS: readonly PaperField[] = [
   { line: "000061001", caption: "Has the corp elected to use any different discretionary amounts for the current year claim or do opening balances differ for federal and Alberta purposes?", kind: "flag", role: "input", section: "status", requirement: "mandatory" },
   { line: "000062001", caption: "Alberta Taxable Income or (Loss)", kind: "money", role: "input", section: "income", requirement: "mandatory", note: "Alberta taxable income. Where it differs from federal, Schedule 12 must reconcile the difference item by item." },
   { line: "000064001", caption: "Royalty Tax Deduction", kind: "money", role: "carried-in", section: "tax", requirement: "mandatory", from: { form: "AT1SCH5", line: "", note: "Royalty tax deduction" } },
-  { line: "000065001", caption: "Alberta Allocation Factor", kind: "rate", role: "input", section: "income", requirement: "mandatory", note: "The Reg 402 allocation factor from Schedule 2, to six decimal places. A single-jurisdiction corporation files 1.0, not a blank." },
+  { line: "000065001", caption: "Alberta Allocation Factor", kind: "rate", role: "carried-in", section: "income", requirement: "mandatory", note: "The Reg 402 allocation factor from Schedule 2, to six decimal places. A single-jurisdiction corporation files 1.0, not a blank.", from: { form: "AT1SCH2", line: "", note: "Area A's (A/B + C/D) × ½ allocation factor. Has no line number of its own on Schedule 2 — that schedule's own doc comment says it is 'a computed column carried to the jacket at 000065, which is where it's actually filed.'" } },
   { line: "000068001", caption: "Basic Alberta Tax Payable", kind: "money", role: "computed", section: "tax", requirement: "mandatory", note: "A = (062 − 064) × 065 × rate. The base every deduction below works against." },
   { line: "000070001", caption: "Alberta Small Business Deduction", kind: "money", role: "carried-in", section: "tax", requirement: "mandatory", from: { form: "AT1SCH1", line: "", note: "Alberta small business deduction" } },
   { line: "000071001", caption: "Alberta Manufacturing and Processing Profits Deduction", kind: "money", role: "input", section: "tax", requirement: "mandatory" },
   { line: "000072001", caption: "Alberta Foreign Investment Income Tax Credit", kind: "money", role: "carried-in", section: "tax", requirement: "mandatory", from: { form: "AT1SCH4", line: "", note: "Foreign investment income tax credit" } },
   { line: "000074001", caption: "Alberta Political Contributions Tax Credit", kind: "money", role: "input", section: "tax", requirement: "mandatory" },
-  { line: "000076001", caption: "Other Deductions", kind: "money", role: "input", section: "tax", requirement: "mandatory" },
+  { line: "000076001", caption: "Other Deductions", kind: "money", role: "carried-in", section: "tax", requirement: "mandatory", from: { form: "AT1SCH3", line: "003604001", note: "Maximum Allowable Deduction (MAD) — printed on Schedule 3 itself: \"Enter this amount on AT1 page 2, line 076.\"" } },
   { line: "000080001", caption: "Alberta Tax Payable", kind: "money", role: "computed", section: "tax", requirement: "mandatory", note: "Tax payable before credits — the 090 balance starts here." },
   { line: "000081001", caption: "Alberta Scientific Research & Experimental Development Tax Credit", kind: "money", role: "carried-in", section: "credits", requirement: "mandatory", from: { form: "AT1SCH9", line: "", note: "Alberta SR&ED tax credit" } },
   { line: "000082001", caption: "Instalments and other payments and ARTC instalments credited to income tax account for this taxation year", kind: "money", role: "input", section: "credits", requirement: "mandatory" },
@@ -118,7 +117,7 @@ export const AT1_JACKET_FIELDS: readonly PaperField[] = [
   { line: "000105001", caption: "CIT Authorized Email", kind: "text", role: "input", section: "certification", requirement: "mandatory" },
   { line: "000110001", caption: "Tax Certificate Number", kind: "text", role: "input", section: "credits", requirement: "conditional" },
   { line: "000115001", caption: "Alberta Film and Television Tax Credit (FTTC)", kind: "money", role: "input", section: "credits", requirement: "mandatory" },
-  { line: "000129001", caption: "Innovation Employment Grant", kind: "money", role: "carried-in", section: "credits", requirement: "mandatory", note: "The Innovation Employment Grant is mandatory to report but is deliberately NOT in the 090 formula — netting it would understate what is owing.", from: { form: "AT1SCH29", line: "029110001", note: "Innovation Employment Grant" } },
+  { line: "000129001", caption: "Innovation Employment Grant", kind: "money", role: "carried-in", section: "credits", requirement: "mandatory", note: "The Innovation Employment Grant is mandatory to report but is deliberately NOT in the 090 formula — netting it would understate what is owing.", from: { form: "AT1SCH29", line: "029134001", note: "Net Innovation Employment Grant" } },
 ];
 
 export const AT1_JACKET_FOOTNOTES: readonly string[] = [

@@ -117,7 +117,6 @@ const FORM_ID_TO_SCHEDULE_KEY: Record<
 	AT1SCH08: "albertaPoliticalContributions8",
 	AT1SCH09: "albertaSredCredit9",
 	AT1SCH10: "schedule10",
-	AT1SCH11: "albertaManufacturing11",
 	AT1SCH12: "schedule12",
 	AT1SCH13: "cca",
 	AT1SCH15: "albertaResourceDeductions15",
@@ -249,6 +248,16 @@ export function ReturnEditor({ id }: { id: string }) {
 	const bookNI = bookNetIncomeOf(seeded);
 	// Computed once, but inputs have changed since → the shown numbers are stale.
 	const stale = !!computed && dirty;
+	// `cca` (from `useCcaPreviewTotal`) is a pre-compute LIVE PREVIEW that only
+	// covers the ordinary declining-balance "CCA classes" array — it deliberately
+	// does not model a new class 13 leasehold layer or class 14 property (see
+	// `cca-preview.service.ts`'s own doc comment), so it under-reports whenever
+	// one of those is entered. Once a fresh (non-stale) compute exists, its own
+	// `ccaClaimed` field is the real combined total (ordinary + class 13/14 +
+	// the class 14.1 transitional allowance) — prefer that instead.
+	const computedCcaField = computed?.fields?.find((f) => f.line === "ccaClaimed")?.value;
+	const ccaDisplay =
+		!stale && computedCcaField != null ? Number(computedCcaField) : cca;
 	const computeLabel = compute.isPending
 		? "Computing…"
 		: computed
@@ -450,7 +459,7 @@ export function ReturnEditor({ id }: { id: string }) {
 										computed={computed}
 										stale={stale}
 										bookNI={bookNI}
-										cca={cca}
+										cca={ccaDisplay}
 										onCompute={runCompute}
 										computeLabel={computeLabel}
 										computing={compute.isPending}
@@ -504,7 +513,7 @@ export function ReturnEditor({ id }: { id: string }) {
 												<p className="text-sm text-muted-foreground">
 													Total CCA (Schedule 8):{" "}
 													<span className="font-medium tabular-nums text-foreground">
-														{money(cca)}
+														{money(ccaDisplay)}
 													</span>
 												</p>
 											) : null

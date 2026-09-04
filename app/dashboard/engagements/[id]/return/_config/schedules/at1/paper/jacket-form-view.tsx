@@ -12,10 +12,15 @@ import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 /**
  * The AT1 jacket's own 3-digit line → this schedule's editable field. Only
- * 11 of the jacket's 74 lines are collected here at all — the identification
- * block (010-037) is entered at client/engagement creation, and everything
- * else is computed or carried in from another schedule. See `resolveLine`
- * below for where each tier is actually sourced from.
+ * 11 of the jacket's 72 lines are collected here at all — the identification
+ * block (010-037) is entered at client/engagement creation, everything else
+ * is computed or carried in from another schedule. Line 001 (associated with
+ * one or more CCPCs) IS asked here, genuinely, despite not appearing in the
+ * generated `jacket.captions.ts` (it's hand-authored onto the jacket's own
+ * `FormDefinition` — see `jacket.ts`'s `LINE_001` and its doc comment for why
+ * the extractor can't discover it, and 4 real accepted TRA NetFile samples
+ * proving it belongs here, not on AT1 Schedule 1). See `resolveLine` below
+ * for where each remaining tier is actually sourced from.
  */
 const OWN_FIELD: Partial<Record<string, keyof AlbertaValues>> = {
 	"001": "associatedWithCcpcs",

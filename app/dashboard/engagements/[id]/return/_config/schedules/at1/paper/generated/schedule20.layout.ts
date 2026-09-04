@@ -1,8 +1,8 @@
 /**
  * Alberta charitable donations and gifts (AT1SCH20) — paper Form View layout.
  *
- * GENERATED from the form definition in @classytic/ca-tax:
- *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
+ * GENERATED from @classytic/ca-tax:
+ *   npx tsx scripts/emit-paper-layouts.ts
  *
  * Ultimately from research/validation/auratax/2026-08-07-cca-classes/README.md, retrieved 2026-08-08.
  *
@@ -23,6 +23,7 @@ export interface PaperField {
   note?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
+  footnoteMarks?: readonly number[];
 }
 
 export interface PaperSectionDef {
@@ -39,11 +40,11 @@ export const AT1_SCHEDULE_20_SECTIONS: readonly PaperSectionDef[] = [
 ];
 
 export const AT1_SCHEDULE_20_FIELDS: readonly PaperField[] = [
-  { line: "020002001", caption: "Charitable donations — Balance at the end of the previous year", kind: "money", role: "input", section: "charitable" },
+  { line: "020002001", caption: "Charitable donations — Balance at the end of the previous year", kind: "money", role: "carried-in", section: "charitable", from: { form: "T2SCH2", line: "240", note: "Charitable donations at the beginning of the current tax year." } },
   { line: "020004001", caption: "Charitable donations — Deduct: expired", kind: "money", role: "input", section: "charitable", note: "Donations carry forward five years; anything older falls out here." },
   { line: "020006001", caption: "Charitable donations — Balance at the beginning of the year", kind: "money", role: "computed", section: "charitable" },
   { line: "020008001", caption: "Charitable donations — Add: transferred on an amalgamation or wind-up", kind: "money", role: "input", section: "charitable" },
-  { line: "020010001", caption: "Charitable donations — Add: donations and gifts made in the current year", kind: "money", role: "input", section: "charitable" },
+  { line: "020010001", caption: "Charitable donations — Add: donations and gifts made in the current year", kind: "money", role: "carried-in", section: "charitable", from: { form: "T2SCH2", line: "210", note: "Total charitable donations made in the current year." } },
   { line: "020012001", caption: "Charitable donations — Subtotal", kind: "money", role: "computed", section: "charitable" },
   { line: "020013001", caption: "Charitable donations — Adjustment on an acquisition of control", kind: "money", role: "input", section: "charitable", note: "An acquisition of control EXTINGUISHES unused carryforwards. A pool that survives a change of control has not applied this adjustment." },
   { line: "020014001", caption: "Charitable donations — Amount available for deduction", kind: "money", role: "computed", section: "charitable" },
@@ -81,52 +82,4 @@ export const AT1_SCHEDULE_20_FOOTNOTES: readonly string[] = [
   "This schedule is required if the opening balance or the claim for Alberta purposes differs from that for federal purposes.",
   "If the corporation is reporting nil net income or a loss for the year, donations cannot be claimed.",
   "If the corporation elects to differ its Alberta claim for the additional deduction for gifts of medicine (federal T2 Schedule 2, line 660), enter the Alberta amount on Schedule 12, line 40, the federal amount on Schedule 12, line 41, and provide the explanation of the difference on Schedule 12, line 48.",
-];
-
-export interface Schedule20PoolRow {
-  kind: string;
-  caption: string;
-  line: string;
-  role: PaperFieldRole;
-}
-
-export interface Schedule20Pool {
-  key: string;
-  label: string;
-  rows: readonly Schedule20PoolRow[];
-}
-
-export const AT1_SCHEDULE_20_POOL_TABLE: readonly Schedule20Pool[] = [
-  {
-    key: "charitable",
-    label: "Charitable donations",
-    rows: [
-      { kind: "opening", caption: "Balance at the end of the previous year", line: "020002001", role: "input" },
-      { kind: "expired", caption: "Deduct: expired", line: "020004001", role: "input" },
-      { kind: "beginning", caption: "Balance at the beginning of the year", line: "020006001", role: "computed" },
-      { kind: "transferred", caption: "Add: transferred on an amalgamation or wind-up", line: "020008001", role: "input" },
-      { kind: "currentYear", caption: "Add: donations and gifts made in the current year", line: "020010001", role: "input" },
-      { kind: "subtotal", caption: "Subtotal", line: "020012001", role: "computed" },
-      { kind: "acquisitionOfControl", caption: "Adjustment on an acquisition of control", line: "020013001", role: "input" },
-      { kind: "available", caption: "Amount available for deduction", line: "020014001", role: "computed" },
-      { kind: "applied", caption: "Amount applied against income", line: "020016001", role: "input" },
-      { kind: "closing", caption: "Closing balance carried forward", line: "020018001", role: "computed" },
-    ],
-  },
-  {
-    key: "gifts",
-    label: "Gifts to Canada or a province, cultural property and ecologically sensitive land",
-    rows: [
-      { kind: "opening", caption: "Balance at the end of the previous year", line: "020062001", role: "input" },
-      { kind: "expired", caption: "Deduct: expired", line: "020064001", role: "input" },
-      { kind: "beginning", caption: "Balance at the beginning of the year", line: "020066001", role: "computed" },
-      { kind: "transferred", caption: "Add: transferred on an amalgamation or wind-up", line: "020068001", role: "input" },
-      { kind: "currentYear", caption: "Add: donations and gifts made in the current year", line: "020070001", role: "input" },
-      { kind: "subtotal", caption: "Subtotal", line: "020072001", role: "computed" },
-      { kind: "acquisitionOfControl", caption: "Adjustment on an acquisition of control", line: "020073001", role: "input" },
-      { kind: "available", caption: "Amount available for deduction", line: "020074001", role: "computed" },
-      { kind: "applied", caption: "Amount applied against income", line: "020076001", role: "input" },
-      { kind: "closing", caption: "Closing balance carried forward", line: "020078001", role: "computed" },
-    ],
-  },
 ];

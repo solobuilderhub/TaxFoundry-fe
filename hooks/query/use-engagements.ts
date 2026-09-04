@@ -44,7 +44,17 @@ export function useEngagementActions() {
   const compute = useMutation({
     mutationFn: ({ id, input }: { id: string; input: Record<string, unknown> }) =>
       engagementsApi.dispatchAction({ id, action: "compute", data: input }),
-    onSuccess: invalidate,
+    // `compute` persists a NEW computed-return fold (see `useLatestComputedReturn`'s
+    // own doc comment: immutable folds, newest-by-createdAt is current) — the
+    // engagement-years cache alone doesn't cover that. Without this, a schedule
+    // view reading `useLatestComputedReturn` kept showing the PRE-recompute data
+    // until a full page reload forced a fresh query — a preparer could recompute,
+    // navigate to a schedule, and see stale figures with no indication they were
+    // stale (found via live QA on Schedule 12 right after this fix's own build-out).
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["computed-returns"] });
+    },
   });
   const prepare = useMutation({
     mutationFn: ({ id, certification }: { id: string; certification: Certification }) =>

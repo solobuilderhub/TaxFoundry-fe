@@ -124,6 +124,18 @@ export function ReturnJacket({ id }: { id: string }) {
     <div className="space-y-4">
       {header}
 
+      {engagement.program === "AT1" && (
+        <p className="text-xs text-muted-foreground">
+          This is a summary of the key figures, not a line-by-line replica of the
+          filed AT1 — for the full numbered form (every line, including the
+          yes/no questions like line 001), open the return editor's{" "}
+          <Link href={`/dashboard/engagements/${id}/return`} className="underline underline-offset-2 hover:text-foreground">
+            AT1 schedule
+          </Link>{" "}
+          and switch it to Form View.
+        </p>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Card key={s.label} className={cn(s.strong && "border-primary/40 bg-primary/5")}>

@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { GifiNotesValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { GifiNotesFormView } from "./paper/gifi-notes-form-view";
 
 const f = fieldsFor<GifiNotesValues>();
 
@@ -10,6 +12,7 @@ export const gifiNotes = defineSchedule({
   num: "141",
   label: "GIFI Notes Checklist",
   hint: "Financial-statement notes",
+  formView: (props) => createElement(GifiNotesFormView, props),
   schema: defineSchema({
     sections: [
       section(

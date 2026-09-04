@@ -22,18 +22,24 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { AlbertaContinuityValues } from "../../../_lib/return-input";
+import { parseAt1LineItemId } from "./paper/at1-lines";
 import type { NavigateToLine } from "./paper/resolve-line";
 
 /** `021FFF001` — this file is Schedule 21 only, so the schedule prefix is fixed. */
 const line = (field: string): string => `021${field}001`;
 
 /**
- * A `TableHead` with the printed form's own line number as a small mono
- * sub-label, matching the badge convention `PaperLeaderRow`/`PaperContinuityGrid`
- * already use elsewhere on this schedule's paper Form View — this file
- * predates that convention (it's shared with the GUIDED editor too, not paper-
- * view-only), so it gets its own copy rather than importing the paper
- * components into a file the guided editor also renders.
+ * A `TableHead` with the printed form's own 3-digit line number as a small
+ * mono sub-label, matching the badge convention `PaperLeaderRow`/
+ * `PaperContinuityGrid` already use elsewhere on this schedule's paper Form
+ * View — this file predates that convention (it's shared with the GUIDED
+ * editor too, not paper-view-only), so it gets its own copy rather than
+ * importing the paper components into a file the guided editor also
+ * renders. `lineId` is still the full 9-digit composite id (kept for any
+ * future highlight-sync use), but only the printed 3-digit field — what a
+ * preparer actually sees on the form — is DISPLAYED; the raw composite id
+ * (e.g. "021131001") is an internal key, not something to show someone
+ * filling out a return.
  */
 function HeadWithLine({
 	lineId,
@@ -44,9 +50,10 @@ function HeadWithLine({
 	children: React.ReactNode;
 	align?: "right";
 }) {
+	const displayLine = parseAt1LineItemId(lineId)?.field ?? lineId;
 	return (
 		<TableHead className={align === "right" ? "text-right" : undefined}>
-			<span className="block font-mono text-[10px] font-normal text-muted-foreground">{lineId}</span>
+			<span className="block font-mono text-[10px] font-normal text-muted-foreground">{displayLine}</span>
 			{children}
 		</TableHead>
 	);
@@ -60,8 +67,11 @@ function CarriesToBadge({
 	to: { form: string; line: string; note?: string };
 	onNavigate?: NavigateToLine;
 }) {
-	const label = `→ ${to.form} line ${to.line}`;
-	const tooltip = to.note || `Carries forward to ${to.form}, line ${to.line}.`;
+	// `to.line` is the wire-format id (e.g. AT1's 9-digit composite); show the
+	// printed form's 3-digit field, not the internal key.
+	const displayLine = parseAt1LineItemId(to.line)?.field ?? to.line;
+	const label = `→ ${to.form} line ${displayLine}`;
+	const tooltip = to.note || `Carries forward to ${to.form}, line ${displayLine}.`;
 	return (
 		<TooltipWrapper content={tooltip} side="top">
 			{onNavigate ? (

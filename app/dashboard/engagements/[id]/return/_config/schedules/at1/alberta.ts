@@ -23,7 +23,7 @@ const f = fieldsFor<AlbertaValues>();
  * TRA encodes the answers as **1 = Yes, 2 = No**. "No" is therefore a positive
  * assertion the corporation makes, and it is a different thing from an
  * unanswered question. A switch is off until touched, so a preparer who never
- * opened this block would file "No" to all nine — silently, and on the
+ * opened this block would file "No" to all eight — silently, and on the
  * corporation's behalf.
  *
  * A radio with no preselection cannot do that. Left alone it stays blank, the
@@ -69,7 +69,7 @@ export const alberta = defineSchedule({
 				[
 					f.radio(
 						"associatedWithCcpcs",
-						"Associated with one or more CCPCs? (line 001)",
+						"Associated with one or more Canadian-controlled private corporations? (line 001)",
 						YES_NO,
 						{
 							required: true,

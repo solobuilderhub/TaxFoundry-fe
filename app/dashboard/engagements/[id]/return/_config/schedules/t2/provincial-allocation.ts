@@ -1,8 +1,10 @@
 import { defineSchema, field, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { ProvincialAllocationValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { PROVINCE_OPTIONS } from "../../options";
 import { defineSchedule } from "../shared/define";
+import { Schedule5FormView } from "./paper/schedule5-form-view";
 
 const f = fieldsFor<ProvincialAllocationValues>();
 
@@ -11,6 +13,7 @@ export const provincialAllocation = defineSchedule({
   num: "005",
   label: "Provincial Allocation (S5 Part 1)",
   hint: "Permanent establishments in multiple provinces",
+  formView: (props) => createElement(Schedule5FormView, props),
   schema: defineSchema({
     sections: [
       section(

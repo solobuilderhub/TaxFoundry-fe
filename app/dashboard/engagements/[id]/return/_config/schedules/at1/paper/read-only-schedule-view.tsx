@@ -4,8 +4,8 @@ import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import { cn } from "@/lib/utils";
 import type { ComputedReturn } from "@/api/computed-returns";
-import { at1Money, parseAt1LineItemId } from "./at1-lines";
-import { OfficialPdfLink, useLineHighlight } from "./components/paper-primitives";
+import { parseAt1LineItemId } from "./at1-lines";
+import { formatSignedMoney, OfficialPdfLink, useLineHighlight } from "./components/paper-primitives";
 import type { NavigateToLine, PaperField, PaperSectionDef } from "./resolve-line";
 
 function ReadOnlyRow({
@@ -21,7 +21,8 @@ function ReadOnlyRow({
 }) {
 	const lineNumber = parseAt1LineItemId(field.line)?.field ?? field.line;
 	const value = filedByField.get(lineNumber);
-	const display = typeof value === "number" ? at1Money(value) : value != null ? String(value) : "—";
+	const isNegative = typeof value === "number" && value < 0;
+	const display = typeof value === "number" ? formatSignedMoney(value) : value != null ? String(value) : "—";
 	const tooltip =
 		field.note ??
 		(field.from
@@ -46,7 +47,12 @@ function ReadOnlyRow({
 				{field.caption}
 			</span>
 			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
-				<span className="w-32 shrink-0 cursor-help text-right text-sm tabular-nums text-muted-foreground">
+				<span
+					className={cn(
+						"w-32 shrink-0 cursor-help text-right text-sm tabular-nums",
+						isNegative ? "text-red-600 dark:text-red-400" : "text-muted-foreground",
+					)}
+				>
 					{display}
 				</span>
 			</TooltipWrapper>

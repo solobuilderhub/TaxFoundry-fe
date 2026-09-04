@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { CapitalValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule33FormView } from "./paper/schedule33-form-view";
 
 const f = fieldsFor<CapitalValues>();
 
@@ -16,6 +18,7 @@ export const capital = defineSchedule({
   num: "033",
   label: "Taxable Capital (S33)",
   hint: "Large-corporation SBD grind ($10M+)",
+  formView: (props) => createElement(Schedule33FormView, props),
   schema: defineSchema({
     sections: [
       section(
@@ -68,7 +71,7 @@ export const capital = defineSchedule({
       section(
         "allocation",
         "Taxable capital employed in Canada (Part 4)",
-        [f.money("taxableIncomeEarnedInCanada", "Taxable income earned in Canada (line 610)")],
+        [f.money("taxableIncomeEarnedInCanada", "Taxable income earned in Canada")],
         {
           variant: "card",
           cols: 1,

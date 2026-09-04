@@ -1,7 +1,9 @@
 import { defineSchema, field, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { ShareholdersValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule50FormView } from "./paper/schedule50-form-view";
 
 const f = fieldsFor<ShareholdersValues>();
 
@@ -10,6 +12,7 @@ export const shareholders = defineSchedule({
   num: "050",
   label: "Shareholder Information (S50)",
   hint: "Shareholders holding ≥ 10%",
+  formView: (props) => createElement(Schedule50FormView, props),
   schema: defineSchema({
     sections: [
       section(

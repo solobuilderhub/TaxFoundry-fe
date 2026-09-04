@@ -1,7 +1,9 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { DividendsValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule3FormView } from "./paper/schedule3-form-view";
 
 const f = fieldsFor<DividendsValues>();
 
@@ -10,6 +12,7 @@ export const dividends = defineSchedule({
   num: "003",
   label: "Dividends (S3)",
   hint: "Received (s.112) & paid",
+  formView: (props) => createElement(Schedule3FormView, props),
   schema: defineSchema({
     sections: [
       section(

@@ -1,7 +1,9 @@
 import { defineSchema, field, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { InternetBusinessValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { InternetBusinessFormView } from "./paper/internet-business-form-view";
 
 const f = fieldsFor<InternetBusinessValues>();
 
@@ -22,6 +24,7 @@ export const internetBusiness = defineSchedule({
   num: "088",
   label: "Internet Business Activities (S88)",
   hint: "Income earned from web pages or websites",
+  formView: (props) => createElement(InternetBusinessFormView, props),
   schema: defineSchema({
     sections: [
       section(

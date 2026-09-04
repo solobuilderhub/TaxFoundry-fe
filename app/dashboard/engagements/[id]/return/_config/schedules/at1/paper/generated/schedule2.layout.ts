@@ -1,8 +1,8 @@
 /**
  * Alberta Income Allocation Factor (AT1SCH2) — paper Form View layout.
  *
- * GENERATED from the form definition in @classytic/ca-tax:
- *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
+ * GENERATED from @classytic/ca-tax:
+ *   npx tsx scripts/emit-paper-layouts.ts
  *
  * Ultimately from research/sources/tra-forms/pdf/AT1SCH02-income-allocation-factor-TRA11724.pdf, retrieved 2026-08-30.
  *
@@ -23,6 +23,7 @@ export interface PaperField {
   note?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
+  footnoteMarks?: readonly number[];
 }
 
 export interface PaperSectionDef {

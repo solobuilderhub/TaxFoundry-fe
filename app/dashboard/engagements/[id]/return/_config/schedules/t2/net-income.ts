@@ -1,12 +1,14 @@
 import { defineSchema, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import { money } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule1FormView } from "./paper/schedule1-form-view";
 
 /**
  * Net income (loss) for income tax purposes (T2SCH1).
  *
- * GENERATED from the form definition in @classytic/ca-tax:
- *   npx tsx packages/ca-tax/scripts/emit-ui-schedule.ts
+ * GENERATED from @classytic/ca-tax:
+ *   npx tsx scripts/emit-paper-layouts.ts
  *
  * Ultimately from research/sources/cra-forms/T2SCH01-net-income-for-tax.pdf,
  * retrieved 2026-08-11.
@@ -22,6 +24,7 @@ export const netIncome = defineSchedule({
   num: "001",
   label: "Net Income for Tax (S1)",
   hint: "Book-to-tax reconciliation",
+  formView: (props) => createElement(Schedule1FormView, props),
   schema: defineSchema({
     sections: [
       section(

@@ -1,7 +1,9 @@
 import { defineSchema, field, section } from "@classytic/formkit/server";
+import { createElement } from "react";
 import type { LossesValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import { Schedule4FormView } from "./paper/schedule4-form-view";
 
 const f = fieldsFor<LossesValues>();
 
@@ -10,6 +12,7 @@ export const losses = defineSchedule({
   num: "004",
   label: "Losses (S4)",
   hint: "Non-capital & net-capital continuity",
+  formView: (props) => createElement(Schedule4FormView, props),
   schema: defineSchema({
     sections: [
       section(
@@ -38,8 +41,8 @@ export const losses = defineSchedule({
         "farm",
         "Farm losses (s.111(1)(d))",
         [
-          f.money("farmOpening", "Opening balance"),
-          f.money("farmApplied", "Applied this year", {
+          f.money("farmOpening", "Opening balance (line 302)"),
+          f.money("farmApplied", "Applied this year (line 330)", {
             description: "Deductible against any income. Blank claims the maximum",
           }),
         ],
@@ -54,11 +57,12 @@ export const losses = defineSchedule({
         "restrictedFarm",
         "Restricted farm losses (s.111(1)(c))",
         [
-          f.money("restrictedFarmOpening", "Opening balance"),
+          f.money("restrictedFarmOpening", "Opening balance (line 402)"),
           f.money("farmingIncome", "Farming income this year", {
-            description: "The ceiling — a restricted farm loss can offset nothing else",
+            description:
+              "The ceiling — a restricted farm loss can offset nothing else. No numbered box of its own on the printed form (folded into line 430's own caption as descriptive text).",
           }),
-          f.money("restrictedFarmApplied", "Applied this year", {
+          f.money("restrictedFarmApplied", "Applied this year (line 430)", {
             description: "Blank claims the maximum the farming income allows",
           }),
         ],
