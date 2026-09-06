@@ -318,6 +318,7 @@ export function ReturnEditor({ id }: { id: string }) {
 				open={gifiOpen}
 				onOpenChange={setGifiOpen}
 				onApply={applyGifi}
+				clientBusinessNumber={client?.businessNumber}
 			/>
 			<AutoFillDialog
 				open={afrOpen}

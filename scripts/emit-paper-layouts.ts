@@ -489,9 +489,10 @@ export function schedule20PaperLayout(): string {
 export function schedule21PaperLayout(): string {
 	const out: string[] = [];
 	emitProvenanceComment(out, AT1_SCHEDULE_21, [
-		'Not modelled: page 5 (Restricted Interest and Financing Expenses',
-		'continuity, lines 200-350) and the limited-partnership-loss table are not',
-		'in AT1_SCHEDULE_21 either — see that module\'s own doc comment.',
+		'Not in AT1_SCHEDULE_21, and so not here: the per-partnership',
+		'limited-partnership grid (lines 131-141) and the two by-year-of-origin',
+		'ledgers (151-169, 181-187) — repeating tables keyed by occurrence, which',
+		'FormField has no shape for. Page 5 (RIFE, lines 200-350) IS carried.',
 	]);
 	emitPaperTypes(out);
 	out.push('');

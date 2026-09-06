@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import type { AlbertaContinuityValues } from "../../../_lib/return-input";
 import { parseAt1LineItemId } from "./paper/at1-lines";
 import type { NavigateToLine } from "./paper/resolve-line";
+import { type RifeLineKey, rifeFormText } from "./rife-lines";
 
 /** `021FFF001` — this file is Schedule 21 only, so the schedule prefix is fixed. */
 const line = (field: string): string => `021${field}001`;
@@ -486,26 +487,38 @@ export function LimitedPartnershipTable({
 // package into a client bundle for one arithmetic preview.
 // ============================================================================
 
+/**
+ * The hover text for a RIFE line: the printed form's own caption (and note)
+ * from the FormDefinition, then any editor-specific guidance — so the short
+ * label here never has to carry the form's full wording, and the full
+ * wording is the form's, not a paraphrase.
+ */
+function rifeTooltip(field: RifeLineKey, help?: string): string | undefined {
+	return [rifeFormText(field), help].filter(Boolean).join(" ") || undefined;
+}
+
 function RifeFieldRow({
 	control,
 	name,
-	line: lineNum,
+	field,
 	label,
 	help,
 	disabled,
 }: {
 	control: Control<AlbertaContinuityValues>;
 	name: string;
-	line: string;
+	/** The printed three-digit line — validated against the form by `rife-lines.ts`. */
+	field: RifeLineKey;
 	label: string;
 	help?: string;
 	disabled?: boolean;
 }) {
+	const tooltip = rifeTooltip(field, help);
 	return (
 		<div className="flex items-center justify-between gap-3">
-			<TooltipWrapper content={help} side="top" disabled={!help}>
-				<span className={cn("flex items-baseline gap-1.5 text-sm", help && "cursor-help underline decoration-dotted underline-offset-2")}>
-					<span className="font-mono text-[10px] text-muted-foreground">{lineNum}</span>
+			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
+				<span className={cn("flex items-baseline gap-1.5 text-sm", tooltip && "cursor-help underline decoration-dotted underline-offset-2")}>
+					<span className="font-mono text-[10px] text-muted-foreground">{field}</span>
 					{label}
 				</span>
 			</TooltipWrapper>
@@ -515,20 +528,23 @@ function RifeFieldRow({
 }
 
 function RifeSummaryRow({
-	line: lineNum,
+	field,
 	label,
 	value,
 }: {
-	line: string;
+	field: RifeLineKey;
 	label: string;
 	value: number;
 }) {
+	const tooltip = rifeTooltip(field);
 	return (
 		<div className="flex items-center justify-between gap-3 rounded-md border border-dashed bg-muted/50 px-2 py-1.5">
-			<span className="flex items-baseline gap-1.5 text-sm text-muted-foreground">
-				<span className="font-mono text-[10px]">{lineNum}</span>
-				{label}
-			</span>
+			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
+				<span className={cn("flex items-baseline gap-1.5 text-sm text-muted-foreground", tooltip && "cursor-help")}>
+					<span className="font-mono text-[10px]">{field}</span>
+					{label}
+				</span>
+			</TooltipWrapper>
 			<span className={cn("text-sm tabular-nums", value < 0 && "text-red-600 dark:text-red-400")}>
 				{CURRENCY_FMT.format(value)}
 			</span>
@@ -558,13 +574,13 @@ export function RifeContinuitySection({
 	return (
 		<div className="space-y-4">
 			<div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-				<RifeFieldRow control={control} name="rife.openingBalance" line="200" label="RIFE at the end of the previous tax year" disabled={disabled} />
-				<RifeFieldRow control={control} name="rife.transferredOnWindUp" line="210" label="Transferred on an amalgamation or wind-up" disabled={disabled} />
-				<RifeFieldRow control={control} name="rife.acquisitionOfControlAdjustment" line="220" label="Deduct: adjustment for an acquisition of control" disabled={disabled} />
+				<RifeFieldRow control={control} name="rife.openingBalance" field="200" label="RIFE at the end of the previous tax year" disabled={disabled} />
+				<RifeFieldRow control={control} name="rife.transferredOnWindUp" field="210" label="Transferred on an amalgamation or wind-up" disabled={disabled} />
+				<RifeFieldRow control={control} name="rife.acquisitionOfControlAdjustment" field="220" label="Deduct: adjustment for an acquisition of control" disabled={disabled} />
 				<RifeFieldRow
 					control={control}
 					name="rife.currentYearRife"
-					line="230"
+					field="230"
 					label="Current-year RIFE under ITA s.111(8)"
 					help="Blank = same as federal. Defaults to T2 Schedule 4 line 710, which the engine computes from Schedule 130 Part 2O — override only where Alberta genuinely diverges."
 					disabled={disabled}
@@ -572,7 +588,7 @@ export function RifeContinuitySection({
 				<RifeFieldRow
 					control={control}
 					name="rife.excessCapacity"
-					line="320"
+					field="320"
 					label="Corporation's excess capacity for the year"
 					help="Blank = same as federal. Defaults to T2 Schedule 130 line 129 (Part 2G amount F), which the engine computes — override only where Alberta genuinely diverges."
 					disabled={disabled}
@@ -580,26 +596,26 @@ export function RifeContinuitySection({
 				<RifeFieldRow
 					control={control}
 					name="rife.receivedCapacity"
-					line="330"
+					field="330"
 					label="Total received capacity for the year"
 					help="Blank = same as federal. Defaults to T2 Schedule 130 line 130 (Part 1A), the capacity received from eligible group entities."
 					disabled={disabled}
 				/>
 			</div>
 			<div className="space-y-1.5 border-t pt-3">
-				<RifeSummaryRow line="310" label="RIFE from previous tax years (200 + 210 − 220)" value={rifeFromPreviousYears} />
-				<RifeSummaryRow line="340" label="Total capacity (320 + 330)" value={totalCapacity} />
-				<RifeSummaryRow line="350" label="Maximum deductible (lesser of 310 and 340)" value={maxDeductible} />
+				<RifeSummaryRow field="310" label="RIFE from previous tax years (200 + 210 − 220)" value={rifeFromPreviousYears} />
+				<RifeSummaryRow field="340" label="Total capacity (320 + 330)" value={totalCapacity} />
+				<RifeSummaryRow field="350" label="Maximum deductible (lesser of 310 and 340)" value={maxDeductible} />
 			</div>
 			<RifeFieldRow
 				control={control}
 				name="rife.deductedClaim"
-				line="240"
+				field="240"
 				label="RIFE deducted for the tax year"
 				help="Must not exceed line 350 — blank claims the maximum available automatically."
 				disabled={disabled}
 			/>
-			<RifeSummaryRow line="250" label="Closing balance of RIFE" value={closingBalance} />
+			<RifeSummaryRow field="250" label="Closing balance of RIFE" value={closingBalance} />
 		</div>
 	);
 }

@@ -6,9 +6,10 @@
  *
  * Ultimately from research/field-maps/at1-schedules-12-21.md, retrieved 2026-08-08.
  *
- * Not modelled: page 5 (Restricted Interest and Financing Expenses
- * continuity, lines 200-350) and the limited-partnership-loss table are not
- * in AT1_SCHEDULE_21 either — see that module's own doc comment.
+ * Not in AT1_SCHEDULE_21, and so not here: the per-partnership
+ * limited-partnership grid (lines 131-141) and the two by-year-of-origin
+ * ledgers (151-169, 181-187) — repeating tables keyed by occurrence, which
+ * FormField has no shape for. Page 5 (RIFE, lines 200-350) IS carried.
  *
  * Carries EVERY field, not just `input` ones — a paper view shows the whole
  * form. The paper renderer, not this file, is responsible for keeping
@@ -39,6 +40,7 @@ export interface PaperSectionDef {
 export const AT1_SCHEDULE_21_SECTIONS: readonly PaperSectionDef[] = [
   { id: "current-year", title: "Part 1 — Calculating the current-year non-capital loss", description: "Starts from Alberta net income on Schedule 12 line 054 and works down through the Division C deductions to the loss for the year." },
   { id: "continuity", title: "Part 2 — Continuity of losses", description: "Five pools, each a full continuity. Every closing balance carries to a specific Alberta loss line on Schedule 12." },
+  { id: "rife", title: "Continuity of restricted interest and financing expenses (RIFE)", description: "Page 5. None of these lines is in the NetFile schema — the section is never transmitted — but line 240 feeds Schedule 12 line 130, which is." },
 ];
 
 export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
@@ -100,6 +102,17 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021121001", caption: "Listed personal property losses — Other adjustments", kind: "money", role: "input", section: "continuity" },
   { line: "021123001", caption: "Listed personal property losses — Total carried back to prior years", kind: "money", role: "computed", section: "continuity", note: "The sum of the per-year amounts entered on this schedule’s own \"carry back to prior years\" section — a carry-back also requires Schedule 10 to be completed." },
   { line: "021125001", caption: "Listed personal property losses — Closing balance", kind: "money", role: "computed", section: "continuity" },
+  { line: "021200001", caption: "RIFE at the end of the previous tax year", kind: "money", role: "input", section: "rife" },
+  { line: "021210001", caption: "RIFE transferred on an amalgamation or on the wind-up of a subsidiary corporation", kind: "money", role: "input", section: "rife" },
+  { line: "021220001", caption: "RIFE adjustment for an acquisition of control", kind: "money", role: "input", section: "rife" },
+  { line: "021230001", caption: "Current-year restricted interest and financing expenses determined under subsection 111(8) of ITA", kind: "money", role: "carried-in", section: "rife", from: { form: "T2SCH4", line: "710", note: "Printed on the form: \"(line 710 from the T2 Schedule 4)\". Schedule 130 Part 2O amount A." } },
+  { line: "021240001", caption: "RIFE deducted for the tax year", kind: "money", role: "input", section: "rife", note: "Line 240 must not exceed line 350.", to: { form: "AT1SCH12", line: "012130001", note: "Printed on the form: \"(Enter amount on line 130 of the Schedule 12)\"." } },
+  { line: "021250001", caption: "Closing balance of RIFE", kind: "money", role: "computed", section: "rife", note: "Line 200 plus 210 minus 220 plus 230 minus 240." },
+  { line: "021310001", caption: "RIFE from previous tax years", kind: "money", role: "computed", section: "rife", note: "Line 200 plus line 210 minus line 220." },
+  { line: "021320001", caption: "Corporation's excess capacity for the year", kind: "money", role: "carried-in", section: "rife", from: { form: "T2SCH130", line: "129", note: "Printed on the form: \"(line 129 from T2 Schedule 130)\". Part 2G amount F." } },
+  { line: "021330001", caption: "Total of all amounts of the corporation's received capacity for the year", kind: "money", role: "carried-in", section: "rife", from: { form: "T2SCH130", line: "130", note: "Printed on the form: \"(line 130 from T2 Schedule 130)\". Part 1A amount A." } },
+  { line: "021340001", caption: "Line 320 plus line 330", kind: "money", role: "computed", section: "rife" },
+  { line: "021350001", caption: "RIFE deductible under paragraph 111(1)(a.1) of ITA for the year", kind: "money", role: "computed", section: "rife", note: "The lesser of line 310 and line 340 — the ceiling line 240 must not exceed." },
 ];
 
 export const AT1_SCHEDULE_21_FOOTNOTES: readonly string[] = [

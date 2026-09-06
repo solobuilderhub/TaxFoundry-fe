@@ -8,7 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogWrapper } from "@classytic/fluid/client/dialog-wrapper";
 import { Textarea } from "@/components/ui/textarea";
-import { importGifi, type GifiImportResult } from "@/api/gifi";
+import { type CorImportResult, type GifiImportResult, importCor, importGifi } from "@/api/gifi";
+
+/** A .cor file, held until Preview parses it server-side. */
+interface LoadedCor {
+  name: string;
+  content: string;
+}
+
+type PreviewRequest = { kind: "gifi"; text: string } | { kind: "cor"; content: string };
+type PreviewResult = GifiImportResult | CorImportResult;
+
+const isCorResult = (r: PreviewResult): r is CorImportResult => "identification" in r;
+
+/** Business numbers compare on their digits — "123456789 RC0001" and "123456789RC0001" are the same BN. */
+const bnDigits = (bn: string | undefined) => (bn ?? "").replace(/\D/g, "").slice(0, 9);
 
 const money = (n: number) =>
   new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
@@ -42,25 +56,40 @@ const SAMPLE_CSV = `Code,Description,Amount
 `;
 
 /**
- * GIFI import — paste, upload, or download-and-fill a GIFI-coded trial balance;
- * preview how it classifies against the CRA GIFI chart into the balance sheet +
- * income statement, then apply it to the return (populates both in one step).
+ * GIFI import — paste, upload, or download-and-fill a GIFI-coded trial balance,
+ * OR upload a CRA .cor file (what every certified T2 package exports); preview
+ * how it classifies against the CRA GIFI chart into the balance sheet + income
+ * statement, then apply it to the return (populates both in one step).
+ *
+ * A .cor also names the corporation it belongs to, which is shown — and checked
+ * against this engagement's client — before Apply, because the most likely
+ * mistake with a file picker is the wrong corporation's file and nothing about
+ * a balance sheet reveals that.
  */
 export function GifiImportDialog({
   open,
   onOpenChange,
   onApply,
+  clientBusinessNumber,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApply: (result: GifiImportResult) => void;
+  /** This engagement's client BN, to catch a .cor for a different corporation. */
+  clientBusinessNumber?: string;
 }) {
   const [text, setText] = useState("");
+  const [cor, setCor] = useState<LoadedCor | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const preview = useMutation<GifiImportResult, Error, string>({
-    mutationFn: importGifi,
+  const preview = useMutation<PreviewResult, Error, PreviewRequest>({
+    mutationFn: (req) => (req.kind === "cor" ? importCor(req.content) : importGifi(req.text)),
   });
   const result = preview.data;
+  const identification = result && isCorResult(result) ? result.identification : undefined;
+  const bnMismatch =
+    identification?.businessNumber && clientBusinessNumber
+      ? bnDigits(identification.businessNumber) !== bnDigits(clientBusinessNumber)
+      : false;
 
   const downloadSample = () => {
     const url = URL.createObjectURL(new Blob([SAMPLE_CSV], { type: "text/csv" }));
@@ -74,9 +103,21 @@ export function GifiImportDialog({
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     const content = await file.text();
-    setText(content);
     preview.reset();
+    if (/\.cor$/i.test(file.name)) {
+      setCor({ name: file.name, content });
+      setText("");
+      toast.success(`Loaded ${file.name}. Click Preview to read the return`);
+      return;
+    }
+    setCor(null);
+    setText(content);
     toast.success(`Loaded ${file.name}. Click Preview to classify`);
+  };
+
+  const runPreview = () => {
+    if (cor) preview.mutate({ kind: "cor", content: cor.content });
+    else preview.mutate({ kind: "gifi", text });
   };
 
   const rows: { label: string; value: number }[] = result
@@ -94,8 +135,8 @@ export function GifiImportDialog({
       open={open}
       onOpenChange={onOpenChange}
       size="lg"
-      title="Import GIFI trial balance"
-      description="Paste your GIFI-coded trial balance, upload a CSV, or download the sample to fill in. Each code is classified against the CRA GIFI chart into the balance sheet and income statement."
+      title="Import financial statements"
+      description="Paste a GIFI-coded trial balance, upload a CSV, or upload the .cor file from a filed return. Each code is classified against the CRA GIFI chart into the balance sheet and income statement."
       contentClassName="flex max-h-[85vh] flex-col overflow-y-auto"
       footer={
         <>
@@ -103,11 +144,16 @@ export function GifiImportDialog({
             Cancel
           </Button>
           <Button
-            disabled={!result}
+            disabled={!result || bnMismatch}
+            title={bnMismatch ? "This file is for a different business number than this client" : undefined}
             onClick={() => {
-              if (!result) return;
+              if (!result || bnMismatch) return;
               onApply(result);
-              toast.success("Balance sheet & income statement populated from GIFI");
+              toast.success(
+                isCorResult(result)
+                  ? "Balance sheet & income statement populated from the .cor file"
+                  : "Balance sheet & income statement populated from GIFI",
+              );
               onOpenChange(false);
             }}
           >
@@ -121,34 +167,46 @@ export function GifiImportDialog({
           <input
             ref={fileRef}
             type="file"
-            accept=".csv,.txt,text/csv,text/plain"
+            accept=".csv,.txt,.cor,text/csv,text/plain"
             className="hidden"
             onChange={(e) => onFile(e.target.files?.[0])}
           />
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload className="size-4" /> Upload CSV
+            <Upload className="size-4" /> Upload CSV or .cor
           </Button>
           <Button variant="outline" size="sm" onClick={downloadSample}>
             <Download className="size-4" /> Download sample
           </Button>
-          <span className="text-xs text-muted-foreground">CSV or plain text. One account per line.</span>
+          <span className="text-xs text-muted-foreground">CSV or plain text, one account per line — or a .cor file.</span>
         </div>
 
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={PLACEHOLDER}
-          className="min-h-40 font-mono text-xs"
-        />
+        {cor ? (
+          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <span>
+              <span className="font-medium">{cor.name}</span>
+              <span className="text-muted-foreground"> — .cor file, read on Preview</span>
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => { setCor(null); preview.reset(); }}>
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={PLACEHOLDER}
+            className="min-h-40 font-mono text-xs"
+          />
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            disabled={!text.trim() || preview.isPending}
-            onClick={() => preview.mutate(text)}
+            disabled={(!cor && !text.trim()) || preview.isPending}
+            onClick={runPreview}
           >
-            {preview.isPending ? "Classifying…" : "Preview classification"}
+            {preview.isPending ? (cor ? "Reading…" : "Classifying…") : cor ? "Preview return" : "Preview classification"}
           </Button>
           {preview.isError && (
             <span className="text-sm text-destructive">
@@ -156,6 +214,38 @@ export function GifiImportDialog({
             </span>
           )}
         </div>
+
+        {identification && (
+          <div className="space-y-2 rounded-lg border p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{identification.corporationName ?? "Corporation not named in file"}</span>
+              {identification.businessNumber && <Badge variant="outline">BN {identification.businessNumber}</Badge>}
+              {(identification.taxYearStart || identification.taxYearEnd) && (
+                <Badge variant="outline">
+                  {identification.taxYearStart ?? "?"} → {identification.taxYearEnd ?? "?"}
+                </Badge>
+              )}
+              {identification.provinceCode && <Badge variant="outline">{identification.provinceCode}</Badge>}
+            </div>
+            {bnMismatch ? (
+              <p className="text-destructive">
+                This file is for business number {identification.businessNumber}, but this engagement's client is{" "}
+                {clientBusinessNumber}. Apply is disabled — check you have the right corporation's file.
+              </p>
+            ) : (
+              clientBusinessNumber &&
+              identification.businessNumber && (
+                <p className="text-muted-foreground">Business number matches this client.</p>
+              )
+            )}
+            {result && isCorResult(result) && result.parsingErrors.length > 0 && (
+              <p className="text-xs text-destructive">
+                {result.parsingErrors.length} line(s) could not be read: {result.parsingErrors.slice(0, 3).join("; ")}
+                {result.parsingErrors.length > 3 ? "…" : ""}
+              </p>
+            )}
+          </div>
+        )}
 
         {result && (
           <div className="space-y-3 rounded-lg border p-3">
