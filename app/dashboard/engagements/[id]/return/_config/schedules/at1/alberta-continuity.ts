@@ -7,6 +7,7 @@ import {
 	LimitedPartnershipTable,
 	NonCapitalVintageTable,
 	OtherLossVintageTable,
+	RifeContinuitySection,
 } from "./alberta-loss-vintage-tables";
 import { defineSchedule } from "../shared/define";
 import { Schedule21FormView } from "./paper/schedule21-form-view";
@@ -294,6 +295,21 @@ export const albertaContinuity = defineSchedule({
 					cols: 1,
 					description:
 						"The EIGHTH section — farm, restricted farm and listed personal property losses broken out by year of origin (current year through the 20th preceding year). Listed personal property losses expire after 7 years, so that column is disabled beyond the 7th preceding year.",
+				},
+			),
+			section(
+				"rife",
+				"Restricted interest and financing expenses — RIFE (line 200-250, 310-350)",
+				[
+					f.custom("rife", "RIFE continuity", (props) =>
+						createElement(RifeContinuitySection, props),
+					),
+				],
+				{
+					variant: "card",
+					cols: 1,
+					description:
+						"The NINTH section (page 5) — a genuinely separate continuity from the five pools above. Not part of Schedule 21's own NetFile payload, but line 240 feeds AT1 Schedule 12 line 130 directly, so it's collected here rather than left as a paper-only worksheet. Lines 230, 320 and 330 default from the federal EIFEL computation (T2 Schedule 130) — only the Alberta opening balance and any genuine divergence need entering.",
 				},
 			),
 		],

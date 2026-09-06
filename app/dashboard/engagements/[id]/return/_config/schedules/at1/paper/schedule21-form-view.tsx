@@ -5,7 +5,7 @@ import { createElement } from "react";
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaContinuityValues } from "../../../../_lib/return-input";
-import { LimitedPartnershipTable, NonCapitalVintageTable, OtherLossVintageTable } from "../alberta-loss-vintage-tables";
+import { LimitedPartnershipTable, NonCapitalVintageTable, OtherLossVintageTable, RifeContinuitySection } from "../alberta-loss-vintage-tables";
 import { parseAt1LineItemId } from "./at1-lines";
 import { PaperContinuityGrid, PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
 import { AT1_SCHEDULE_21_FIELDS, AT1_SCHEDULE_21_FOOTNOTES, AT1_SCHEDULE_21_POOL_TABLE } from "./generated/schedule21.layout";
@@ -38,19 +38,21 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 }
 
 /**
- * `LimitedPartnershipTable`/`NonCapitalVintageTable`/`OtherLossVintageTable`
- * are typed for the full `FieldComponentProps<AlbertaContinuityValues>` (the
- * shape `field.custom` hands them) but only ever destructure `control` (plus
+ * `LimitedPartnershipTable`/`NonCapitalVintageTable`/`OtherLossVintageTable`/
+ * `RifeContinuitySection` are typed for the full
+ * `FieldComponentProps<AlbertaContinuityValues>` (the shape `field.custom`
+ * hands them) but only ever destructure `control` and `disabled` (plus
  * `onNavigate`, which `LimitedPartnershipTable` alone accepts, for its
- * carries-to-Schedule-12 badge) — confirmed by reading all three. This builds
+ * carries-to-Schedule-12 badge) — confirmed by reading all four. This builds
  * just enough of that shape to satisfy the type without fabricating a fake
  * `field`/`error`/etc.
  */
 function tableProps(
 	control: Control<AlbertaContinuityValues>,
 	onNavigate: NavigateToLine | undefined,
+	disabled?: boolean,
 ): FieldComponentProps<AlbertaContinuityValues> & { onNavigate?: NavigateToLine } {
-	return { control, onNavigate } as FieldComponentProps<AlbertaContinuityValues> & {
+	return { control, onNavigate, disabled } as FieldComponentProps<AlbertaContinuityValues> & {
 		onNavigate?: NavigateToLine;
 	};
 }
@@ -121,20 +123,21 @@ const ROW_ORDER = (() => {
 
 /**
  * AT1 Schedule 21 paper Form View — the printed form's page 1-2 continuity
- * grid (one column per pool), followed by the limited-partnership table and
- * the two by-year-of-origin vintage tables, reusing the SAME dense table
- * components the guided editor already uses for those (they're already
- * form-shaped; only their position on the page changes here).
+ * grid (one column per pool), followed by the limited-partnership table, the
+ * two by-year-of-origin vintage tables, and page 5's RIFE continuity — all
+ * reusing the SAME components the guided editor already uses for them
+ * (they're already form-shaped; only their position on the page changes
+ * here).
  *
- * Not included: page 5 (Restricted Interest and Financing Expenses
- * continuity) — unmodeled in the engine, needs `schedule21.ts` +
- * `assemble-at1-schedules.ts` work first, not just a UI layout. Computed /
- * carried-in rows (closing balance, opening-net-of-expiry, non-capital's
- * current-year loss, capital's current-year loss) DO render as real grid
- * cells now, read from the same filed-payload lookup as Part 1 above
- * (`resolveLine`, threaded into `PaperContinuityGrid`) — they used to fall
- * through to a "not collected" placeholder because the grid had no way to
- * read a filed value at all, not because the figure wasn't real.
+ * Computed / carried-in rows (closing balance, opening-net-of-expiry,
+ * non-capital's current-year loss, capital's current-year loss) DO render as
+ * real grid cells now, read from the same filed-payload lookup as Part 1
+ * above (`resolveLine`, threaded into `PaperContinuityGrid`) — they used to
+ * fall through to a "not collected" placeholder because the grid had no way
+ * to read a filed value at all, not because the figure wasn't real. RIFE's
+ * own derived lines (310/340/350/250) are different again — never filed at
+ * all (see `RifeContinuitySection`'s doc comment), so they're computed
+ * live from the watched inputs instead of resolved from a payload.
  */
 export function Schedule21FormView({
 	control,
@@ -218,6 +221,12 @@ export function Schedule21FormView({
 			</PaperSection>
 			<PaperSection title="Farm, restricted farm & listed personal property losses by year of origin">
 				<div className="p-3">{createElement(OtherLossVintageTable, tableProps(c, onNavigate))}</div>
+			</PaperSection>
+			<PaperSection
+				title="Continuity of restricted interest and financing expenses (RIFE)"
+				description="Page 5 of the printed form — a separate continuity from the five pools above. Not part of Schedule 21's own filed payload; line 240 feeds AT1 Schedule 12 line 130 directly."
+			>
+				<div className="p-3">{createElement(RifeContinuitySection, tableProps(c, onNavigate, disabled))}</div>
 			</PaperSection>
 		</div>
 	);

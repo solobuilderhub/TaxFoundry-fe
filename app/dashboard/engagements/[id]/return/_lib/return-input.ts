@@ -212,6 +212,374 @@ export type EifelValues = {
 	netInterestAndFinancingExpenses?: number;
 	groupTaxableCapital?: number;
 	domesticExceptionApplies?: boolean;
+	/**
+	 * Schedule 130 Part 2A line 045 — the corporation’s GROSS interest and financing expenses. Distinct from the group NET figure above, which only settles the de-minimis excluded-entity test.
+	 */
+	interestAndFinancingExpenses?: number;
+	/**
+	 * Schedule 130 Part 2D line 072 — interest and financing revenues.
+	 */
+	interestAndFinancingRevenues?: number;
+	/**
+	 * Schedule 130 Part 2F line 106 — supply only to override the engine’s own derivation, which builds it from taxable income plus IFE, CCA, resource deductions, terminal loss and the 110(1)(k) deduction.
+	 */
+	adjustedTaxableIncome?: number;
+	/**
+	 * Whether a group ratio election under subsection 18.21(2) was made.
+	 */
+	hasGroupRatioElection?: boolean;
+	/**
+	 * Schedule 130 line 118/132 — the allocated group ratio amount.
+	 */
+	groupRatioAmount?: number;
+	/**
+	 * Schedule 130 Part 2J line 128 — RIFE carried forward from previous tax years.
+	 */
+	rifeFromPreviousYears?: number;
+	/**
+	 * Schedule 130 Part 1A — capacity received from eligible group entities (line 130).
+	 */
+	receivedCapacity?: {
+		entityName?: string;
+		accountNumber?: string;
+		taxYearEnd?: string;
+		amount?: number;
+	}[];
+	/**
+	 * Schedule 130 Part 2I — the three preceding years’ excess-capacity vintages.
+	 */
+	priorYearExcessCapacity?: {
+		/**
+		 * 1, 2 or 3 — the form carries three years only.
+		 */
+		yearsAgo?: number;
+		/**
+		 * 122
+		 */
+		excessCapacity?: number;
+		/**
+		 * 123 — under subsection 18.2(4)
+		 */
+		previouslyTransferred?: number;
+		/**
+		 * 124 — under subsection 18.2(2)
+		 */
+		previouslyAbsorbed?: number;
+	}[];
+	/**
+	 * Schedule 130 Part 2N line 158 — partnership IFE add-back (Schedule 1 line 252). Derived from `partnershipIfe` below × the denied proportion; supply only to override.
+	 */
+	partnershipIfeAddBack?: number;
+	/**
+	 * Part 1B — public-sector agreements whose borrowings produce exempt IFE.
+	 */
+	exemptIfe?: {
+		/**
+		 * 007
+		 */
+		authorityName?: string;
+		/**
+		 * 008
+		 */
+		principalAmount?: number;
+		/**
+		 * 009
+		 */
+		ifeIncurred?: number;
+		/**
+		 * 010 — reduces ATI (line 104)
+		 */
+		incomeFromFundedActivities?: number;
+		/**
+		 * 011 — adds to ATI (line 092)
+		 */
+		lossFromFundedActivities?: number;
+	}[];
+	/**
+	 * Part 1C — borrowings and other financings.
+	 */
+	borrowings?: {
+		relationship?:
+			"canadian-arm-length" | "canadian-non-arm-length" | "non-resident-arm-length" | "non-resident-non-arm-length";
+		/**
+		 * 012
+		 */
+		principalAmount?: number;
+		/**
+		 * 013
+		 */
+		derivativeNotional?: number;
+		/**
+		 * 014 → line 027
+		 */
+		interestPaidOrPayable?: number;
+		/**
+		 * 015 → line 033
+		 */
+		fundingCostAmounts?: number;
+		/**
+		 * 016 → line 042
+		 */
+		costReducingAmounts?: number;
+	}[];
+	/**
+	 * Part 1D — loans and other financings.
+	 */
+	loans?: {
+		relationship?:
+			"canadian-arm-length" | "canadian-non-arm-length" | "non-resident-arm-length" | "non-resident-non-arm-length";
+		/**
+		 * 017
+		 */
+		principalAmount?: number;
+		/**
+		 * 018
+		 */
+		derivativeNotional?: number;
+		/**
+		 * 019 → line 061
+		 */
+		returnAmounts?: number;
+		/**
+		 * 020 → line 066
+		 */
+		returnReducingAmounts?: number;
+	}[];
+	/**
+	 * Part 1E — IFE allocated from a partnership. Feeds lines 039, 142 and 156.
+	 */
+	partnershipIfe?: {
+		/**
+		 * 021
+		 */
+		partnershipName?: string;
+		/**
+		 * 022
+		 */
+		accountNumber?: string;
+		/**
+		 * 023
+		 */
+		shareOfPartnershipIfe?: number;
+		/**
+		 * 024
+		 */
+		portionUnderParagraph12_1_l1?: number;
+		/**
+		 * 025
+		 */
+		portionDeniedBySubsection96_2_1?: number;
+	}[];
+	/**
+	 * Part 2B — IFE capitalized into the cost of depreciable property.
+	 */
+	capitalizedIfe?: {
+		/**
+		 * 046
+		 */
+		ccaClass?: string;
+		/**
+		 * 047
+		 */
+		ifeInOpeningUcc?: number;
+		/**
+		 * 048 — signed
+		 */
+		ifeInAcquisitionsAndDispositions?: number;
+		/**
+		 * 050 → line 032
+		 */
+		ifeInTerminalLoss?: number;
+		/**
+		 * 051 → line 030
+		 */
+		ifeInCca?: number;
+	}[];
+	/**
+	 * Part 2C — IFE sitting inside resource expense pools.
+	 */
+	resourceIfe?: {
+		pool:
+			| "ccee-regular"
+			| "ccee-successor"
+			| "ccde-regular"
+			| "ccde-successor"
+			| "ccogpe-regular"
+			| "ccogpe-successor"
+			| "fede-regular"
+			| "fede-successor"
+			| "cfre-regular"
+			| "cfre-successor";
+		/**
+		 * 053
+		 */
+		ifeInOpeningBalance?: number;
+		/**
+		 * 054 — signed
+		 */
+		ifeAddedOrDeducted?: number;
+		/**
+		 * 056 → line 031
+		 */
+		ifeInCurrentYearClaim?: number;
+	}[];
+	/**
+	 * Part 2E — the IFE-derived portion of a 111(1)(a) loss claim (line 089).
+	 */
+	lossPortionFromIfe?: {
+		/**
+		 * 073
+		 */
+		taxYearOfOrigin?: string;
+		/**
+		 * 074 — variable J(i)
+		 */
+		nonCapitalLoss?: number;
+		/**
+		 * 075 — variable J(ii)
+		 */
+		variableJSecondAmount?: number;
+		/**
+		 * 077
+		 */
+		amountDeducted?: number;
+	}[];
+	/**
+	 * Part 2M, first table — subclause 95(2)(f.11)(ii)(D)(I).
+	 */
+	clause95Denied?: {
+		/**
+		 * 144
+		 */
+		affiliateName?: string;
+		/**
+		 * 145
+		 */
+		variableAForAffiliate?: number;
+		/**
+		 * 148 — as a FRACTION (0.4, not 40)
+		 */
+		specifiedParticipatingPercentage?: number;
+	}[];
+	/**
+	 * Part 2M, second table — subclause 95(2)(f.11)(ii)(D)(II).
+	 */
+	clause95Included?: {
+		/**
+		 * 151
+		 */
+		affiliateName?: string;
+		/**
+		 * 152
+		 */
+		amountInAffiliateFapi?: number;
+		/**
+		 * 153 — as a FRACTION
+		 */
+		specifiedParticipatingPercentage?: number;
+	}[];
+	/**
+	 * Part 2A — the IFE lines NOT fed by the tables above. Lines 027/030/031/032/033/039/042 come from Parts 1C, 1E, 2B and 2C and must not be repeated here.
+	 */
+	ifeDetail?: {
+		/**
+		 * 028
+		 */
+		otherInterest?: number;
+		/**
+		 * 029
+		 */
+		subsection20_1_eAmounts?: number;
+		/**
+		 * 034
+		 */
+		fundingCostLoss?: number;
+		/**
+		 * 035
+		 */
+		fundingCostCapitalLoss?: number;
+		/**
+		 * 036
+		 */
+		feeGivingRiseToIfe?: number;
+		/**
+		 * 037
+		 */
+		feeReducingIfe?: number;
+		/**
+		 * 038
+		 */
+		leaseFinancingAmount?: number;
+		/**
+		 * 040
+		 */
+		reinstatedPartnershipLoss?: number;
+		/**
+		 * 041 — also line 143
+		 */
+		affiliateRaife?: number;
+		/**
+		 * 043
+		 */
+		costReducingGain?: number;
+		/**
+		 * 044
+		 */
+		costReducingPartnershipShare?: number;
+	};
+	/**
+	 * Part 2D — the IFR lines not fed by Part 1D (lines 061 and 066).
+	 */
+	ifrDetail?: {
+		/**
+		 * 058
+		 */
+		interestReceived?: number;
+		/**
+		 * 059
+		 */
+		subsection12_9Amounts?: number;
+		/**
+		 * 060
+		 */
+		guaranteeFees?: number;
+		/**
+		 * 062
+		 */
+		returnGain?: number;
+		/**
+		 * 063
+		 */
+		leaseFinancingAmount?: number;
+		/**
+		 * 064
+		 */
+		partnershipShare?: number;
+		/**
+		 * 065
+		 */
+		affiliateRaifr?: number;
+		/**
+		 * 067
+		 */
+		returnReducingLoss?: number;
+		/**
+		 * 068
+		 */
+		returnReducingCapitalLoss?: number;
+		/**
+		 * 069
+		 */
+		returnReducingPartnershipShare?: number;
+		/**
+		 * 070
+		 */
+		shelteredByForeignTaxRelief?: number;
+		/**
+		 * 071
+		 */
+		exemptFromPartITax?: number;
+	};
 };
 export type SbdValues = {
 	activeBusinessIncome?: number;
@@ -722,6 +1090,10 @@ export type AlbertaContinuityValues = {
 	 */
 	limitedPartnerships?: LimitedPartnershipLossRow[];
 	/**
+	 * The NINTH section (page 5) — Continuity of Restricted Interest and Financing Expenses.
+	 */
+	rife?: RifeContinuityValues;
+	/**
 	 * The SEVENTH section — non-capital losses by year of origin. Row 0 (the current year) is fully derived server-side (must equal the schedule’s own current-year loss and total carried-back) — only PRIOR vintages (1-20 years ago) are entered here; that history cannot be derived.
 	 */
 	nonCapitalVintages?: NonCapitalLossVintageRow[];
@@ -788,6 +1160,36 @@ export type LimitedPartnershipLossRow = {
 	 * Capped at precedingYearBalance + transferredOnWindUp; blank = nothing applied.
 	 */
 	applied?: number;
+};
+export type RifeContinuityValues = {
+	/**
+	 * 200 — RIFE at the end of the previous tax year.
+	 */
+	openingBalance?: number;
+	/**
+	 * 210 — transferred on an amalgamation or wind-up.
+	 */
+	transferredOnWindUp?: number;
+	/**
+	 * 220 — deduct: adjustment for an acquisition of control.
+	 */
+	acquisitionOfControlAdjustment?: number;
+	/**
+	 * 230 — current-year RIFE under ITA s.111(8) (T2 Schedule 4 line 710).
+	 */
+	currentYearRife?: number;
+	/**
+	 * 320 — corporation's excess capacity for the year (T2 Schedule 130 line 129).
+	 */
+	excessCapacity?: number;
+	/**
+	 * 330 — total received capacity for the year (T2 Schedule 130 line 130).
+	 */
+	receivedCapacity?: number;
+	/**
+	 * 240 — RIFE deducted for the tax year. Must not exceed line 350; blank = claim the maximum available.
+	 */
+	deductedClaim?: number;
 };
 export type NonCapitalLossVintageRow = {
 	/**

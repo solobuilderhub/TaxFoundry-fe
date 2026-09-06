@@ -45,16 +45,23 @@ function HeadWithLine({
 	lineId,
 	children,
 	align,
+	tooltip,
 }: {
 	lineId: string;
 	children: React.ReactNode;
 	align?: "right";
+	/** The printed form's own full caption — the abbreviated column label above is a fit for a table header, not a replacement for what the line actually says. */
+	tooltip?: string;
 }) {
 	const displayLine = parseAt1LineItemId(lineId)?.field ?? lineId;
 	return (
 		<TableHead className={align === "right" ? "text-right" : undefined}>
 			<span className="block font-mono text-[10px] font-normal text-muted-foreground">{displayLine}</span>
-			{children}
+			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
+				<span className={cn(tooltip && "cursor-help underline decoration-dotted underline-offset-2")}>
+					{children}
+				</span>
+			</TooltipWrapper>
 		</TableHead>
 	);
 }
@@ -346,18 +353,42 @@ export function LimitedPartnershipTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<HeadWithLine lineId={line("131")}>Partnership</HeadWithLine>
-							<HeadWithLine lineId={line("133")} align="right">Opening balance</HeadWithLine>
-							<HeadWithLine lineId={line("135")} align="right">Wind-up transfer</HeadWithLine>
-							<HeadWithLine lineId={line("137")} align="right">Current-year loss</HeadWithLine>
-							<HeadWithLine lineId={line("139")} align="right">
+							<HeadWithLine lineId={line("131")} tooltip="Partnership identifier (if known).">Partnership</HeadWithLine>
+							<HeadWithLine
+								lineId={line("133")}
+								align="right"
+								tooltip="Limited partnership losses at the end of the preceding taxation year."
+							>
+								Opening balance
+							</HeadWithLine>
+							<HeadWithLine
+								lineId={line("135")}
+								align="right"
+								tooltip="Limited partnership losses transferred from an amalgamation or wind-up of a subsidiary."
+							>
+								Wind-up transfer
+							</HeadWithLine>
+							<HeadWithLine lineId={line("137")} align="right" tooltip="The limited partnership loss created this year.">
+								Current-year loss
+							</HeadWithLine>
+							<HeadWithLine
+								lineId={line("139")}
+								align="right"
+								tooltip="Limited partnership loss applied — capped at the opening balance plus any wind-up transfer."
+							>
 								Applied
 								<CarriesToBadge
 									to={{ form: "AT1SCH12", line: "012072001", note: "Carry forward the total of this column to Schedule 12, line 072." }}
 									onNavigate={onNavigate}
 								/>
 							</HeadWithLine>
-							<HeadWithLine lineId={line("141")} align="right">Closing balance</HeadWithLine>
+							<HeadWithLine
+								lineId={line("141")}
+								align="right"
+								tooltip="Limited partnership losses closing balance (133 + 135 + 137 − 139)."
+							>
+								Closing balance
+							</HeadWithLine>
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
@@ -438,6 +469,137 @@ export function LimitedPartnershipTable({
 					</TableBody>
 				</Table>
 			</div>
+		</div>
+	);
+}
+
+// ============================================================================
+// Continuity of Restricted Interest and Financing Expenses — RIFE (page 5,
+// lines 200-250/310-350) — the NINTH section. Not a repeating table: a fixed
+// set of scalar lines, so unlike LP/vintages above this reads more like the
+// paper form's own two stacked blocks. The four derived lines (310/340/350
+// closing 250) are computed HERE, client-side, from the same watched raw
+// inputs — the same "watched, computed inline, not itself an RHF field"
+// pattern `LimitedPartnershipTable`'s own closing-balance column already
+// uses above, mirroring `computeRifeContinuity`'s formulas
+// (`@classytic/ca-tax`'s `schedule21-rife.ts`) rather than importing that
+// package into a client bundle for one arithmetic preview.
+// ============================================================================
+
+function RifeFieldRow({
+	control,
+	name,
+	line: lineNum,
+	label,
+	help,
+	disabled,
+}: {
+	control: Control<AlbertaContinuityValues>;
+	name: string;
+	line: string;
+	label: string;
+	help?: string;
+	disabled?: boolean;
+}) {
+	return (
+		<div className="flex items-center justify-between gap-3">
+			<TooltipWrapper content={help} side="top" disabled={!help}>
+				<span className={cn("flex items-baseline gap-1.5 text-sm", help && "cursor-help underline decoration-dotted underline-offset-2")}>
+					<span className="font-mono text-[10px] text-muted-foreground">{lineNum}</span>
+					{label}
+				</span>
+			</TooltipWrapper>
+			<NumCell control={control} name={name} disabled={disabled} />
+		</div>
+	);
+}
+
+function RifeSummaryRow({
+	line: lineNum,
+	label,
+	value,
+}: {
+	line: string;
+	label: string;
+	value: number;
+}) {
+	return (
+		<div className="flex items-center justify-between gap-3 rounded-md border border-dashed bg-muted/50 px-2 py-1.5">
+			<span className="flex items-baseline gap-1.5 text-sm text-muted-foreground">
+				<span className="font-mono text-[10px]">{lineNum}</span>
+				{label}
+			</span>
+			<span className={cn("text-sm tabular-nums", value < 0 && "text-red-600 dark:text-red-400")}>
+				{CURRENCY_FMT.format(value)}
+			</span>
+		</div>
+	);
+}
+
+export function RifeContinuitySection({
+	control,
+	disabled,
+}: FieldComponentProps<AlbertaContinuityValues>) {
+	const watched = useWatch({ control, name: "rife" }) ?? {};
+	const opening = toNum(watched.openingBalance) ?? 0;
+	const windUp = toNum(watched.transferredOnWindUp) ?? 0;
+	const acquisitionAdjustment = toNum(watched.acquisitionOfControlAdjustment) ?? 0;
+	const currentYear = toNum(watched.currentYearRife) ?? 0;
+	const excessCapacity = toNum(watched.excessCapacity) ?? 0;
+	const receivedCapacity = toNum(watched.receivedCapacity) ?? 0;
+
+	const rifeFromPreviousYears = Math.max(0, opening + windUp - acquisitionAdjustment);
+	const totalCapacity = excessCapacity + receivedCapacity;
+	const maxDeductible = Math.max(0, Math.min(rifeFromPreviousYears, totalCapacity));
+	const requestedClaim = toNum(watched.deductedClaim);
+	const deducted = Math.min(requestedClaim ?? maxDeductible, maxDeductible);
+	const closingBalance = opening + windUp - acquisitionAdjustment + currentYear - deducted;
+
+	return (
+		<div className="space-y-4">
+			<div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+				<RifeFieldRow control={control} name="rife.openingBalance" line="200" label="RIFE at the end of the previous tax year" disabled={disabled} />
+				<RifeFieldRow control={control} name="rife.transferredOnWindUp" line="210" label="Transferred on an amalgamation or wind-up" disabled={disabled} />
+				<RifeFieldRow control={control} name="rife.acquisitionOfControlAdjustment" line="220" label="Deduct: adjustment for an acquisition of control" disabled={disabled} />
+				<RifeFieldRow
+					control={control}
+					name="rife.currentYearRife"
+					line="230"
+					label="Current-year RIFE under ITA s.111(8)"
+					help="Blank = same as federal. Defaults to T2 Schedule 4 line 710, which the engine computes from Schedule 130 Part 2O — override only where Alberta genuinely diverges."
+					disabled={disabled}
+				/>
+				<RifeFieldRow
+					control={control}
+					name="rife.excessCapacity"
+					line="320"
+					label="Corporation's excess capacity for the year"
+					help="Blank = same as federal. Defaults to T2 Schedule 130 line 129 (Part 2G amount F), which the engine computes — override only where Alberta genuinely diverges."
+					disabled={disabled}
+				/>
+				<RifeFieldRow
+					control={control}
+					name="rife.receivedCapacity"
+					line="330"
+					label="Total received capacity for the year"
+					help="Blank = same as federal. Defaults to T2 Schedule 130 line 130 (Part 1A), the capacity received from eligible group entities."
+					disabled={disabled}
+				/>
+			</div>
+			<div className="space-y-1.5 border-t pt-3">
+				<RifeSummaryRow line="310" label="RIFE from previous tax years (200 + 210 − 220)" value={rifeFromPreviousYears} />
+				<RifeSummaryRow line="340" label="Total capacity (320 + 330)" value={totalCapacity} />
+				<RifeSummaryRow line="350" label="Maximum deductible (lesser of 310 and 340)" value={maxDeductible} />
+			</div>
+			<RifeFieldRow
+				control={control}
+				name="rife.deductedClaim"
+				line="240"
+				label="RIFE deducted for the tax year"
+				help="Must not exceed line 350 — blank claims the maximum available automatically."
+				disabled={disabled}
+			/>
+			<RifeSummaryRow line="250" label="Closing balance of RIFE" value={closingBalance} />
 		</div>
 	);
 }

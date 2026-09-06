@@ -122,3 +122,25 @@ export const RESERVE_TYPE_OPTIONS = [
 	{ value: "bankReserves", label: "Bank reserves (AT1-only)" },
 	{ value: "otherTaxReserves", label: "Other tax reserves" },
 ];
+
+/** T2 Schedule 130 Parts 1C/1D column 1 — who the other party to a financing is. */
+export const EIFEL_COUNTERPARTY_OPTIONS = [
+	{ value: "canadian-arm-length", label: "Canadian, arm's length" },
+	{ value: "canadian-non-arm-length", label: "Canadian, non-arm's length" },
+	{ value: "non-resident-arm-length", label: "Non-resident, arm's length" },
+	{ value: "non-resident-non-arm-length", label: "Non-resident, non-arm's length" },
+];
+
+/** T2 Schedule 130 Part 2C — the ten resource pools, in the form's own row order. */
+export const RESOURCE_IFE_POOL_OPTIONS = [
+	{ value: "ccee-regular", label: "CCEE — regular" },
+	{ value: "ccee-successor", label: "CCEE — successor" },
+	{ value: "ccde-regular", label: "CCDE — regular" },
+	{ value: "ccde-successor", label: "CCDE — successor" },
+	{ value: "ccogpe-regular", label: "CCOGPE — regular" },
+	{ value: "ccogpe-successor", label: "CCOGPE — successor" },
+	{ value: "fede-regular", label: "FEDE — regular" },
+	{ value: "fede-successor", label: "FEDE — successor" },
+	{ value: "cfre-regular", label: "CFRE — regular" },
+	{ value: "cfre-successor", label: "CFRE — successor" },
+];
