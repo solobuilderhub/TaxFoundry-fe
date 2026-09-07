@@ -1,15 +1,17 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
+import type { ComputedReturn } from "@/api/computed-returns";
 import type { CcaClass, CcaValues } from "../../../../_lib/return-input";
 import {
-	PaperClassGrid,
-	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
+	PaperClassGrid,
+	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
 import type { NavigateToLine } from "../../at1/paper/resolve-line";
 import { T2_SCHEDULE_8_GRID_COLUMNS } from "./generated/schedule8.layout";
+import { filedValuesFor } from "./paper-form-sections";
 
 /**
  * The five columns `t2/cca.ts` actually collects — everything else on the
@@ -32,23 +34,33 @@ const FIELD_NAME: Partial<Record<string, keyof CcaClass>> = {
  * AT1 Schedule 13's grid, since AT1 reconciles only where it diverges from
  * this schedule).
  *
- * Unlike AT1 Schedule 13, there is nowhere to resolve a computed column's
- * value from: `ComputedReturn.schedulePayloads` is AT1-only (see its own
- * doc comment) — federal T2 does not persist a per-line breakdown for
- * Schedule 8. Computed columns render read-only with an honest "not
- * available" state rather than a client-side re-derivation that could
- * drift from the engine's own `computeCcaClass`.
+ * A computed column shows the figure the last compute filed for that class.
+ *
+ * This comment used to say there was nowhere to resolve one from, because
+ * `schedulePayloads` was Alberta-only. It is not now: `federalSchedulePayloads`
+ * emits `T2SCH8` with one occurrence per class, so column 19 (recapture),
+ * column 20 (terminal loss) and column 21 (the claim) resolve per row.
+ *
+ * The grid's other columns stay blank, and that is still correct. Some are the
+ * form's own unnumbered arithmetic, and the rest are numbers this package has
+ * not recorded a mapping for — a figure filed under a column it does not belong
+ * to reads as a complete return and is wrong. Nothing here re-derives a value
+ * client-side, which would drift from `computeCcaClass`.
  */
 export function Schedule8FormView({
 	control,
+	computed,
 	disabled,
 }: {
 	control: Control<Record<string, unknown>>;
+	computed?: ComputedReturn;
 	disabled?: boolean;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
 	const ccaControl = control as unknown as Control<CcaValues>;
+	// Keyed `line-occurrence`; occurrence is the class's 1-based row number.
+	const filed = filedValuesFor(computed, "T2SCH8");
 	const classes = useWatch({ control: ccaControl, name: "classes" }) ?? [];
 
 	const rows: ClassGridRow[] = classes.map((c, i) => ({
@@ -78,7 +90,11 @@ export function Schedule8FormView({
 						columns={columns}
 						control={ccaControl}
 						disabled={disabled}
-						resolveCell={() => undefined}
+						resolveCell={(row, col) =>
+							row.arrayIndex === undefined
+								? undefined
+								: filed.get(`${col.line}-${row.arrayIndex + 1}`)
+						}
 					/>
 				</div>
 			</PaperSection>

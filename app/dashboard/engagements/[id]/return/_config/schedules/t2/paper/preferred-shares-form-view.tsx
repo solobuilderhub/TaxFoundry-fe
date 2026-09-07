@@ -54,12 +54,17 @@ const FORM_SECTIONS = T2_SCHEDULE_43_SECTIONS.filter(
  * parameter, not hardcoded there either) through a multi-band "lesser of"
  * calculation — not duplicated here to avoid drifting from it.
  *
- * The engine's own doc comment on `computeSchedule43` flags a real,
- * pre-existing gap worth surfacing to a preparer: the s.110(1)(k) deduction
- * against taxable income (a multiple of the Part VI.1 tax paid) is NOT YET
- * applied — `deductionPending` is returned true instead. Not a paper-view
- * scoping issue; disclosed because it changes what "line 270 is computed"
- * actually means for this return.
+ * This used to record a gap that no longer exists. The s.110(1)(k) deduction
+ * against taxable income — a statutory multiple of the Part VI.1 tax paid — was
+ * once earned but not applied, and `computeSchedule43`'s own doc comment said
+ * the multiple had not been transcribed from the Act. It has been:
+ * `part-vi-1-deduction.ts` carries the three bands with the Act quoted beside
+ * each, and `computeFederalT2` applies the result on jacket line 325.
+ *
+ * The note is kept, corrected, rather than deleted, because the direction of
+ * the error matters. Anyone acting on the old text would claim the deduction by
+ * hand on top of the one the engine already took, and a double deduction reads
+ * as a smaller tax bill rather than as a mistake.
  *
  * Part 2's administrative header (116/117/118), the allocation grid's name
  * and BN columns (120/130), the s.191.3 transfers (250/260), and the ENTIRE

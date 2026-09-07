@@ -63,18 +63,19 @@ const slug = (s: string) =>
  * isn't enabled yet" made this screen contradict its own working transmit
  * button on every Alberta deployment.
  *
- * ── Why AT1 gets TWO payload cards, not one ─────────────────────────────────
+ * ── One payload per engagement, and a link to the other return ─────────────
  *
- * Alberta tax is computed FROM the federal figures, so an AT1 engagement
- * already collects everything the federal CIF needs — the server has always
- * been able to render both (`prepare-cif` and `prepare-netfile` both read the
- * same computed return). Showing only the Net File button here left that
- * federal payload unreachable except through a second, T2-program engagement
- * that duplicates the same data entry. A firm filing AT1 needs the federal
- * return too — every AT1 corporation has one — so the CIF card renders
- * alongside the Net File card for an AT1 engagement, at the same "draft,
- * pre-certified-serializer" maturity T2 has always shown here. T2 and CO17
- * engagements are unchanged: one payload each.
+ * This used to render a second card on an Alberta engagement offering the
+ * federal CIF, on the reasoning that Alberta is computed FROM the federal
+ * figures so the engagement already holds everything the federal payload
+ * needs. The first half is true; the second is not. That federal computation
+ * is transient — what the engagement persists is the Alberta result, with no
+ * federal line on it — so `composeT2FilingData` refuses rather than render a
+ * federal return missing every federal amount. The card 400'd every time.
+ *
+ * Each engagement now offers exactly its own payload, and an Alberta one links
+ * to the federal engagement instead, creating it with these figures copied
+ * across. See the block comment above that card.
  */
 export function EngagementExport({ id }: { id: string }) {
 	const router = useRouter();
@@ -86,7 +87,8 @@ export function EngagementExport({ id }: { id: string }) {
 		limit: 1,
 		sort: "-createdAt",
 	});
-	const { prepareCif, prepare, createCompanionFiling } = useEngagementActions();
+	const { prepareCif, prepareCo17, prepare, createCompanionFiling } =
+		useEngagementActions();
 	// What this DEPLOYMENT can transmit, asked of the server rather than asserted
 	// in copy. See the banner below.
 	const { data: channels } = useFilingChannels();
@@ -96,6 +98,7 @@ export function EngagementExport({ id }: { id: string }) {
 
 	const isT2 = engagement?.program === "T2";
 	const isAt1 = engagement?.program === "AT1";
+	const isCo17 = engagement?.program === "CO17";
 	const hasComputed = !!computed;
 	const memo = memos?.[0];
 	const signedOff = memo?.status === "signed_off";
@@ -103,14 +106,23 @@ export function EngagementExport({ id }: { id: string }) {
 	const fileBaseFor = (label: string) =>
 		`${engagement?.program ?? "return"}-${label.toLowerCase()}-${slug(client?.name ?? id)}-${yearEnd}`;
 
-	// The primary card: Net File for AT1/CO17, CIF for T2. AT1 additionally gets
-	// its own federal CIF card below (see the note above).
-	const payloadLabel = isT2 ? "CIF" : "Net File";
+	/**
+	 * What this engagement's payload is called, per program.
+	 *
+	 * This was `isT2 ? "CIF" : "Net File"`, so a Québec engagement offered a
+	 * button reading "Generate Net File" that dispatched Alberta's action and
+	 * was refused, after collecting an officer's name it never needed. Three
+	 * programs, three payloads, and the server already names them on
+	 * `/filing-channels` — read that when it has answered, and fall back to a
+	 * per-program literal so the label is right before the request lands.
+	 */
+	const payloadLabel = isT2 ? "CIF" : isCo17 ? "CO-17" : "Net File";
 	const payload = netfilePayload;
 	const setPayload = setNetfilePayload;
 	const fileBase = fileBaseFor(payloadLabel);
 
-	const generating = prepareCif.isPending || prepare.isPending;
+	const generating =
+		prepareCif.isPending || prepareCo17.isPending || prepare.isPending;
 
 	/** The channel this engagement actually files on, once the server has said. */
 	const primaryChannel = channels
@@ -142,17 +154,19 @@ export function EngagementExport({ id }: { id: string }) {
 			toast.error(generateBlockedBecause ?? "Nothing to generate yet");
 			return;
 		}
-		if (isT2) {
-			try {
-				const r = await prepareCif.mutateAsync(id);
-				setPayload(r);
-				toast.success(`${payloadLabel} generated`);
-			} catch (err) {
-				toast.error(err instanceof Error ? err.message : "Generate failed");
-			}
-		} else {
-			// AT1/CO17 Net File requires a certifier — collect it, then render.
+		// Only Alberta's Net File needs a certifier collected first. The federal
+		// CIF and the Québec CO-17 are draft previews and take none — asking for
+		// one was how the Québec path ended up in Alberta's dialog.
+		if (isAt1) {
 			setCertOpen(true);
+			return;
+		}
+		try {
+			const r = await (isCo17 ? prepareCo17 : prepareCif).mutateAsync(id);
+			setPayload(r);
+			toast.success(`${payloadLabel} generated`);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Generate failed");
 		}
 	};
 

@@ -1,21 +1,39 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
-import { RESERVE_TYPES, type ReservesValues } from "../../../../_lib/return-input";
+import { type Control, useWatch } from "react-hook-form";
 import {
+	RESERVE_TYPES,
+	type ReservesValues,
+} from "../../../../_lib/return-input";
+import {
+	type ClassGridColumn,
+	type ClassGridRow,
 	PaperClassGrid,
 	PaperLeaderRow,
 	PaperSection,
-	type ClassGridColumn,
-	type ClassGridRow,
 } from "../../at1/paper/components/paper-primitives";
 import type { NavigateToLine } from "../../at1/paper/resolve-line";
 import { T2_SCHEDULE_13_FIELDS } from "./generated/schedule13.layout";
 
 const COLUMNS: ClassGridColumn[] = [
-	{ line: "opening", caption: "Balance at the beginning of the year", kind: "money", fieldName: "opening" },
-	{ line: "transfer", caption: "Transfer on an amalgamation or the wind-up of a subsidiary", kind: "money", fieldName: "transfer" },
-	{ line: "closing", caption: "Balance at the end of the year", kind: "money", fieldName: "closing" },
+	{
+		line: "opening",
+		caption: "Balance at the beginning of the year",
+		kind: "money",
+		fieldName: "opening",
+	},
+	{
+		line: "transfer",
+		caption: "Transfer on an amalgamation or the wind-up of a subsidiary",
+		kind: "money",
+		fieldName: "transfer",
+	},
+	{
+		line: "closing",
+		caption: "Balance at the end of the year",
+		kind: "money",
+		fieldName: "closing",
+	},
 ];
 
 /**
@@ -37,10 +55,12 @@ const COLUMNS: ClassGridColumn[] = [
  * "not collected" wall, not a real gap disclosure — so Part 1 is a plain
  * note instead of a grid nobody can ever fill in from this schedule.
  *
- * The totals (270/275/280) have nowhere to resolve a computed value FROM:
- * `ComputedReturn.schedulePayloads` is AT1-only (see `schedule8-form-view.tsx`'s
- * own doc comment on the same gap) — federal T2 does not persist a per-line
- * breakdown. Unlike Schedule 8's genuinely complex CCA arithmetic (rate,
+ * The totals (270/275/280) have nowhere to resolve a computed value FROM, but
+ * not for the reason this used to give. `schedulePayloads` carries federal
+ * schedules as well as Alberta ones now; what it does not carry is anything
+ * under `T2SCH13`, because `federalSchedulePayloads` emits a schedule only
+ * where the line each figure belongs on is recorded in code, and Schedule 13's
+ * is not. Unlike Schedule 8's genuinely complex CCA arithmetic (rate,
  * recapture, terminal loss), these totals are a PLAIN SUM of the six rows
  * directly above them — exactly what `computeSchedule13` itself does
  * (`totalOpening`/`totalTransfer`/`totalClosing`) — so computing them
@@ -72,7 +92,9 @@ export function Schedule13FormView({
 	const openingLines = ["110", "130", "150", "190", "210", "230"];
 	const gridRows: ClassGridRow[] = FEDERAL_TYPE_INDICES.map((typeIndex, i) => {
 		const type = RESERVE_TYPES[typeIndex];
-		const openingField = T2_SCHEDULE_13_FIELDS.find((f) => f.line === openingLines[i]);
+		const openingField = T2_SCHEDULE_13_FIELDS.find(
+			(f) => f.line === openingLines[i],
+		);
 		const label = openingField?.caption.split(" — ")[0] ?? type;
 		const arrayIndex = rows.findIndex((r) => r?.type === type);
 		return {
@@ -86,7 +108,11 @@ export function Schedule13FormView({
 		const n = Number(v);
 		return Number.isFinite(n) ? n : 0;
 	};
-	const totals = rows.reduce<{ opening: number; transfer: number; closing: number }>(
+	const totals = rows.reduce<{
+		opening: number;
+		transfer: number;
+		closing: number;
+	}>(
 		(acc, r) => ({
 			opening: acc.opening + toNum(r?.opening),
 			transfer: acc.transfer + toNum(r?.transfer),
@@ -94,10 +120,21 @@ export function Schedule13FormView({
 		}),
 		{ opening: 0, transfer: 0, closing: 0 },
 	);
-	const CURRENCY_FMT = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
+	const CURRENCY_FMT = new Intl.NumberFormat("en-CA", {
+		style: "currency",
+		currency: "CAD",
+		maximumFractionDigits: 0,
+	});
 	const totalsResolve = (line: string) => {
 		const field = line.slice(-3);
-		const value = field === "270" ? totals.opening : field === "275" ? totals.transfer : field === "280" ? totals.closing : undefined;
+		const value =
+			field === "270"
+				? totals.opening
+				: field === "275"
+					? totals.transfer
+					: field === "280"
+						? totals.closing
+						: undefined;
 		return { editable: false as const, value };
 	};
 
@@ -129,14 +166,19 @@ export function Schedule13FormView({
 				</div>
 			</PaperSection>
 			<PaperSection title="Totals carried to Schedule 1">
-				{T2_SCHEDULE_13_FIELDS.filter((f) => f.section === "other" && f.role === "total").map((f) => (
+				{T2_SCHEDULE_13_FIELDS.filter(
+					(f) => f.section === "other" && f.role === "total",
+				).map((f) => (
 					<PaperLeaderRow
 						key={f.line}
 						line={f.line}
 						caption={f.caption}
 						kind={f.kind}
 						role={f.role}
-						note={f.note ?? "Computed here as the sum of the six reserve rows above — the same arithmetic the engine uses, not fetched from a stored line-item breakdown (federal T2 does not persist one)."}
+						note={
+							f.note ??
+							"Computed here as the sum of the six reserve rows above — the same arithmetic the engine uses. The stored line-item breakdown does not cover Schedule 13 yet, so this total is added up on screen rather than read back."
+						}
 						to={f.to}
 						onNavigate={onNavigate}
 						highlightLine={highlightLine}
@@ -148,7 +190,8 @@ export function Schedule13FormView({
 			</PaperSection>
 			<p className="px-1 text-xs text-muted-foreground">
 				Amounts shown: opening {CURRENCY_FMT.format(totals.opening)}, transfer{" "}
-				{CURRENCY_FMT.format(totals.transfer)}, closing {CURRENCY_FMT.format(totals.closing)}.
+				{CURRENCY_FMT.format(totals.transfer)}, closing{" "}
+				{CURRENCY_FMT.format(totals.closing)}.
 			</p>
 		</div>
 	);

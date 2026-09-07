@@ -21,6 +21,7 @@ import type { FieldProvenance } from "@/api/computed-returns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useFilingChannels } from "@/hooks/query/use-certification";
 import { useClient } from "@/hooks/query/use-clients";
 import { useLatestComputedReturn } from "@/hooks/query/use-computed-returns";
 import {
@@ -133,6 +134,10 @@ export function EngagementDetail({ id }: { id: string }) {
 		sort: "-createdAt",
 	});
 	const { data: client } = useClient(engagement?.clientId);
+	// Above the early return with every other hook. React counts hooks per
+	// render, so one declared after it changes the count the moment the
+	// engagement loads and the page falls to an error boundary.
+	const { data: channels } = useFilingChannels();
 
 	const clientName = client?.name ?? engagement?.clientId ?? "";
 
@@ -145,6 +150,35 @@ export function EngagementDetail({ id }: { id: string }) {
 	const memo = memos?.[0];
 	const period = `${fmtDate(engagement.taxYearStart)} → ${fmtDate(engagement.taxYearEnd)}`;
 	const isT2 = engagement.program === "T2";
+
+	/**
+	 * Who this engagement files to, and whether this deployment can reach them.
+	 *
+	 * Every label here used to be `isT2 ? "CRA" : "Alberta TRA"`, a two-way
+	 * switch across three programs, so a Québec engagement was told five separate
+	 * times that it files to Alberta. The transmit button had no channel check at
+	 * all, so it was offered under the words "Ready to transmit" on two programs
+	 * whose gateway refuses with 503 until their certification programmes release
+	 * the schemas.
+	 *
+	 * The server already answers both questions on `/filing-channels`, and the
+	 * export screen already reads it. Fall back to the program's own name rather
+	 * than to a guess while the request is in flight.
+	 */
+	const channel = channels?.[engagement.program as keyof typeof channels];
+	const authority =
+		channel?.authority ??
+		(isT2
+			? "CRA"
+			: engagement.program === "AT1"
+				? "Alberta TRA"
+				: "Revenu Québec");
+	const payloadName =
+		channel?.channel ??
+		(isT2 ? "CIF" : engagement.program === "AT1" ? "Net File" : "CO-17");
+	// Undefined until the server answers; treat that as "not yet known" rather
+	// than as "cannot", so the button is not disabled on a slow request.
+	const canTransmit = channel?.transmit;
 
 	// ── Workflow state (derived from the return + review + status) ──────────────
 	const hasComputed = !!computed;
@@ -175,7 +209,7 @@ export function EngagementDetail({ id }: { id: string }) {
 		if (isFiled) {
 			return {
 				title: "Return filed",
-				hint: `Transmitted to ${isT2 ? "CRA" : "Alberta TRA"}.`,
+				hint: `Transmitted to ${authority}.`,
 				cta: null as string | null,
 				onClick: () => {},
 				loading: false,
@@ -214,7 +248,7 @@ export function EngagementDetail({ id }: { id: string }) {
 				};
 			default:
 				return {
-					title: `Prepare & export the ${isT2 ? "CIF" : "Net File"}`,
+					title: `Prepare & export the ${payloadName}`,
 					hint: "Generate and download the filing payload for records or manual submission.",
 					cta: "Open export",
 					onClick: goExport,
@@ -257,7 +291,7 @@ export function EngagementDetail({ id }: { id: string }) {
 					? `Error code ${result.errorCodes.join(", ")}`
 					: "no reason given";
 			toast.error(
-				`${isT2 ? "CRA" : "Alberta TRA"} rejected the filing — ${reason}. The return was NOT filed.`,
+				`${authority} rejected the filing — ${reason}. The return was NOT filed.`,
 				{ duration: 15000 },
 			);
 		} catch (err) {
@@ -271,7 +305,9 @@ export function EngagementDetail({ id }: { id: string }) {
 		: !memoSignedOff
 			? "Transmit unlocks once the review is signed off."
 			: !isFiled
-				? `Ready to transmit to ${isT2 ? "CRA." : "Alberta TRA."}`
+				? canTransmit === false
+					? `${authority} ${payloadName} transmission is not enabled on this server. Generate the payload from Export for your records or manual submission.`
+					: `Ready to transmit to ${authority}.`
 				: null;
 
 	return (
@@ -483,7 +519,7 @@ export function EngagementDetail({ id }: { id: string }) {
 			<SchemaFormDialog
 				open={transmitOpen}
 				onOpenChange={(open: boolean) => !open && setTransmitOpen(false)}
-				title={`Certify & transmit to ${isT2 ? "CRA" : "Alberta TRA"}`}
+				title={`Certify & transmit to ${authority}`}
 				submitLabel="Transmit"
 				submitLoading={transmit.isPending}
 				schema={getCertificationSchema()}

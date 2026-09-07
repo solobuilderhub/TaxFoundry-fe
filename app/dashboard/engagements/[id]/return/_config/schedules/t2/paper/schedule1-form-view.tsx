@@ -1,16 +1,22 @@
 "use client";
 
 import type { Control } from "react-hook-form";
+import type { ComputedReturn } from "@/api/computed-returns";
 import type { NetIncomeValues } from "../../../../_lib/return-input";
 import {
 	PaperLeaderRow,
 	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
+import type {
+	LineValue,
+	NavigateToLine,
+	ResolveLine,
+} from "../../at1/paper/resolve-line";
 import {
 	T2_SCHEDULE_1_FIELDS,
 	T2_SCHEDULE_1_SECTIONS,
 } from "./generated/schedule1.layout";
+import { filedValuesFor } from "./paper-form-sections";
 
 const ROLE_BY_LINE = new Map(T2_SCHEDULE_1_FIELDS.map((f) => [f.line, f.role]));
 
@@ -19,20 +25,29 @@ const ROLE_BY_LINE = new Map(T2_SCHEDULE_1_FIELDS.map((f) => [f.line, f.role]));
  * field this schedule's own guided editor (`net-income.ts`) already
  * collects — one input, two views, never two copies of the value.
  *
- * `total`/`carried-in` lines (500, 510, 403, 107, …) have nowhere to resolve
- * a value from yet: unlike AT1, `ComputedReturn.schedulePayloads` is
- * AT1-only (see its own doc comment) — federal T2 does not persist a
- * per-line computed breakdown for Schedule 1, only the jacket's line 300
- * total. They render read-only with an honest "not available" state rather
- * than a client-side re-derivation that could drift from the engine's own
- * `computeSchedule1`.
+ * Every other line renders read-only, showing the figure the last compute
+ * filed against it.
+ *
+ * That used to be impossible and this comment used to say so: `schedulePayloads`
+ * was Alberta-only, so a federal Schedule 1 showed "not available" on every
+ * computed line. It is not Alberta-only now. `federalSchedulePayloads` emits
+ * `T2SCH1` unconditionally, and Schedule 1 is the one schedule that needed no
+ * line table to do it — `Schedule1Line` has carried its own CRA line since the
+ * schedule was built, precisely so a reconciling item could not end up with an
+ * amount and nowhere to go.
+ *
+ * A line the engine did not compute still shows nothing. Nothing here
+ * re-derives a figure client-side, which would drift from `computeSchedule1`.
  */
-function buildResolveLine(): ResolveLine {
+function buildResolveLine(filed: Map<string, string | number>): ResolveLine {
 	return (line: string): LineValue => {
 		if (ROLE_BY_LINE.get(line) === "input") {
 			return { editable: true, name: `lines.${line}` };
 		}
-		return { editable: false, value: undefined };
+		// Occurrence 1 — Schedule 1's open rows (135, 295, 395, 495) can repeat,
+		// but the leader-row layout has one row per line, so a second occurrence
+		// has nowhere to render and is deliberately not shown here.
+		return { editable: false, value: filed.get(`${line}-1`) };
 	};
 }
 
@@ -44,22 +59,26 @@ function buildResolveLine(): ResolveLine {
  */
 export function Schedule1FormView({
 	control,
+	computed,
 	disabled,
 	onNavigate,
 	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
+	computed?: ComputedReturn;
 	disabled?: boolean;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
 	const c = control as unknown as Control<NetIncomeValues>;
-	const resolveLine = buildResolveLine();
+	const resolveLine = buildResolveLine(filedValuesFor(computed, "T2SCH1"));
 
 	return (
 		<div className="space-y-4">
 			{T2_SCHEDULE_1_SECTIONS.map((section) => {
-				const fields = T2_SCHEDULE_1_FIELDS.filter((f) => f.section === section.id);
+				const fields = T2_SCHEDULE_1_FIELDS.filter(
+					(f) => f.section === section.id,
+				);
 				if (fields.length === 0) return null;
 				return (
 					<PaperSection

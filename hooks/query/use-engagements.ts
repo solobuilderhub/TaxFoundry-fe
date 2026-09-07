@@ -92,6 +92,25 @@ export function useEngagementActions() {
 		onSuccess: invalidate,
 	});
 	/**
+	 * Québec's CO-17 draft payload.
+	 *
+	 * A sibling of `prepareCif`, and like it needs no certifier — `prepare-co17`
+	 * renders a draft for review, not a transmission. This was missing, so the
+	 * export screen fell through its `isT2` check and dispatched `prepare-netfile`
+	 * for a Québec engagement, which refuses anything that is not AT1. The button
+	 * read "Generate Net File", collected an officer's name it never needed, and
+	 * then failed with 400.
+	 */
+	const prepareCo17 = useMutation<
+		{ payloadHash: string; xml: string },
+		Error,
+		string
+	>({
+		mutationFn: (id: string) =>
+			engagementsApi.dispatchAction({ id, action: "prepare-co17", data: {} }),
+		onSuccess: invalidate,
+	});
+	/**
 	 * The federal engagement that belongs beside a provincial one.
 	 *
 	 * A corporation with an Alberta permanent establishment owes two returns, and
@@ -201,6 +220,7 @@ export function useEngagementActions() {
 		compute,
 		prepare,
 		prepareCif,
+		prepareCo17,
 		createCompanionFiling,
 		authorizeT183,
 		transmit,
