@@ -19,7 +19,7 @@
     "@classytic/arc-next": "^0.16.0",
     "@classytic/fluid": "^1.18.1",
     "@classytic/formkit": "^1.7.0",
-    "@classytic/primitives": "^0.23.0",
+    "@classytic/primitives": "^0.26.4",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.81.5",
     "@tanstack/react-query-devtools": "^5.81.5",
