@@ -86,13 +86,12 @@ export function EngagementExport({ id }: { id: string }) {
 		limit: 1,
 		sort: "-createdAt",
 	});
-	const { prepareCif, prepare } = useEngagementActions();
+	const { prepareCif, prepare, createCompanionFiling } = useEngagementActions();
 	// What this DEPLOYMENT can transmit, asked of the server rather than asserted
 	// in copy. See the banner below.
 	const { data: channels } = useFilingChannels();
 
 	const [netfilePayload, setNetfilePayload] = useState<Payload | null>(null);
-	const [cifPayload, setCifPayload] = useState<Payload | null>(null);
 	const [certOpen, setCertOpen] = useState(false);
 
 	const isT2 = engagement?.program === "T2";
@@ -173,6 +172,31 @@ export function EngagementExport({ id }: { id: string }) {
 		}
 	};
 
+	/**
+	 * Open the federal engagement, creating it from this return if it is not
+	 * there yet. Idempotent on the server, so a second press lands on the same
+	 * engagement rather than making another one.
+	 */
+	const onOpenFederalReturn = async () => {
+		try {
+			const r = await createCompanionFiling.mutateAsync(id);
+			toast.success(
+				r.created
+					? r.returnInputCopied
+						? "Federal T2 engagement opened with this return's figures copied across"
+						: "Federal T2 engagement opened"
+					: "Opening the federal T2 engagement for this year",
+			);
+			router.push(`/dashboard/engagements/${r.engagementYearId}/return`);
+		} catch (err) {
+			toast.error(
+				err instanceof Error
+					? err.message
+					: "Could not open the federal engagement",
+			);
+		}
+	};
+
 	const onDownloadXml = () => {
 		if (!payload) return;
 		downloadFile(`${fileBase}.xml`, payload.xml, "application/xml");
@@ -181,32 +205,6 @@ export function EngagementExport({ id }: { id: string }) {
 	const onCopyXml = async () => {
 		if (!payload) return;
 		await navigator.clipboard.writeText(payload.xml);
-		toast.success("XML copied");
-	};
-
-	// The AT1-only federal CIF card. No certification dialog — `prepare-cif`
-	// (mirroring T2's own flow) doesn't need a certifier at draft/preview stage.
-	const cifFileBase = fileBaseFor("CIF");
-	const generatingCif = prepareCif.isPending;
-
-	const onGenerateCif = async () => {
-		try {
-			const r = await prepareCif.mutateAsync(id);
-			setCifPayload(r);
-			toast.success("CIF generated");
-		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "Generate failed");
-		}
-	};
-
-	const onDownloadCifXml = () => {
-		if (!cifPayload) return;
-		downloadFile(`${cifFileBase}.xml`, cifPayload.xml, "application/xml");
-	};
-
-	const onCopyCifXml = async () => {
-		if (!cifPayload) return;
-		await navigator.clipboard.writeText(cifPayload.xml);
 		toast.success("XML copied");
 	};
 
@@ -366,62 +364,52 @@ export function EngagementExport({ id }: { id: string }) {
 				</CardContent>
 			</Card>
 
-			{/* Federal CIF — AT1 only. Alberta tax is derived from the federal return,
-          so this engagement already has everything the CIF needs; the button
-          used to exist only on a separate T2 engagement, forcing double entry. */}
+			{/*
+			 * The federal return that belongs beside this Alberta one.
+			 *
+			 * This used to be a "Generate CIF" button, on the reasoning that an AT1
+			 * engagement already holds everything the federal payload needs. The
+			 * first half of that is true and the second is not: Alberta IS computed
+			 * from the federal figures, but that federal computation is transient.
+			 * What the engagement persists is the Alberta result — albertaTaxableIncome,
+			 * albertaTaxPayable — and no federal line at all, so `composeT2FilingData`
+			 * refuses rather than render a federal return with every federal figure
+			 * missing. The button 400'd every time it was pressed, on a screen that
+			 * had just promised the payload.
+			 *
+			 * Two returns need two engagements, because each carries its own review
+			 * sign-off, its own authorization and its own filing record. What they do
+			 * not need is the data entered twice, which is what this does instead.
+			 */}
 			{isAt1 && (
 				<Card>
 					<CardHeader className="flex-row items-center gap-2 space-y-0">
 						<FileCode2 className="size-5" />
 						<CardTitle className="text-base">
-							Federal CIF filing payload (XML)
+							The federal T2 return for this year
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{!hasComputed && (
-							<p className="text-sm text-muted-foreground">
-								Compute the return before generating the CIF payload.
-							</p>
-						)}
-
-						{!cifPayload ? (
-							<div className="flex flex-wrap items-center gap-3">
-								<Button
-									disabled={!hasComputed || generatingCif}
-									onClick={onGenerateCif}
-								>
-									Generate CIF
-								</Button>
-							</div>
-						) : (
-							<>
-								<div className="flex flex-wrap items-center gap-2">
-									<Badge variant="secondary">draft</Badge>
-									<span className="font-mono text-xs text-muted-foreground">
-										sha256 {cifPayload.payloadHash.slice(0, 16)}…
-									</span>
-								</div>
-								<div className="flex flex-wrap items-center gap-2">
-									<Button size="sm" onClick={onDownloadCifXml}>
-										<Download className="size-4" /> Download .xml
-									</Button>
-									<Button size="sm" variant="outline" onClick={onCopyCifXml}>
-										<Copy className="size-4" /> Copy
-									</Button>
-									<Button
-										size="sm"
-										variant="ghost"
-										disabled={generatingCif}
-										onClick={onGenerateCif}
-									>
-										Regenerate
-									</Button>
-								</div>
-								<pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">
-									{cifPayload.xml}
-								</pre>
-							</>
-						)}
+						<p className="text-sm text-muted-foreground">
+							This corporation files twice: the AT1 to Alberta TRA, and a
+							federal T2 to CRA. Alberta is computed from the federal figures
+							you entered here, but the two returns are filed separately, each
+							with its own review sign-off and authorization, so the federal one
+							is its own engagement.
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Opening it here copies this return's figures across, so nothing is
+							typed a second time. The two diverge from that point, which is
+							what Alberta's reconciliation schedules exist to record.
+						</p>
+						<Button
+							disabled={createCompanionFiling.isPending}
+							onClick={onOpenFederalReturn}
+						>
+							{createCompanionFiling.isPending
+								? "Opening…"
+								: "Open the federal T2 engagement"}
+						</Button>
 					</CardContent>
 				</Card>
 			)}

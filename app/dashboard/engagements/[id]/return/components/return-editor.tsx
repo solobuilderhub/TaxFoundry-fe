@@ -42,9 +42,9 @@ import {
 	scheduleTreeFor,
 	schemaFor,
 } from "../_config/registry";
+import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
 import { Schedule10View } from "../_config/schedules/at1/paper/schedule10-view";
 import { Schedule12View } from "../_config/schedules/at1/paper/schedule12-view";
-import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
 import type { NavigateToLine } from "../_config/schedules/shared/define";
 import { bookNetIncomeOf } from "../_lib/calc";
 import type { ReturnInput } from "../_lib/return-input";
@@ -148,7 +148,9 @@ export function ReturnEditor({ id }: { id: string }) {
 	// a timer so clicking the same badge again re-triggers the highlight (a
 	// second `setHighlightLine` to the same value wouldn't otherwise change
 	// state and re-fire the effect).
-	const [highlightLine, setHighlightLine] = useState<string | undefined>(undefined);
+	const [highlightLine, setHighlightLine] = useState<string | undefined>(
+		undefined,
+	);
 	const onNavigate: NavigateToLine = (form, line) => {
 		const key = FORM_ID_TO_SCHEDULE_KEY[form];
 		if (!key) return;
@@ -255,7 +257,9 @@ export function ReturnEditor({ id }: { id: string }) {
 	// one of those is entered. Once a fresh (non-stale) compute exists, its own
 	// `ccaClaimed` field is the real combined total (ordinary + class 13/14 +
 	// the class 14.1 transitional allowance) — prefer that instead.
-	const computedCcaField = computed?.fields?.find((f) => f.line === "ccaClaimed")?.value;
+	const computedCcaField = computed?.fields?.find(
+		(f) => f.line === "ccaClaimed",
+	)?.value;
 	const ccaDisplay =
 		!stale && computedCcaField != null ? Number(computedCcaField) : cca;
 	const computeLabel = compute.isPending
@@ -378,6 +382,26 @@ export function ReturnEditor({ id }: { id: string }) {
 										</div>
 									)}
 								</div>
+								{/*
+								 * Why a provincial engagement shows the federal schedules.
+								 *
+								 * It is the single most confusing thing about this screen:
+								 * you open an Alberta return and are asked for Schedule 8,
+								 * Schedule 4, the GIFI. The reason is that Alberta taxes the
+								 * federal taxable income allocated to the province, so the
+								 * server computes the whole federal return first and derives
+								 * Alberta from it. Those schedules are INPUTS here, not a
+								 * federal filing — the federal return is its own engagement,
+								 * offered from the Export screen with these figures copied
+								 * across. Saying so once costs a line and saves the question.
+								 */}
+								{showProgramFilter && !onlyProgramSpecific && (
+									<p className="px-2 pb-2 text-[11px] leading-snug text-muted-foreground">
+										{engagement.program} is computed from the federal figures,
+										so the federal schedules are collected here as inputs. The
+										federal return itself is a separate engagement.
+									</p>
+								)}
 								{onlyProgramSpecific && visibleTree.length === 0 && (
 									<p className="px-2 py-1 text-xs text-muted-foreground">
 										No {engagement.program}-only schedules on this return yet.
@@ -467,7 +491,9 @@ export function ReturnEditor({ id }: { id: string }) {
 									/>
 								) : READ_ONLY_SCHEDULES.some((s) => s.key === active) ? (
 									(() => {
-										const meta = READ_ONLY_SCHEDULES.find((s) => s.key === active)!;
+										const meta = READ_ONLY_SCHEDULES.find(
+											(s) => s.key === active,
+										)!;
 										const View = meta.View;
 										return (
 											<div className="space-y-4">
@@ -476,15 +502,21 @@ export function ReturnEditor({ id }: { id: string }) {
 														<Badge variant="secondary" className="font-mono">
 															{meta.num}
 														</Badge>
-														<h2 className="text-lg font-semibold">{meta.label}</h2>
+														<h2 className="text-lg font-semibold">
+															{meta.label}
+														</h2>
 													</div>
-													<p className="text-sm text-muted-foreground">{meta.hint}</p>
+													<p className="text-sm text-muted-foreground">
+														{meta.hint}
+													</p>
 												</div>
 												<View
 													computed={computed}
 													stale={stale}
 													onNavigate={onNavigate}
-													highlightLine={active === meta.key ? highlightLine : undefined}
+													highlightLine={
+														active === meta.key ? highlightLine : undefined
+													}
 												/>
 											</div>
 										);
@@ -493,7 +525,12 @@ export function ReturnEditor({ id }: { id: string }) {
 									<ScheduleForm
 										key={`${active}-${formVersion}`}
 										schedule={active as ScheduleKey}
-										value={(seeded[active as ScheduleKey] as Record<string, unknown>) ?? {}}
+										value={
+											(seeded[active as ScheduleKey] as Record<
+												string,
+												unknown
+											>) ?? {}
+										}
 										saving={saveInput.isPending}
 										onSave={(v) => saveSlice(active as ScheduleKey, v)}
 										computed={computed}
@@ -596,7 +633,11 @@ function ScheduleForm({
 			 * second `SchemaForm` would. `[data-formkit-root]` is `FormGenerator`'s
 			 * own wrapper element.
 			 */}
-			<div className={viewMode === "form" ? "[&_[data-formkit-root]]:hidden" : undefined}>
+			<div
+				className={
+					viewMode === "form" ? "[&_[data-formkit-root]]:hidden" : undefined
+				}
+			>
 				<SchemaForm
 					schema={schemaFor(schedule)}
 					defaultValues={value}
