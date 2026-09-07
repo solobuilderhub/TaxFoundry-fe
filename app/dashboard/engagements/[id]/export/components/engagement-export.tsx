@@ -103,7 +103,27 @@ export function EngagementExport({ id }: { id: string }) {
 
 	const generating = prepareCif.isPending || prepare.isPending;
 
+	/**
+	 * Why the Generate button is unavailable, or `null` when it is available.
+	 *
+	 * A disabled button that gives no reason is indistinguishable from a broken
+	 * one: live QA reported this control as "inert — no network request, no
+	 * toast, no console error" and could not tell which it was without reading
+	 * the source. Silence is the defect, whatever disabled it.
+	 */
+	const generateBlockedBecause = !hasComputed
+		? "Run Compute on this engagement first — there is no computed return to build a payload from."
+		: generating
+			? "Generating…"
+			: null;
+
 	const onGenerate = async () => {
+		// Belt and braces: if this is ever reached without a computed return
+		// (a stale cache, a failed refetch), say so rather than returning quietly.
+		if (!hasComputed) {
+			toast.error(generateBlockedBecause ?? "Nothing to generate yet");
+			return;
+		}
 		if (isT2) {
 			try {
 				const r = await prepareCif.mutateAsync(id);
@@ -253,9 +273,15 @@ export function EngagementExport({ id }: { id: string }) {
 							<Button
 								disabled={!hasComputed || generating}
 								onClick={onGenerate}
+								title={generateBlockedBecause ?? undefined}
 							>
 								Generate {payloadLabel}
 							</Button>
+							{generateBlockedBecause && !generating && (
+								<span className="text-xs text-muted-foreground">
+									{generateBlockedBecause}
+								</span>
+							)}
 							<Button
 								variant="outline"
 								disabled={!hasComputed}
