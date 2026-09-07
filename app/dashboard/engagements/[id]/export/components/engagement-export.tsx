@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFilingChannels } from "@/hooks/query/use-certification";
 import { useClient } from "@/hooks/query/use-clients";
 import { useLatestComputedReturn } from "@/hooks/query/use-computed-returns";
 import {
@@ -49,12 +50,18 @@ const slug = (s: string) =>
 		.toLowerCase();
 
 /**
- * Export & filing payload — the pre-certification bridge. Live CRA/TRA e-file
- * isn't wired yet (the transmission gateway 503s by design), so this surface
- * lets a firm GENERATE and DOWNLOAD the exact certified payload (the CIF XML for
- * T2, the Net File XML for AT1) for their records or manual submission. The same
- * renderer feeds live transmission once integration lands — export is not a
- * mock, it's the real payload minus the wire.
+ * Export & filing payload. A firm can GENERATE and DOWNLOAD the exact payload
+ * (the CIF XML for T2, the Net File XML for AT1) for its records or for manual
+ * submission. The same renderer feeds live transmission — export is not a mock,
+ * it is the real payload.
+ *
+ * Which channels this deployment can transmit on is ASKED of the server
+ * (`useFilingChannels`), never asserted here. Availability is a property of the
+ * running configuration: Alberta Net File installs its SOAP client whenever
+ * `TRA_NETFILE_ENDPOINT` is set, while CRA CIF and Revenu Québec keep a 503 stub
+ * until their certification programmes release the schemas. Hard-coding "e-file
+ * isn't enabled yet" made this screen contradict its own working transmit
+ * button on every Alberta deployment.
  *
  * ── Why AT1 gets TWO payload cards, not one ─────────────────────────────────
  *
@@ -80,6 +87,9 @@ export function EngagementExport({ id }: { id: string }) {
 		sort: "-createdAt",
 	});
 	const { prepareCif, prepare } = useEngagementActions();
+	// What this DEPLOYMENT can transmit, asked of the server rather than asserted
+	// in copy. See the banner below.
+	const { data: channels } = useFilingChannels();
 
 	const [netfilePayload, setNetfilePayload] = useState<Payload | null>(null);
 	const [cifPayload, setCifPayload] = useState<Payload | null>(null);
@@ -102,6 +112,15 @@ export function EngagementExport({ id }: { id: string }) {
 	const fileBase = fileBaseFor(payloadLabel);
 
 	const generating = prepareCif.isPending || prepare.isPending;
+
+	/** The channel this engagement actually files on, once the server has said. */
+	const primaryChannel = channels
+		? isT2
+			? channels.T2
+			: isAt1
+				? channels.AT1
+				: channels.CO17
+		: undefined;
 
 	/**
 	 * Why the Generate button is unavailable, or `null` when it is available.
@@ -228,19 +247,36 @@ export function EngagementExport({ id }: { id: string }) {
 				<ArrowLeft className="size-4" /> Back to engagement
 			</Button>
 
-			{/* Honest pre-certification banner. */}
+			{/*
+			 * What this deployment can actually do, from the server's own answer.
+			 *
+			 * This banner used to read "live e-file isn't enabled yet" for every
+			 * program, unconditionally — on a build whose AT1 transmission reaches
+			 * TRA and returns real response codes, next to a transmit button that
+			 * works. Copy that contradicts the button teaches people to stop
+			 * believing the screen, so it now states the channel's real state.
+			 */}
 			<div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
 				<Info className="mt-0.5 size-5 text-amber-600" />
 				<div className="text-sm">
 					<p className="font-medium">
-						Live {isT2 ? "CRA" : isAt1 ? "CRA and Alberta TRA" : "Alberta TRA"}{" "}
-						e-file isn't enabled yet.
+						{primaryChannel === undefined
+							? "Checking which filing channels this server can transmit on…"
+							: primaryChannel.transmit
+								? `${primaryChannel.authority} ${primaryChannel.channel} transmission is enabled on this server.`
+								: `${primaryChannel.authority} ${primaryChannel.channel} transmission is not enabled on this server.`}
 					</p>
 					<p className="text-muted-foreground">
-						Export the prepared payload{isAt1 ? "s" : ""} for your records or
-						manual submission. This is the exact certified XML we'll transmit
-						once integration lands. Not a mock.
+						{primaryChannel?.transmit
+							? "Transmit from the engagement page once the review is signed off and the officer's T183 is recorded. Download the payload here for your own records — it is the exact XML that goes on the wire."
+							: "Export the prepared payload for your records or manual submission. This is the exact XML that will be transmitted once the channel is configured. Not a mock."}
 					</p>
+					{isAt1 && channels && !channels.T2.transmit && (
+						<p className="mt-1 text-muted-foreground">
+							The federal CIF payload below is for download only — CRA
+							transmission is not enabled on this server.
+						</p>
+					)}
 				</div>
 			</div>
 

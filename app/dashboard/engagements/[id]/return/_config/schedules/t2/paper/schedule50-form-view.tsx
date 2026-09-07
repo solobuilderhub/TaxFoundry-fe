@@ -1,20 +1,31 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
 import type { ShareholdersValues } from "../../../../_lib/return-input";
 import {
-	PaperClassGrid,
-	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
+	PaperClassGrid,
+	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
+import { T2_SCHEDULE_50_FIELDS } from "./generated/schedule50.layout";
 
-const COLUMNS: ClassGridColumn[] = [
-	{ line: "100", caption: "Name of shareholder", kind: "text", fieldName: "name" },
-	{ line: "200", caption: "Business number or partnership account number", kind: "code", fieldName: "bnOrSin" },
-	{ line: "400", caption: "Percentage of common shares", kind: "rate", fieldName: "percentCommon" },
-	{ line: "500", caption: "Percentage of preferred shares", kind: "rate", fieldName: "percentPreferred" },
-];
+/**
+ * The four columns this app's `Shareholder` type actually collects.
+ *
+ * `bnOrSin` is ONE combined box for whichever identifier applies, so lines 300
+ * (social insurance number) and 350 (trust number) have no field of their own.
+ * They still appear as columns — the printed form has them and a paper view
+ * shows the whole form — and render as an uncollected cell, which is what they
+ * are. The form treats 200, 300 and 350 as mutually exclusive, so at most one
+ * of the three is ever filled on a real return anyway.
+ */
+const FIELD_NAME: Record<string, string | undefined> = {
+	"100": "name",
+	"200": "bnOrSin",
+	"400": "percentCommon",
+	"500": "percentPreferred",
+};
 
 /**
  * Federal T2 Schedule 50 — shareholder information. A pure disclosure grid,
@@ -22,14 +33,12 @@ const COLUMNS: ClassGridColumn[] = [
  * would ever be a read-only "computed" cell — every column this app collects
  * is genuinely editable.
  *
- * The printed form has SIX columns (100/200/300/350/400/500); this app's
- * `Shareholder` type has only FOUR fields — `bnOrSin` is one combined box
- * for whichever identifier applies (BN, SIN, or trust number), not three
- * separate ones. Rendering 300/350 as their own grid cells (even read-only,
- * mirroring 200's value) would misrepresent the form's own "mutually
- * exclusive" instruction — it would look like all three are filled at once.
- * A plain note is the honest version of this gap; the four real columns
- * still cover every fact the form actually needs disclosed.
+ * The columns come from the GENERATED layout, which the emitter writes from
+ * `T2_SCHEDULE_50` in @classytic/ca-tax and which traces to the printed PDF in
+ * its own provenance line. They used to be retyped here, so this file was the
+ * one T2 paper view whose generated layout nothing imported: the emitter wrote
+ * `schedule50.layout.ts` on every run and no code ever read it, which is drift
+ * with the detector switched off. See `tests/forms-drift.test.ts`.
  */
 export function Schedule50FormView({
 	control,
@@ -47,18 +56,25 @@ export function Schedule50FormView({
 		arrayIndex: i,
 	}));
 
+	const columns: ClassGridColumn[] = T2_SCHEDULE_50_FIELDS.map((f) => ({
+		line: f.line,
+		caption: f.caption,
+		kind: f.kind,
+		fieldName: FIELD_NAME[f.line] as ClassGridColumn["fieldName"],
+	}));
+
 	return (
 		<div className="space-y-4">
 			<PaperSection
 				title="Shareholder information"
-				description="One row per shareholder holding 10% or more of the common or preferred shares. Lines 300 (social insurance number) and 350 (trust number) are not tracked as separate fields in this app — line 200 covers whichever identifier applies (BN, SIN, or trust number); the printed form treats these three as mutually exclusive anyway."
+				description="One row per shareholder holding 10% or more of the common or preferred shares. Lines 300 (social insurance number) and 350 (trust number) have no separate field in this app — line 200 holds whichever identifier applies, and the printed form treats the three as mutually exclusive."
 				formId="T2SCH50"
 			>
 				<div className="p-2">
 					<PaperClassGrid
 						arrayName="list"
 						rows={rows}
-						columns={COLUMNS}
+						columns={columns}
 						control={shareholdersControl}
 						disabled={disabled}
 						resolveCell={() => undefined}

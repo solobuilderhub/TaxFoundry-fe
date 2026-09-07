@@ -1,90 +1,106 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
+import type { ComputedReturn } from "@/api/computed-returns";
 import type { LossesValues } from "../../../../_lib/return-input";
 import {
+	type ClassGridColumn,
+	type ClassGridRow,
 	PaperClassGrid,
 	PaperLeaderRow,
 	PaperSection,
-	type ClassGridColumn,
-	type ClassGridRow,
 } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
-
-interface Sch4Field {
-	line: string;
-	caption: string;
-	fieldName: keyof LossesValues;
-}
+import type { LineValue, NavigateToLine } from "../../at1/paper/resolve-line";
+import {
+	T2_SCHEDULE_4_FIELDS,
+	T2_SCHEDULE_4_SECTIONS,
+} from "./generated/schedule4.layout";
+import { PaperFormSections } from "./paper-form-sections";
 
 /**
- * Federal T2 Schedule 4 — corporation loss continuity and application. Line
- * numbers verified against the raw `pdftotext -layout` extraction
- * (`research/sources/cra-forms/extracted/T2SCH04-loss-continuity.lines.tsv`)
- * — that extraction is reliable for THIS form (unlike the T2 jacket's pages
- * 1-2 or Schedule 5/13's grids), since Schedule 4 is a genuine caption-then-
- * number leader-row form throughout.
+ * The eight Schedule 4 lines this app's guided editor actually collects.
  *
- * The guided editor's two ALREADY-cited pairs (non-capital 102/130,
- * net-capital 200/225) were both confirmed correct. Farm (302/330) and
- * restricted farm (402/430) were NOT cited in the guided editor at all —
- * added here, confirmed against the same extraction.
- *
- * `farmingIncome` ("the ceiling for the restricted farm pool") has no
- * numbered box of its own on the printed form — line 430's own caption
- * folds "current farming income" in as descriptive text, not a separate
- * line — shown here without a line badge rather than a fabricated one.
- *
- * Limited partnership losses (`limitedPartnershipOpening`,
- * `partnershipIncome`, `atRiskAmount`, `limitedPartnershipApplied`, s.111(1)(e))
- * are NOT on Schedule 4 at all — confirmed by searching the raw extraction
- * for "partnership" and finding no match anywhere on this form. The compute
- * engine (`schedule4-losses.ts`) genuinely computes this pool despite its
- * own module doc comment only mentioning "two pools" (non-capital,
- * net-capital) — a separate, minor documentation gap, not corrected here.
- * Shown as a clear disclosure rather than a fabricated Schedule 4 line.
- *
- * The carry-back array maps to Schedule 4's own repeating three-row pattern
- * (901/902/903 for non-capital — `schedule4.ts`'s own notes on line 901 name
- * the SAME offsets repeating for the other four loss types, though this
- * app's `carrybacks` array is non-capital only, matching its section
- * description "Carry this year's non-capital loss back").
+ * Everything else on the form renders read-only. The form has 82 numbered lines
+ * across eight parts; this app asks for the opening balance and the amount
+ * applied for each of four pools, and derives the rest.
  */
-const FIELDS: readonly Sch4Field[] = [
-	{ line: "102", caption: "Non-capital losses at the beginning of the tax year", fieldName: "nonCapitalOpening" },
-	{ line: "130", caption: "Non-capital losses of previous tax years applied in the current tax year", fieldName: "nonCapitalApplied" },
-	{ line: "200", caption: "Capital losses at the end of the previous tax year", fieldName: "netCapitalOpening" },
-	{ line: "225", caption: "Capital losses from previous tax years applied against the current-year net capital gain", fieldName: "netCapitalApplied" },
-	{ line: "302", caption: "Farm losses at the beginning of the tax year", fieldName: "farmOpening" },
-	{ line: "330", caption: "Farm losses of previous tax years applied in the current tax year", fieldName: "farmApplied" },
-	{ line: "402", caption: "Restricted farm losses at the beginning of the tax year", fieldName: "restrictedFarmOpening" },
-	{ line: "430", caption: "Restricted farm losses from previous tax years applied against current farming income", fieldName: "restrictedFarmApplied" },
-];
+const FIELD_NAME: Partial<Record<string, keyof LossesValues>> = {
+	"102": "nonCapitalOpening",
+	"130": "nonCapitalApplied",
+	"200": "netCapitalOpening",
+	"225": "netCapitalApplied",
+	"302": "farmOpening",
+	"330": "farmApplied",
+	"402": "restrictedFarmOpening",
+	"430": "restrictedFarmApplied",
+};
 
 const CARRYBACK_LINES = ["901", "902", "903"];
 const CARRYBACK_COLUMNS: ClassGridColumn[] = [
-	{ line: "taxYearEnd", caption: "Prior tax year-end", kind: "date", fieldName: "taxYearEnd" },
-	{ line: "amount", caption: "Non-capital loss carried back", kind: "money", fieldName: "amount" },
+	{
+		line: "taxYearEnd",
+		caption: "Prior tax year-end",
+		kind: "date",
+		fieldName: "taxYearEnd",
+	},
+	{
+		line: "amount",
+		caption: "Non-capital loss carried back",
+		kind: "money",
+		fieldName: "amount",
+	},
 ];
 
+/**
+ * Federal T2 Schedule 4 — corporation loss continuity and application, as a
+ * paper Form View. The whole form, from the generated layout, with the eight
+ * lines this app collects editable in place.
+ *
+ * ── What this view used to claim, and why it was wrong ──────────────────────
+ *
+ * It rendered eight lines and stated that limited partnership losses "do not
+ * appear anywhere on the printed Schedule 4 (confirmed by searching the form's
+ * own text for 'partnership' — no match)". They occupy the whole of page 6 as
+ * Part 7, in three grid tables over eighteen numbered columns. The search found
+ * nothing because a grid puts its numbers in the column headings, which is the
+ * documented blind spot of `pdftotext -layout` and the reason this repo's
+ * guidance says to author such parts by hand. Part 7 is now in the definition,
+ * authored from the rendered page, so it appears here like any other part.
+ *
+ * ── Two corrections that came with it ───────────────────────────────────────
+ *
+ * Lines 330 and 335 are Part 3 (farm) lines that extraction had filed under
+ * Part 1, and they rendered under "Non-capital losses" on this very screen — on
+ * the one form whose entire difficulty is that five loss types run in parallel
+ * with near-identical rows. And the jacket cross-references read 331 ← 150 and
+ * 332 ← 250, the "Other adjustments" lines, where the form prints 130 and 225.
+ *
+ * ── Why the non-collected lines are read-only ───────────────────────────────
+ *
+ * A line this app does not collect is not re-derived on the client, where it
+ * could drift from the engine: it shows the figure the last compute filed for
+ * it, read from `ComputedReturn.schedulePayloads`, which carries federal
+ * schedules as well as Alberta ones. `federalSchedulePayloads` does not yet
+ * emit anything under `T2SCH4`, so those lines still render with their number,
+ * caption and cross-references and no figure — and fill in of their own accord
+ * once the engine reports them.
+ */
 export function Schedule4FormView({
 	control,
+	computed,
 	disabled,
 	onNavigate,
 	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
+	computed?: ComputedReturn;
 	disabled?: boolean;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
 	const lossesControl = control as unknown as Control<LossesValues>;
-	const carrybacks = useWatch({ control: lossesControl, name: "carrybacks" }) ?? [];
-
-	const resolveLine: ResolveLine = (line): LineValue => {
-		const field = FIELDS.find((f) => f.line === line);
-		return field ? { editable: true, name: field.fieldName } : { editable: false, value: undefined };
-	};
+	const carrybacks =
+		useWatch({ control: lossesControl, name: "carrybacks" }) ?? [];
 
 	const carrybackRows: ClassGridRow[] = [0, 1, 2].map((i) => ({
 		key: `carryback-${i}`,
@@ -94,51 +110,40 @@ export function Schedule4FormView({
 
 	return (
 		<div className="space-y-4">
-			<PaperSection title="Non-capital and net-capital losses (Parts 1-2)" formId="T2SCH4">
-				{FIELDS.slice(0, 4).map((f) => (
-					<PaperLeaderRow
-						key={f.line}
-						line={f.line}
-						caption={f.caption}
-						kind="money"
-						role="input"
-						onNavigate={onNavigate}
-						highlightLine={highlightLine}
-						control={lossesControl}
-						resolveLine={resolveLine}
-						disabled={disabled}
-					/>
-				))}
-			</PaperSection>
-			<PaperSection title="Farm and restricted farm losses (Parts 3-4)" formId="T2SCH4">
-				{FIELDS.slice(4, 8).map((f) => (
-					<PaperLeaderRow
-						key={f.line}
-						line={f.line}
-						caption={f.caption}
-						kind="money"
-						role="input"
-						onNavigate={onNavigate}
-						highlightLine={highlightLine}
-						control={lossesControl}
-						resolveLine={resolveLine}
-						disabled={disabled}
-					/>
-				))}
+			<PaperFormSections
+				sections={T2_SCHEDULE_4_SECTIONS}
+				fields={T2_SCHEDULE_4_FIELDS}
+				control={control}
+				boundFields={FIELD_NAME}
+				computed={computed}
+				scheduleId="T2SCH4"
+				disabled={disabled}
+				onNavigate={onNavigate}
+				highlightLine={highlightLine}
+				formId="T2SCH4"
+			/>
+
+			<PaperSection
+				title="Farming income this year"
+				description="The ceiling for the restricted farm pool. It has no numbered box of its own — line 430's caption folds it in as descriptive text — so it is collected here rather than given a fabricated line number."
+			>
 				<PaperLeaderRow
 					line="—"
-					caption="Farming income this year (the ceiling for the restricted farm pool)"
+					caption="Farming income this year"
 					kind="money"
 					role="input"
-					note="No numbered box of its own on the printed form — line 430's caption folds this in as descriptive text, not a separate line."
 					control={lossesControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "farmingIncome" })}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "farmingIncome",
+					})}
 					disabled={disabled}
 				/>
 			</PaperSection>
+
 			<PaperSection
 				title="Non-capital loss carry-back request"
-				description="Maps to Schedule 4's own repeating three-preceding-year pattern (901/902/903 for non-capital)."
+				description="Lines 901, 902 and 903 — one per preceding year. The same three-row pattern repeats per loss type (951-953 capital, 921-923 farm, 941-943 restricted farm, 961-963 listed personal); this app's carry-back array is non-capital only."
 				formId="T2SCH4"
 			>
 				<div className="p-2">
@@ -152,13 +157,6 @@ export function Schedule4FormView({
 						lineFor={(row) => CARRYBACK_LINES[carrybackRows.indexOf(row)] ?? ""}
 					/>
 				</div>
-			</PaperSection>
-			<PaperSection
-				title="Limited partnership losses (s.111(1)(e)) — not on Schedule 4"
-				description="This loss type does not appear anywhere on the printed Schedule 4 (confirmed by searching the form's own text for 'partnership' — no match). The engine computes this pool (schedule4-losses.ts), but there is no CRA line number to cite for it on this form. Collected in Guided view; not shown as a fabricated Schedule 4 line here."
-				formId="T2SCH4"
-			>
-				<p className="p-4 text-xs text-muted-foreground">Not modelled as a Schedule 4 line.</p>
 			</PaperSection>
 		</div>
 	);

@@ -34,7 +34,16 @@ export interface ComputedReturn {
 	program: EngagementProgram;
 	engineVersion: string;
 	fields: ComputedField[];
-	/** Per-schedule filed line items, when the program files supporting schedules (AT1). */
+	/**
+	 * Per-schedule filed line items.
+	 *
+	 * Alberta keys these by a nine-digit TRA line item id (`SSSFFFOOO`); federal
+	 * T2 keys them by six digits, the three-digit CRA line then an occurrence.
+	 * A reader must therefore parse with the right helper for the program —
+	 * `parseAt1LineItemId` rejects a federal id and `parseT2LineItemId` rejects
+	 * an Alberta one, both deliberately, because reading either as the other
+	 * displays a real figure against the wrong line.
+	 */
 	schedulePayloads?: ComputedSchedulePayload[] | null;
 	/**
 	 * Validation notes the engine's own schedules raised while computing this

@@ -1,9 +1,22 @@
 "use client";
 
 import type { Control } from "react-hook-form";
+import type { ComputedReturn } from "@/api/computed-returns";
 import type { IdentificationValues } from "../../../../_lib/return-input";
-import { PaperLeaderRow, PaperSection } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
+import {
+	PaperLeaderRow,
+	PaperSection,
+} from "../../at1/paper/components/paper-primitives";
+import type {
+	LineValue,
+	NavigateToLine,
+	ResolveLine,
+} from "../../at1/paper/resolve-line";
+import {
+	T2_JACKET_FIELDS,
+	T2_JACKET_SECTIONS,
+} from "./generated/jacket.layout";
+import { PaperFormSections } from "./paper-form-sections";
 
 interface JacketField {
 	line: string;
@@ -50,44 +63,32 @@ interface JacketField {
  * `research/findings/federal/T2-identification-schedule-is-inert.md` for the
  * full history.
  */
-const FIELDS: readonly JacketField[] = [
-	{ line: "040", caption: "Type of corporation at the end of the tax year", fieldName: "corpType" },
-	{
-		line: "063",
-		caption: "Has there been an acquisition of control resulting in the application of subsection 249(4) since the tax year start?",
-		fieldName: "acquisitionOfControl",
-	},
-	{
-		line: "066",
-		caption: "Is the date on line 061 a deemed tax year-end according to subsection 249(3.1)?",
-		fieldName: "deemedYearEnd",
-	},
-	{
-		line: "067",
-		caption: "Is the corporation a professional corporation that is a member of a partnership?",
-		fieldName: "professionalCorp",
-	},
-	{ line: "070", caption: "Is this the first year of filing after incorporation?", fieldName: "firstReturn" },
-	{ line: "071", caption: "Is this the first year of filing after amalgamation?", fieldName: "amalgamation" },
-	{
-		line: "072",
-		caption: "Has there been a wind-up of a subsidiary under section 88 during the current tax year?",
-		fieldName: "windUp",
-	},
-	{ line: "078", caption: "Is this the final return up to dissolution?", fieldName: "finalReturn" },
-	{
-		line: "080",
-		caption: "Is the corporation a resident of Canada?",
-		fieldName: "nonResident",
-		note: "The printed form asks the OPPOSITE of this app's field — this app collects \"is the corporation a NON-resident\", so a preparer answering Yes here means the printed form's own line 080 would read No. Shown as entered, not inverted, to avoid a second place this could drift from what was actually typed.",
-	},
-	{
-		line: "150",
-		caption: "Is the corporation related to any other corporations?",
-		fieldName: "relatedCorporations",
-		note: "Schedule 9.",
-	},
-];
+/**
+ * The jacket lines this app collects, and the notes that belong to them rather
+ * than to the form.
+ *
+ * The captions are gone: page 1 of the jacket is now modelled in
+ * `T2_JACKET`'s own `identification` section, hand-authored from the rendered
+ * page, so retyping them here would be a third transcription of the same PDF.
+ * What stays is the mapping to this app's own field names, which no form
+ * definition can know, and the two warnings that are about THIS APP rather
+ * than about the form.
+ *
+ * Line 150 is not here. It is on page 2 (the attachments checklist), which the
+ * jacket definition deliberately does not model, so its row is still written
+ * out by hand below.
+ */
+const BOUND_FIELDS: Readonly<Record<string, keyof IdentificationValues>> = {
+	"040": "corpType",
+	"063": "acquisitionOfControl",
+	"066": "deemedYearEnd",
+	"067": "professionalCorp",
+	"070": "firstReturn",
+	"071": "amalgamation",
+	"072": "windUp",
+	"078": "finalReturn",
+	"080": "nonResident",
+};
 
 /**
  * Federal T2 jacket, page 1 (Identification) and the start of page 2
@@ -98,21 +99,22 @@ const FIELDS: readonly JacketField[] = [
  */
 export function IdentificationFormView({
 	control,
+	computed,
 	disabled,
 	onNavigate,
 	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
+	computed?: ComputedReturn;
 	disabled?: boolean;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
 	const identControl = control as unknown as Control<IdentificationValues>;
 
-	const resolveLine: ResolveLine = (line): LineValue => {
-		const field = FIELDS.find((f) => f.line === line);
-		return field ? { editable: true, name: field.fieldName } : { editable: false, value: undefined };
-	};
+	const IDENTIFICATION = T2_JACKET_SECTIONS.filter(
+		(s) => s.id === "identification",
+	);
 
 	return (
 		<div className="space-y-4">
@@ -122,33 +124,47 @@ export function IdentificationFormView({
 				formId="T2"
 			>
 				<p className="p-4 text-xs text-muted-foreground">
+					Line 040 is the sharpest case: this app determines CCPC and
+					small-business eligibility from the CLIENT RECORD's corporation type,
+					never from this answer, so changing it here does not change the
+					deduction. See
 					research/findings/federal/T2-identification-schedule-is-inert.md
 				</p>
 			</PaperSection>
-			<PaperSection
-				title="Identification and attachments (page 1-2)"
-				description="Line numbers verified directly against the rendered PDF, not the guided editor's original (several wrong) citations — see this schedule's own source comment."
+			<PaperFormSections
+				sections={IDENTIFICATION}
+				fields={T2_JACKET_FIELDS}
+				control={control}
+				boundFields={BOUND_FIELDS}
+				computed={computed}
+				scheduleId="T2"
 				formId="T2"
+				disabled={disabled}
+				onNavigate={onNavigate}
+				highlightLine={highlightLine}
+			/>
+
+			<PaperSection
+				title="Attachments checklist (page 2)"
+				description="Page 2 asks which schedules are in the envelope. The jacket definition models page 1 and pages 3 to 9 and deliberately leaves this one out, so the single question this app collects from it is written out here rather than rendered from a form."
 			>
-				{FIELDS.map((f) => (
-					<PaperLeaderRow
-						key={f.line}
-						line={f.line}
-						caption={f.caption}
-						kind={f.line === "040" ? "code" : "bool-flag"}
-						role="input"
-						note={
-							f.line === "040"
-								? "This app's actual CCPC/SBD-eligibility determination reads the CLIENT RECORD's own corporation-type field, not this one — confirmed in engagement-compute.service.ts. Answering here does not change SBD eligibility."
-								: f.note
-						}
-						onNavigate={onNavigate}
-						highlightLine={highlightLine}
-						control={identControl}
-						resolveLine={resolveLine}
-						disabled={disabled}
-					/>
-				))}
+				<PaperLeaderRow
+					line="150"
+					caption="Is the corporation related to any other corporations?"
+					kind="bool-flag"
+					role="input"
+					note="Schedule 9."
+					onNavigate={onNavigate}
+					highlightLine={highlightLine}
+					control={identControl}
+					resolveLine={
+						((): LineValue => ({
+							editable: true,
+							name: "relatedCorporations",
+						})) as ResolveLine
+					}
+					disabled={disabled}
+				/>
 			</PaperSection>
 		</div>
 	);

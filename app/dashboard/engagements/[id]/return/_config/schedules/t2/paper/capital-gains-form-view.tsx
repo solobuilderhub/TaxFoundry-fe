@@ -1,13 +1,23 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
-import type { At1DispositionCategory, CapitalGainsValues, Disposition } from "../../../../_lib/return-input";
+import { type Control, useWatch } from "react-hook-form";
+import type { ComputedReturn } from "@/api/computed-returns";
+import type {
+	At1DispositionCategory,
+	CapitalGainsValues,
+	Disposition,
+} from "../../../../_lib/return-input";
 import {
-	PaperClassGrid,
-	PaperSection,
 	type ClassGridColumn,
 	type ClassGridRow,
+	PaperClassGrid,
+	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
+import {
+	T2_SCHEDULE_6_FIELDS,
+	T2_SCHEDULE_6_SECTIONS,
+} from "./generated/schedule6.layout";
+import { PaperFormSections } from "./paper-form-sections";
 
 /**
  * Federal T2 Schedule 6 — Summary of dispositions of capital property.
@@ -40,50 +50,115 @@ import {
  * 050, stop-loss adjustment 160, ABIL total 406, capital gains dividend
  * 875, reserve continuity 880/885, net total 890) is not modelled by this
  * app's `CapitalGainsValues` at all (only the `dispositions` array exists)
- * — disclosed as its own section rather than silently omitted.
+ * — disclosed as its own section rather than silently omitted, and printed
+ * from the generated layout below that disclosure so the parts this app does
+ * not collect are visible as the form states them, not only as a list of what
+ * is missing.
  */
 
 const CATEGORY_LINES: Record<
 	At1DispositionCategory,
-	{ description: string; proceeds: string; acb: string; outlays: string; gain: string }
+	{
+		description: string;
+		proceeds: string;
+		acb: string;
+		outlays: string;
+		gain: string;
+	}
 > = {
-	shares: { description: "105", proceeds: "120", acb: "130", outlays: "140", gain: "150" },
-	realEstate: { description: "200", proceeds: "220", acb: "230", outlays: "240", gain: "250" },
-	bonds: { description: "307", proceeds: "320", acb: "330", outlays: "340", gain: "350" },
-	otherProperties: { description: "400", proceeds: "420", acb: "430", outlays: "440", gain: "450" },
-	personalUse: { description: "500", proceeds: "520", acb: "530", outlays: "540", gain: "550" },
-	listedPersonal: { description: "600", proceeds: "620", acb: "630", outlays: "640", gain: "650" },
+	shares: {
+		description: "105",
+		proceeds: "120",
+		acb: "130",
+		outlays: "140",
+		gain: "150",
+	},
+	realEstate: {
+		description: "200",
+		proceeds: "220",
+		acb: "230",
+		outlays: "240",
+		gain: "250",
+	},
+	bonds: {
+		description: "307",
+		proceeds: "320",
+		acb: "330",
+		outlays: "340",
+		gain: "350",
+	},
+	otherProperties: {
+		description: "400",
+		proceeds: "420",
+		acb: "430",
+		outlays: "440",
+		gain: "450",
+	},
+	personalUse: {
+		description: "500",
+		proceeds: "520",
+		acb: "530",
+		outlays: "540",
+		gain: "550",
+	},
+	listedPersonal: {
+		description: "600",
+		proceeds: "620",
+		acb: "630",
+		outlays: "640",
+		gain: "650",
+	},
 };
 
-const FLOORED_CATEGORIES = new Set<At1DispositionCategory>(["personalUse", "listedPersonal"]);
+const FLOORED_CATEGORIES = new Set<At1DispositionCategory>([
+	"personalUse",
+	"listedPersonal",
+]);
 
 const COLUMNS: ClassGridColumn[] = [
 	{ line: "", caption: "Property", kind: "text", fieldName: "description" },
-	{ line: "", caption: "Proceeds of disposition", kind: "money", fieldName: "proceeds" },
+	{
+		line: "",
+		caption: "Proceeds of disposition",
+		kind: "money",
+		fieldName: "proceeds",
+	},
 	{ line: "", caption: "Adjusted cost base", kind: "money", fieldName: "acb" },
-	{ line: "", caption: "Outlays and expenses", kind: "money", fieldName: "outlays" },
+	{
+		line: "",
+		caption: "Outlays and expenses",
+		kind: "money",
+		fieldName: "outlays",
+	},
 	{ line: "", caption: "Gain (or loss)", kind: "money" },
 ];
 
 function gainFor(row: Disposition | undefined): number | undefined {
 	if (!row || row.proceeds == null) return undefined;
 	const gain = (row.proceeds ?? 0) - (row.acb ?? 0) - (row.outlays ?? 0);
-	return row.category && FLOORED_CATEGORIES.has(row.category) ? Math.max(0, gain) : gain;
+	return row.category && FLOORED_CATEGORIES.has(row.category)
+		? Math.max(0, gain)
+		: gain;
 }
 
 export function CapitalGainsFormView({
 	control,
+	computed,
 	disabled,
 }: {
 	control: Control<Record<string, unknown>>;
+	computed?: ComputedReturn;
 	disabled?: boolean;
 }) {
 	const cgControl = control as unknown as Control<CapitalGainsValues>;
-	const dispositions = useWatch({ control: cgControl, name: "dispositions" }) ?? [];
+	const dispositions =
+		useWatch({ control: cgControl, name: "dispositions" }) ?? [];
 
 	const rows: ClassGridRow[] = dispositions.map((d, i) => ({
 		key: `disposition-${i}`,
-		label: d?.category ? CATEGORY_LINES[d.category].description : `Row ${i + 1} (no category set)`,
+		label: d?.category
+			? CATEGORY_LINES[d.category].description
+			: `Row ${i + 1} (no category set)`,
 		arrayIndex: i,
 	}));
 
@@ -103,11 +178,17 @@ export function CapitalGainsFormView({
 						disabled={disabled}
 						resolveCell={(row, col) => {
 							if (col.fieldName) return undefined;
-							const d = row.arrayIndex !== undefined ? dispositions[row.arrayIndex] : undefined;
+							const d =
+								row.arrayIndex !== undefined
+									? dispositions[row.arrayIndex]
+									: undefined;
 							return gainFor(d);
 						}}
 						lineFor={(row, col) => {
-							const d = row.arrayIndex !== undefined ? dispositions[row.arrayIndex] : undefined;
+							const d =
+								row.arrayIndex !== undefined
+									? dispositions[row.arrayIndex]
+									: undefined;
 							if (!d?.category) return "—";
 							const lines = CATEGORY_LINES[d.category];
 							if (col.fieldName === "description") return lines.description;
@@ -120,7 +201,9 @@ export function CapitalGainsFormView({
 				</div>
 			</PaperSection>
 			{rows.length === 0 && (
-				<p className="px-1 text-sm text-muted-foreground">No dispositions entered yet — add one in Guided view first.</p>
+				<p className="px-1 text-sm text-muted-foreground">
+					No dispositions entered yet — add one in Guided view first.
+				</p>
 			)}
 			<PaperSection
 				title="Not collected by this app"
@@ -128,29 +211,56 @@ export function CapitalGainsFormView({
 			>
 				<div className="space-y-2 p-4 text-xs text-muted-foreground">
 					<p>
-						<strong>Acquisition date</strong> — every grid has its own date column (shares 110, real estate 210,
-						bonds 310, other 410, personal-use 510, listed personal 610); this app's disposition rows have no date
-						field at all.
+						<strong>Acquisition date</strong> — every grid has its own date
+						column (shares 110, real estate 210, bonds 310, other 410,
+						personal-use 510, listed personal 610); this app's disposition rows
+						have no date field at all.
 					</p>
 					<p>
-						<strong>Shares' extra columns</strong> — number of shares (line 100) and class of shares (line 106) are
-						not collected separately; only the corporation name (line 105, shown above as "Property").
+						<strong>Shares' extra columns</strong> — number of shares (line 100)
+						and class of shares (line 106) are not collected separately; only
+						the corporation name (line 105, shown above as "Property").
 					</p>
 					<p>
-						<strong>Bonds' extra columns</strong> — face value (line 300) and maturity date (line 305) are not
-						collected separately; only the issuer name (line 307, shown above as "Property").
+						<strong>Bonds' extra columns</strong> — face value (line 300) and
+						maturity date (line 305) are not collected separately; only the
+						issuer name (line 307, shown above as "Property").
 					</p>
 					<p>
-						<strong>Part 7 — allowable business investment loss</strong> (lines 900-950) has no category option in
-						this app and is not modelled.
+						<strong>Part 7 — allowable business investment loss</strong> (lines
+						900-950) has no category option in this app and is not modelled.
 					</p>
 					<p>
-						<strong>Summary section</strong> — paragraph 111(4)(e) designation (line 050), the subsection 112(3)
-						stop-loss adjustment (line 160), the ABIL total (line 406), capital gains dividends received (line 875),
-						and the Schedule 13 reserve continuity (lines 880/885/890) are not collected by this app at all.
+						<strong>Summary section</strong> — paragraph 111(4)(e) designation
+						(line 050), the subsection 112(3) stop-loss adjustment (line 160),
+						the ABIL total (line 406), capital gains dividends received (line
+						875), and the Schedule 13 reserve continuity (lines 880/885/890) are
+						not collected by this app at all.
 					</p>
 				</div>
 			</PaperSection>
+
+			{/*
+			 * Schedule 6 as printed, below the grid this app actually collects.
+			 *
+			 * The grid above stays exactly as it is: it is the honest rendering of
+			 * one flat `dispositions` array placed on whichever of the form's seven
+			 * property-type grids each row's category names. What it cannot show is
+			 * the rest of the form — the columns each grid has that this app has no
+			 * field for, Part 7's ABIL, and the summary. Those are read-only here,
+			 * from the generated layout, so the section above names the gaps and
+			 * this one shows them.
+			 */}
+			<PaperFormSections
+				sections={T2_SCHEDULE_6_SECTIONS}
+				fields={T2_SCHEDULE_6_FIELDS}
+				control={control}
+				computed={computed}
+				scheduleId="T2SCH6"
+				disabled={disabled}
+				formId="T2SCH6"
+				titleSuffix=" — as printed"
+			/>
 		</div>
 	);
 }

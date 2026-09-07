@@ -1,55 +1,74 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
+import type { ComputedReturn } from "@/api/computed-returns";
 import type { FirstReturnValues } from "../../../../_lib/return-input";
-import { PaperLeaderRow, PaperSection } from "../../at1/paper/components/paper-primitives";
+import {
+	PaperLeaderRow,
+	PaperSection,
+} from "../../at1/paper/components/paper-primitives";
 import type { LineValue, NavigateToLine } from "../../at1/paper/resolve-line";
+import {
+	T2_SCHEDULE_24_FIELDS,
+	T2_SCHEDULE_24_SECTIONS,
+} from "./generated/schedule24.layout";
+import { PaperFormSections } from "./paper-form-sections";
 
 /**
  * Federal T2 Schedule 24 (event) + Schedule 101 (opening balance sheet).
- * Verified against `research/sources/cra-forms/extracted/T2SCH24-first-return.layout.txt`
- * (the raw `pdftotext -layout` text — trustworthy for this form, a genuine
- * caption-then-number leader-row layout throughout). No FormDefinition or
- * vendored PDF exists for Schedule 101 (confirmed: no file anywhere under
- * `packages/ca-tax/src/t2/forms/` or `research/sources/cra-forms/` for
- * "101") — it is GIFI-coded (opening balance sheet totals), which this
- * app's citation scheme does not carry line numbers for, same as the
- * balance-sheet/income-statement GIFI forms flagged separately.
+ * Schedule 24's line numbers and captions come from
+ * `generated/schedule24.layout.ts`. No FormDefinition or vendored PDF exists
+ * for Schedule 101 (confirmed: no file anywhere under
+ * `packages/ca-tax/src/t2/forms/` or `research/sources/cra-forms/` for "101")
+ * — it is GIFI-coded (opening balance sheet totals), which this app's citation
+ * scheme does not carry line numbers for, same as the balance-sheet and
+ * income-statement GIFI forms flagged separately. Its three fields are
+ * therefore still rendered by hand, below.
  *
  * `isFirstReturn` is a UI-only gate this app uses to decide whether to file
  * S24/S101 at all — the printed forms have no yes/no checkbox of their own;
  * their EXISTENCE in a filing is the signal.
  *
- * `event` was cited in the guided editor as "(line 100)" — checked against
- * the extraction and that is WRONG. Line 100 asks "identify the type of
- * operation that applies to your corporation" against a 01-17/99 industry
- * classification list (Crown corporation, life insurer, co-op, bank, …) —
- * a corporation-type code, not a record of WHICH of incorporation /
- * amalgamation / wind-up triggered the filing. That fact is instead
- * signalled on the T2 jacket itself, at lines 070 / 071 / 072 (see
- * `identification-form-view.tsx`, fixed earlier this pass) — a wrong
- * citation is worse than none, so `event` is shown here with no S24 line
- * reference at all, pointing at the jacket instead.
+ * `event` was cited in the guided editor as "(line 100)" — checked against the
+ * form and that is WRONG. Line 100 asks for the type of operation that applies
+ * to the corporation, against a 01-17/99 industry classification list (Crown
+ * corporation, life insurer, co-op, bank, …) — a corporation-type code, not a
+ * record of WHICH of incorporation / amalgamation / wind-up triggered the
+ * filing. That fact is instead signalled on the T2 jacket itself, at lines
+ * 070 / 071 / 072 (see `identification-form-view.tsx`). A wrong citation is
+ * worse than none, so `event` is bound to no S24 line at all and points at the
+ * jacket instead; line 100 renders read-only from the layout, uncollected.
  *
- * `predecessorBusinessNumbers` genuinely has real, event-dependent lines —
- * 300 (predecessor, amalgamation) or 500 (subsidiary, wind-up) — computed
- * here from the watched `event` value. The guided editor's own "(lines
- * 300 / 500)" citation was already correct, just static; this view makes
- * it event-specific.
+ * `predecessorBusinessNumbers` and `eventDate` genuinely have real,
+ * event-dependent lines, so they are bound per event rather than statically:
+ * business numbers to 300 (predecessor, amalgamation) or 500 (subsidiary,
+ * wind-up), and the date to 700 (the wind-up's own completion date). The
+ * guided editor's "(lines 300 / 500)" citation was already correct, just
+ * static. Where the event provides no line — a plain incorporation has no
+ * predecessor at all, and Schedule 24 has no date field for an incorporation
+ * or an amalgamation — the field is still collected, by a hand-written row
+ * that cites no line, since binding it to a line the form does not have would
+ * be inventing one.
  *
- * The predecessor/subsidiary NAME columns (lines 200 / 400) and the
- * wind-up's own commencement date (line 600, distinct from its completion
- * date at line 700) are not collected by this app at all — disclosed
- * below rather than silently dropped.
+ * The predecessor/subsidiary NAME columns (lines 200 / 400) and the wind-up's
+ * own commencement date (line 600, distinct from its completion date at line
+ * 700) are not collected by this app at all — they render read-only from the
+ * layout rather than being silently dropped.
  */
 
-const EVENT_BN_LINE: Record<NonNullable<FirstReturnValues["event"]>, string | undefined> = {
+const EVENT_BN_LINE: Record<
+	NonNullable<FirstReturnValues["event"]>,
+	string | undefined
+> = {
 	incorporation: undefined,
 	amalgamation: "300",
 	windUpOfSubsidiary: "500",
 };
 
-const EVENT_DATE_LINE: Record<NonNullable<FirstReturnValues["event"]>, string | undefined> = {
+const EVENT_DATE_LINE: Record<
+	NonNullable<FirstReturnValues["event"]>,
+	string | undefined
+> = {
 	incorporation: undefined,
 	amalgamation: undefined,
 	windUpOfSubsidiary: "700",
@@ -57,11 +76,13 @@ const EVENT_DATE_LINE: Record<NonNullable<FirstReturnValues["event"]>, string | 
 
 export function FirstReturnFormView({
 	control,
+	computed,
 	disabled,
 	onNavigate,
 	highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
+	computed?: ComputedReturn;
 	disabled?: boolean;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
@@ -71,6 +92,10 @@ export function FirstReturnFormView({
 
 	const bnLine = event ? EVENT_BN_LINE[event] : undefined;
 	const dateLine = event ? EVENT_DATE_LINE[event] : undefined;
+
+	const boundFields: Record<string, string | undefined> = {};
+	if (bnLine) boundFields[bnLine] = "predecessorBusinessNumbers";
+	if (dateLine) boundFields[dateLine] = "eventDate";
 
 	return (
 		<div className="space-y-4">
@@ -86,67 +111,78 @@ export function FirstReturnFormView({
 					onNavigate={onNavigate}
 					highlightLine={highlightLine}
 					control={frControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "isFirstReturn" })}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "isFirstReturn",
+					})}
 					disabled={disabled}
 				/>
 			</PaperSection>
 
 			<PaperSection
-				title="Schedule 24 — the event"
-				description="Part 1 (line 100) asks for the corporation's industry-type code, not which event this is — not collected by this app (no equivalent field). The event itself is instead recorded on the T2 jacket, lines 070/071/072."
-				formId="T2SCH24"
+				title="The event — no Schedule 24 line of its own"
+				description="Schedule 24 never asks which event triggered the filing; the T2 jacket does, at lines 070/071/072. Part 1's line 100 asks for the corporation's industry-type code instead, and this app has no field for it."
 			>
 				<PaperLeaderRow
 					line="—"
 					caption="What made this the first return? (incorporation / amalgamation / wind-up)"
 					kind="text"
 					role="input"
-					note="No S24 line — see the T2 jacket's own lines 070 (after incorporation), 071 (after amalgamation), 072 (wind-up of a subsidiary)."
+					note="No S24 line — see the T2 jacket's own lines 070 (after incorporation), 071 (after amalgamation), 072 (wind-up of a subsidiary). Not line 100, which is the industry-type code."
 					onNavigate={onNavigate}
 					highlightLine={highlightLine}
 					control={frControl}
 					resolveLine={(): LineValue => ({ editable: true, name: "event" })}
 					disabled={disabled}
 				/>
-				<PaperLeaderRow
-					line={dateLine ?? "—"}
-					caption={
-						dateLine
-							? "Date of the wind-up (Part 3)"
-							: "Date of the event — no S24 line for incorporation or amalgamation"
-					}
-					kind="date"
-					role="input"
-					note={
-						dateLine
-							? "Part 3's own commencement date of the wind-up (line 600) is a separate field this app does not collect."
-							: "Schedule 24 has no date field for a plain incorporation or amalgamation — established by the corporate record, not filed here."
-					}
-					onNavigate={onNavigate}
-					highlightLine={highlightLine}
-					control={frControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "eventDate" })}
-					disabled={disabled}
-				/>
-				<PaperLeaderRow
-					line={bnLine ?? "—"}
-					caption={
-						event === "windUpOfSubsidiary"
-							? "Business number(s) of the subsidiary corporation(s) (Part 3)"
-							: event === "amalgamation"
-								? "Business number(s) of the predecessor corporation(s) (Part 2)"
-								: "Predecessor / subsidiary business number(s) — not applicable to a plain incorporation"
-					}
-					kind="text"
-					role="input"
-					note="Enter NR for a predecessor/subsidiary that was not registered (the form's own instruction). The corporation NAME(s) that go with these numbers — lines 200 (predecessor) / 400 (subsidiary) — are not collected by this app."
-					onNavigate={onNavigate}
-					highlightLine={highlightLine}
-					control={frControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "predecessorBusinessNumbers" })}
-					disabled={disabled}
-				/>
+				{!dateLine && (
+					<PaperLeaderRow
+						line="—"
+						caption="Date of the event — no S24 line for incorporation or amalgamation"
+						kind="date"
+						role="input"
+						note="Schedule 24 has no date field for a plain incorporation or amalgamation — established by the corporate record, not filed here. A wind-up's own date is collected at line 700 in Part 3 instead."
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+						control={frControl}
+						resolveLine={(): LineValue => ({
+							editable: true,
+							name: "eventDate",
+						})}
+						disabled={disabled}
+					/>
+				)}
+				{!bnLine && (
+					<PaperLeaderRow
+						line="—"
+						caption="Predecessor / subsidiary business number(s) — not applicable to a plain incorporation"
+						kind="text"
+						role="input"
+						note="An amalgamation files these at line 300 and a wind-up at line 500; a plain incorporation has neither, so this row cites no line. Enter NR for a predecessor or subsidiary that was not registered (the form's own instruction)."
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+						control={frControl}
+						resolveLine={(): LineValue => ({
+							editable: true,
+							name: "predecessorBusinessNumbers",
+						})}
+						disabled={disabled}
+					/>
+				)}
 			</PaperSection>
+
+			<PaperFormSections
+				sections={T2_SCHEDULE_24_SECTIONS}
+				fields={T2_SCHEDULE_24_FIELDS}
+				control={control}
+				boundFields={boundFields}
+				computed={computed}
+				scheduleId="T2SCH24"
+				disabled={disabled}
+				onNavigate={onNavigate}
+				highlightLine={highlightLine}
+				formId="T2SCH24"
+			/>
 
 			<PaperSection
 				title="Schedule 101 — opening balance sheet"
@@ -160,7 +196,10 @@ export function FirstReturnFormView({
 					onNavigate={onNavigate}
 					highlightLine={highlightLine}
 					control={frControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "openingAssets" })}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "openingAssets",
+					})}
 					disabled={disabled}
 				/>
 				<PaperLeaderRow
@@ -171,7 +210,10 @@ export function FirstReturnFormView({
 					onNavigate={onNavigate}
 					highlightLine={highlightLine}
 					control={frControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "openingLiabilities" })}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "openingLiabilities",
+					})}
 					disabled={disabled}
 				/>
 				<PaperLeaderRow
@@ -183,7 +225,10 @@ export function FirstReturnFormView({
 					onNavigate={onNavigate}
 					highlightLine={highlightLine}
 					control={frControl}
-					resolveLine={(): LineValue => ({ editable: true, name: "openingEquity" })}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "openingEquity",
+					})}
 					disabled={disabled}
 				/>
 			</PaperSection>
