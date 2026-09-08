@@ -1,10 +1,10 @@
 /**
- * Alberta continuity of reserves (AT1SCH17) — paper Form View layout.
+ * Alberta reserves (AT1SCH17) — paper Form View layout.
  *
  * GENERATED from @classytic/ca-tax:
  *   npx tsx scripts/emit-paper-layouts.ts
  *
- * Ultimately from research/field-maps/at1-schedules-16-17.md, retrieved 2026-08-08.
+ * Ultimately from research/sources/tra-forms/pdf/AT1SCH17-reserves-TRA11738.pdf, retrieved 2026-09-08.
  *
  * Carries EVERY field, not just `input` ones — a paper view shows the whole
  * form. The paper renderer, not this file, is responsible for keeping
@@ -33,39 +33,39 @@ export interface PaperSectionDef {
 }
 
 export const AT1_SCHEDULE_17_SECTIONS: readonly PaperSectionDef[] = [
-  { id: "reserves", title: "Continuity of reserves", description: "Eight reserve kinds. Six mirror federal Schedule 13; policy reserves and bank reserves exist only on the Alberta form." },
-  { id: "totals", title: "Totals carried to Schedule 12", description: "Two totals, because the swing has two halves — what returns to income and what is deducted again." },
+  { id: "reserves", title: "Reserves", description: "Eight reserve kinds. Six mirror federal Schedule 13; policy reserves and bank reserves exist only on the Alberta form." },
+  { id: "carried-forward", title: "Carried forward to Schedule 12", description: "Line 091 is the sum of the opening and transfer totals. Line 081, the closing total, carries separately from inside the reserves box." },
 ];
 
 export const AT1_SCHEDULE_17_FIELDS: readonly PaperField[] = [
-  { line: "017001001", caption: "Doubtful debts — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "110", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017003001", caption: "Undelivered goods and services not rendered — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "130", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017005001", caption: "Prepaid rent — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "150", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017009001", caption: "Returnable containers — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "190", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017011001", caption: "Unpaid amounts — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "210", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017013001", caption: "Insurance corporations policy reserves — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
-  { line: "017015001", caption: "Bank reserves — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
-  { line: "017017001", caption: "Other tax reserves — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "230", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017021001", caption: "Total of the opening balances", kind: "money", role: "total", section: "totals" },
-  { line: "017031001", caption: "Doubtful debts — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "115", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017033001", caption: "Undelivered goods and services not rendered — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "135", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017035001", caption: "Prepaid rent — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "155", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017039001", caption: "Returnable containers — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "195", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017041001", caption: "Unpaid amounts — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "215", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017043001", caption: "Insurance corporations policy reserves — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
-  { line: "017045001", caption: "Bank reserves — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
-  { line: "017047001", caption: "Other tax reserves — Transfer on a wind-up or amalgamation", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "235", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017051001", caption: "Total of the transfers on wind-up or amalgamation", kind: "money", role: "total", section: "totals" },
-  { line: "017061001", caption: "Doubtful debts — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "120", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017063001", caption: "Undelivered goods and services not rendered — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "140", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017065001", caption: "Prepaid rent — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "160", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017069001", caption: "Returnable containers — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "200", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017071001", caption: "Unpaid amounts — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "220", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017073001", caption: "Insurance corporations policy reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
-  { line: "017075001", caption: "Bank reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
-  { line: "017077001", caption: "Other tax reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "240", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
-  { line: "017081001", caption: "Total of the closing balances", kind: "money", role: "total", section: "totals", note: "This year’s reserves, deducted from Alberta income.", to: { form: "AT1SCH12", line: "012038001" } },
-  { line: "017091001", caption: "Total of line 021 plus line 051", kind: "money", role: "computed", section: "totals", note: "Opening balances plus transfers — everything that comes BACK INTO income. Filing this without line 081, or the reverse, misstates Alberta income by the other half of the swing.", to: { form: "AT1SCH12", line: "012036001" } },
+  { line: "017001001", caption: "Reserve for doubtful debts — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "110", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017003001", caption: "Reserve for undelivered goods and services not rendered — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "130", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017005001", caption: "Reserve for prepaid rent — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "150", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017009001", caption: "Reserve for returnable containers — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "190", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017011001", caption: "Reserve for unpaid amounts — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "210", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017013001", caption: "Insurance Corporations Policy Reserves — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
+  { line: "017015001", caption: "Bank Reserves — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
+  { line: "017017001", caption: "Other Tax Reserves — Balance at the beginning of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "230", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017021001", caption: "TOTALS: Balance at the beginning of the year", kind: "money", role: "total", section: "reserves" },
+  { line: "017031001", caption: "Reserve for doubtful debts — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "115", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017033001", caption: "Reserve for undelivered goods and services not rendered — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "135", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017035001", caption: "Reserve for prepaid rent — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "155", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017039001", caption: "Reserve for returnable containers — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "195", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017041001", caption: "Reserve for unpaid amounts — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "215", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017043001", caption: "Insurance Corporations Policy Reserves — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
+  { line: "017045001", caption: "Bank Reserves — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
+  { line: "017047001", caption: "Other Tax Reserves — Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "235", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017051001", caption: "TOTALS: Transfer on amalgamation or wind-up of subsidiary", kind: "money", role: "total", section: "reserves" },
+  { line: "017061001", caption: "Reserve for doubtful debts — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "120", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017063001", caption: "Reserve for undelivered goods and services not rendered — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "140", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017065001", caption: "Reserve for prepaid rent — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "160", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017069001", caption: "Reserve for returnable containers — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "200", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017071001", caption: "Reserve for unpaid amounts — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "220", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017073001", caption: "Insurance Corporations Policy Reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
+  { line: "017075001", caption: "Bank Reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", note: "No federal Schedule 13 equivalent — the federal return handles it elsewhere." },
+  { line: "017077001", caption: "Other Tax Reserves — Balance at the end of the year", kind: "money", role: "input", section: "reserves", requirement: "conditional", from: { form: "T2SCH13", line: "240", note: "Defaults to this federal figure — override only where Alberta genuinely diverges." } },
+  { line: "017081001", caption: "TOTALS: Balance at the end of the year", kind: "money", role: "total", section: "reserves", note: "This year’s reserves, deducted from Alberta income.", to: { form: "AT1SCH12", line: "012038001" } },
+  { line: "017091001", caption: "Line 021 + line 051 =", kind: "money", role: "computed", section: "carried-forward", note: "Opening balances plus transfers — everything that comes BACK INTO income. Filing this without line 081, or the reverse, misstates Alberta income by the other half of the swing.", to: { form: "AT1SCH12", line: "012036001" } },
 ];
 
 export const AT1_SCHEDULE_17_FOOTNOTES: readonly string[] = [
@@ -80,12 +80,12 @@ export interface Schedule17ReserveKind {
 }
 
 export const AT1_SCHEDULE_17_RESERVE_KINDS: readonly Schedule17ReserveKind[] = [
-  { label: "Doubtful debts", opening: "017001001", transfer: "017031001", closing: "017061001" },
-  { label: "Undelivered goods and services not rendered", opening: "017003001", transfer: "017033001", closing: "017063001" },
-  { label: "Prepaid rent", opening: "017005001", transfer: "017035001", closing: "017065001" },
-  { label: "Returnable containers", opening: "017009001", transfer: "017039001", closing: "017069001" },
-  { label: "Unpaid amounts", opening: "017011001", transfer: "017041001", closing: "017071001" },
-  { label: "Insurance corporations policy reserves", opening: "017013001", transfer: "017043001", closing: "017073001" },
-  { label: "Bank reserves", opening: "017015001", transfer: "017045001", closing: "017075001" },
-  { label: "Other tax reserves", opening: "017017001", transfer: "017047001", closing: "017077001" },
+  { label: "Reserve for doubtful debts", opening: "017001001", transfer: "017031001", closing: "017061001" },
+  { label: "Reserve for undelivered goods and services not rendered", opening: "017003001", transfer: "017033001", closing: "017063001" },
+  { label: "Reserve for prepaid rent", opening: "017005001", transfer: "017035001", closing: "017065001" },
+  { label: "Reserve for returnable containers", opening: "017009001", transfer: "017039001", closing: "017069001" },
+  { label: "Reserve for unpaid amounts", opening: "017011001", transfer: "017041001", closing: "017071001" },
+  { label: "Insurance Corporations Policy Reserves", opening: "017013001", transfer: "017043001", closing: "017073001" },
+  { label: "Bank Reserves", opening: "017015001", transfer: "017045001", closing: "017075001" },
+  { label: "Other Tax Reserves", opening: "017017001", transfer: "017047001", closing: "017077001" },
 ];

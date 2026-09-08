@@ -17,22 +17,18 @@ import type { ReturnInput } from "../_lib/return-input";
 import { alberta } from "./schedules/at1/alberta";
 import { albertaContinuity } from "./schedules/at1/alberta-continuity";
 import { albertaDonations } from "./schedules/at1/alberta-donations";
-import { albertaSbd } from "./schedules/at1/alberta-sbd";
 import { albertaIeg } from "./schedules/at1/alberta-ieg";
+import { albertaSbd } from "./schedules/at1/alberta-sbd";
 import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
 import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
-import { albertaRoyaltyDeduction5 } from "./schedules/at1/alberta-schedule5";
-import { albertaRoyaltyCredit6 } from "./schedules/at1/alberta-schedule6";
-import { albertaRoyaltySupplemental7 } from "./schedules/at1/alberta-schedule7";
-import { albertaPoliticalContributions8 } from "./schedules/at1/alberta-schedule8";
-import { albertaSredCredit9 } from "./schedules/at1/alberta-schedule9";
 import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
+import { quebec } from "./schedules/co17/quebec";
+import type { ScheduleDef, ScheduleProgram } from "./schedules/shared/define";
 import { balanceSheet } from "./schedules/t2/balance-sheet";
 import { capital } from "./schedules/t2/capital";
 import { capitalGains } from "./schedules/t2/capital-gains";
 import { cca } from "./schedules/t2/cca";
 import { credits } from "./schedules/t2/credits";
-import type { ScheduleDef, ScheduleProgram } from "./schedules/shared/define";
 import { dividends } from "./schedules/t2/dividends";
 import { donations } from "./schedules/t2/donations";
 import { eifel } from "./schedules/t2/eifel";
@@ -47,7 +43,6 @@ import { netIncome } from "./schedules/t2/net-income";
 import { payments } from "./schedules/t2/payments";
 import { preferredShares } from "./schedules/t2/preferred-shares";
 import { provincialAllocation } from "./schedules/t2/provincial-allocation";
-import { quebec } from "./schedules/co17/quebec";
 import { reserves } from "./schedules/t2/reserves";
 import { sbd } from "./schedules/t2/sbd";
 import { shareholders } from "./schedules/t2/shareholders";
@@ -80,11 +75,6 @@ export const SCHEDULES = [
 	albertaIeg,
 	albertaOtherCredits3,
 	albertaForeignInvestment4,
-	albertaRoyaltyDeduction5,
-	albertaRoyaltyCredit6,
-	albertaRoyaltySupplemental7,
-	albertaPoliticalContributions8,
-	albertaSredCredit9,
 	albertaResourceDeductions15,
 	payments,
 	internetBusiness,

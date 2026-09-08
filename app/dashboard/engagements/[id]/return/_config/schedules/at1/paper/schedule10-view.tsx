@@ -1,7 +1,10 @@
 "use client";
 
 import type { ComputedReturn } from "@/api/computed-returns";
-import { AT1_SCHEDULE_10_FIELDS, AT1_SCHEDULE_10_SECTIONS } from "./generated/schedule10.layout";
+import {
+	AT1_SCHEDULE_10_FIELDS,
+	AT1_SCHEDULE_10_SECTIONS,
+} from "./generated/schedule10.layout";
 import { ReadOnlyScheduleView } from "./read-only-schedule-view";
 import type { NavigateToLine } from "./resolve-line";
 
@@ -34,7 +37,7 @@ export function Schedule10View({
 			stale={stale}
 			onNavigate={onNavigate}
 			highlightLine={highlightLine}
-			notComputedMessage="Not yet computed. Compute the return first."
+			notComputedMessage="Not yet computed — the carry-back figures appear once you compute the return."
 			nothingToReportMessage="Computed, and no loss carry-back was requested this filing."
 		/>
 	);

@@ -269,12 +269,34 @@ describe("the Schedule 12 paper layout is in step with AT1_SCHEDULE_12", () => {
 		).toBe(schedule12PaperLayout());
 	});
 
+	/**
+	 * Every reconciling item is two lines, federal and Alberta, and Schedule 12
+	 * additionally carries ten lines that stand alone: the two net-income lines
+	 * and two adjustments in Area A, and in Area B the two subtotals and the two
+	 * taxable-income figures they produce.
+	 *
+	 * Area B used to stop at line 075, so those last four and three whole pairs
+	 * were missing — which is how Schedule 21's line 017 came to print "Carry
+	 * forward to Schedule 12, line 082" against a line that did not exist.
+	 */
+	const STAND_ALONE_LINES = 10;
+
 	it("has a federal AND an Alberta field for every reconciling pair", () => {
 		const onDisk = readFileSync(SCHEDULE_12_CHECKED_IN, "utf8");
 		const lines = [...onDisk.matchAll(/ {2}\{ line: "(\d+)"/g)].map(
 			(m) => m[1] as string,
 		);
-		expect(lines.length).toBe(6 + AT1_SCHEDULE_12_PAIRS.length * 2);
+		expect(lines.length).toBe(
+			STAND_ALONE_LINES + AT1_SCHEDULE_12_PAIRS.length * 2,
+		);
+	});
+
+	it("carries Area B through to the taxable income it produces", () => {
+		const onDisk = readFileSync(SCHEDULE_12_CHECKED_IN, "utf8");
+		// The subtotal, the s.110.5 addition after it, and Alberta taxable income.
+		for (const line of ["012080001", "012082001", "012090001"]) {
+			expect(onDisk).toContain(`line: "${line}"`);
+		}
 	});
 });
 

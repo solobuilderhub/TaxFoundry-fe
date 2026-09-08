@@ -1,7 +1,10 @@
 "use client";
 
 import type { ComputedReturn } from "@/api/computed-returns";
-import { AT1_SCHEDULE_12_FIELDS, AT1_SCHEDULE_12_SECTIONS } from "./generated/schedule12.layout";
+import {
+	AT1_SCHEDULE_12_FIELDS,
+	AT1_SCHEDULE_12_SECTIONS,
+} from "./generated/schedule12.layout";
 import { ReadOnlyScheduleView } from "./read-only-schedule-view";
 import type { NavigateToLine } from "./resolve-line";
 
@@ -39,7 +42,7 @@ export function Schedule12View({
 			stale={stale}
 			onNavigate={onNavigate}
 			highlightLine={highlightLine}
-			notComputedMessage="Not yet computed. Compute the return to see Schedule 12."
+			notComputedMessage="Not yet computed — the form below is Schedule 12 as TRA prints it; its figures appear once you compute the return."
 			nothingToReportMessage="Computed, and Schedule 12 has nothing to reconcile — Alberta and federal figures agree on Schedules 13, 17, 18 and 21 this filing. That's a real result, not a gap: the form itself says only to report a pair where the amounts differ."
 		/>
 	);

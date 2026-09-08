@@ -1,8 +1,8 @@
 "use client";
 
-import type { FieldComponentProps } from "@classytic/formkit";
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
+import type { FieldComponentProps } from "@classytic/formkit";
 import { Plus, Trash2 } from "lucide-react";
 import {
 	type Control,
@@ -51,15 +51,27 @@ function HeadWithLine({
 	lineId: string;
 	children: React.ReactNode;
 	align?: "right";
-	/** The printed form's own full caption — the abbreviated column label above is a fit for a table header, not a replacement for what the line actually says. */
+	/**
+	 * Extra context the printed column heading does not itself carry — chiefly
+	 * WHY the form shades this column out on some rows. The heading text is the
+	 * page's own wording verbatim, so a tooltip that merely repeats it is noise;
+	 * only set this where there is something the page says elsewhere.
+	 */
 	tooltip?: string;
 }) {
 	const displayLine = parseAt1LineItemId(lineId)?.field ?? lineId;
 	return (
 		<TableHead className={align === "right" ? "text-right" : undefined}>
-			<span className="block font-mono text-[10px] font-normal text-muted-foreground">{displayLine}</span>
+			<span className="block font-mono text-[10px] font-normal text-muted-foreground">
+				{displayLine}
+			</span>
 			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
-				<span className={cn(tooltip && "cursor-help underline decoration-dotted underline-offset-2")}>
+				<span
+					className={cn(
+						tooltip &&
+							"cursor-help underline decoration-dotted underline-offset-2",
+					)}
+				>
 					{children}
 				</span>
 			</TooltipWrapper>
@@ -79,18 +91,29 @@ function CarriesToBadge({
 	// printed form's 3-digit field, not the internal key.
 	const displayLine = parseAt1LineItemId(to.line)?.field ?? to.line;
 	const label = `→ ${to.form} line ${displayLine}`;
-	const tooltip = to.note || `Carries forward to ${to.form}, line ${displayLine}.`;
+	const tooltip =
+		to.note || `Carries forward to ${to.form}, line ${displayLine}.`;
 	return (
 		<TooltipWrapper content={tooltip} side="top">
 			{onNavigate ? (
-				<button type="button" onClick={() => onNavigate(to.form, to.line)} className="ml-1 inline-flex align-middle">
-					<Pill variant="outline" className="cursor-pointer text-[10px] font-normal hover:bg-accent">
+				<button
+					type="button"
+					onClick={() => onNavigate(to.form, to.line)}
+					className="ml-1 inline-flex align-middle"
+				>
+					<Pill
+						variant="outline"
+						className="cursor-pointer text-[10px] font-normal hover:bg-accent"
+					>
 						{label}
 					</Pill>
 				</button>
 			) : (
 				<span className="ml-1 inline-flex align-middle">
-					<Pill variant="outline" className="cursor-help text-[10px] font-normal">
+					<Pill
+						variant="outline"
+						className="cursor-help text-[10px] font-normal"
+					>
 						{label}
 					</Pill>
 				</span>
@@ -152,6 +175,28 @@ function ordinal(n: number): string {
 // ============================================================================
 // Shared dense-cell inputs
 // ============================================================================
+
+/**
+ * A cell the printed form SHADES OUT — a column that exists on the page but is
+ * not available on this row.
+ *
+ * The form uses shading to say "this column does not apply to this row", and it
+ * means something different from an empty box. On the non-capital analysis, the
+ * current-year row shades the opening balance and the amount applied, while
+ * every preceding-year row shades the loss incurred and the loss carried back:
+ * a vintage from six years ago cannot incur a loss this year.
+ *
+ * These columns used to be omitted from the table entirely, which lost the
+ * distinction and left the table two columns short of the form. Rendering them
+ * shaded says the same thing the page says.
+ */
+function ShadedCell({ title }: { title: string }) {
+	return (
+		<TableCell className="bg-muted/60 p-0" title={title}>
+			<span className="sr-only">{title}</span>
+		</TableCell>
+	);
+}
 
 function NumCell({
 	control,
@@ -326,7 +371,9 @@ function TextCell({
 export function LimitedPartnershipTable({
 	control,
 	onNavigate,
-}: FieldComponentProps<AlbertaContinuityValues> & { onNavigate?: NavigateToLine }) {
+}: FieldComponentProps<AlbertaContinuityValues> & {
+	onNavigate?: NavigateToLine;
+}) {
 	const { fields, append, remove } = useFieldArray({
 		control,
 		name: "limitedPartnerships",
@@ -354,7 +401,12 @@ export function LimitedPartnershipTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<HeadWithLine lineId={line("131")} tooltip="Partnership identifier (if known).">Partnership</HeadWithLine>
+							<HeadWithLine
+								lineId={line("131")}
+								tooltip="Partnership identifier (if known)."
+							>
+								Partnership
+							</HeadWithLine>
 							<HeadWithLine
 								lineId={line("133")}
 								align="right"
@@ -369,7 +421,11 @@ export function LimitedPartnershipTable({
 							>
 								Wind-up transfer
 							</HeadWithLine>
-							<HeadWithLine lineId={line("137")} align="right" tooltip="The limited partnership loss created this year.">
+							<HeadWithLine
+								lineId={line("137")}
+								align="right"
+								tooltip="The limited partnership loss created this year."
+							>
 								Current-year loss
 							</HeadWithLine>
 							<HeadWithLine
@@ -379,7 +435,11 @@ export function LimitedPartnershipTable({
 							>
 								Applied
 								<CarriesToBadge
-									to={{ form: "AT1SCH12", line: "012072001", note: "Carry forward the total of this column to Schedule 12, line 072." }}
+									to={{
+										form: "AT1SCH12",
+										line: "012072001",
+										note: "Carry forward the total of this column to Schedule 12, line 072.",
+									}}
 									onNavigate={onNavigate}
 								/>
 							</HeadWithLine>
@@ -517,8 +577,16 @@ function RifeFieldRow({
 	return (
 		<div className="flex items-center justify-between gap-3">
 			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
-				<span className={cn("flex items-baseline gap-1.5 text-sm", tooltip && "cursor-help underline decoration-dotted underline-offset-2")}>
-					<span className="font-mono text-[10px] text-muted-foreground">{field}</span>
+				<span
+					className={cn(
+						"flex items-baseline gap-1.5 text-sm",
+						tooltip &&
+							"cursor-help underline decoration-dotted underline-offset-2",
+					)}
+				>
+					<span className="font-mono text-[10px] text-muted-foreground">
+						{field}
+					</span>
 					{label}
 				</span>
 			</TooltipWrapper>
@@ -540,12 +608,22 @@ function RifeSummaryRow({
 	return (
 		<div className="flex items-center justify-between gap-3 rounded-md border border-dashed bg-muted/50 px-2 py-1.5">
 			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
-				<span className={cn("flex items-baseline gap-1.5 text-sm text-muted-foreground", tooltip && "cursor-help")}>
+				<span
+					className={cn(
+						"flex items-baseline gap-1.5 text-sm text-muted-foreground",
+						tooltip && "cursor-help",
+					)}
+				>
 					<span className="font-mono text-[10px]">{field}</span>
 					{label}
 				</span>
 			</TooltipWrapper>
-			<span className={cn("text-sm tabular-nums", value < 0 && "text-red-600 dark:text-red-400")}>
+			<span
+				className={cn(
+					"text-sm tabular-nums",
+					value < 0 && "text-red-600 dark:text-red-400",
+				)}
+			>
 				{CURRENCY_FMT.format(value)}
 			</span>
 		</div>
@@ -559,24 +637,50 @@ export function RifeContinuitySection({
 	const watched = useWatch({ control, name: "rife" }) ?? {};
 	const opening = toNum(watched.openingBalance) ?? 0;
 	const windUp = toNum(watched.transferredOnWindUp) ?? 0;
-	const acquisitionAdjustment = toNum(watched.acquisitionOfControlAdjustment) ?? 0;
+	const acquisitionAdjustment =
+		toNum(watched.acquisitionOfControlAdjustment) ?? 0;
 	const currentYear = toNum(watched.currentYearRife) ?? 0;
 	const excessCapacity = toNum(watched.excessCapacity) ?? 0;
 	const receivedCapacity = toNum(watched.receivedCapacity) ?? 0;
 
-	const rifeFromPreviousYears = Math.max(0, opening + windUp - acquisitionAdjustment);
+	const rifeFromPreviousYears = Math.max(
+		0,
+		opening + windUp - acquisitionAdjustment,
+	);
 	const totalCapacity = excessCapacity + receivedCapacity;
-	const maxDeductible = Math.max(0, Math.min(rifeFromPreviousYears, totalCapacity));
+	const maxDeductible = Math.max(
+		0,
+		Math.min(rifeFromPreviousYears, totalCapacity),
+	);
 	const requestedClaim = toNum(watched.deductedClaim);
 	const deducted = Math.min(requestedClaim ?? maxDeductible, maxDeductible);
-	const closingBalance = opening + windUp - acquisitionAdjustment + currentYear - deducted;
+	const closingBalance =
+		opening + windUp - acquisitionAdjustment + currentYear - deducted;
 
 	return (
 		<div className="space-y-4">
 			<div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-				<RifeFieldRow control={control} name="rife.openingBalance" field="200" label="RIFE at the end of the previous tax year" disabled={disabled} />
-				<RifeFieldRow control={control} name="rife.transferredOnWindUp" field="210" label="Transferred on an amalgamation or wind-up" disabled={disabled} />
-				<RifeFieldRow control={control} name="rife.acquisitionOfControlAdjustment" field="220" label="Deduct: adjustment for an acquisition of control" disabled={disabled} />
+				<RifeFieldRow
+					control={control}
+					name="rife.openingBalance"
+					field="200"
+					label="RIFE at the end of the previous tax year"
+					disabled={disabled}
+				/>
+				<RifeFieldRow
+					control={control}
+					name="rife.transferredOnWindUp"
+					field="210"
+					label="Transferred on an amalgamation or wind-up"
+					disabled={disabled}
+				/>
+				<RifeFieldRow
+					control={control}
+					name="rife.acquisitionOfControlAdjustment"
+					field="220"
+					label="Deduct: adjustment for an acquisition of control"
+					disabled={disabled}
+				/>
 				<RifeFieldRow
 					control={control}
 					name="rife.currentYearRife"
@@ -603,9 +707,21 @@ export function RifeContinuitySection({
 				/>
 			</div>
 			<div className="space-y-1.5 border-t pt-3">
-				<RifeSummaryRow field="310" label="RIFE from previous tax years (200 + 210 − 220)" value={rifeFromPreviousYears} />
-				<RifeSummaryRow field="340" label="Total capacity (320 + 330)" value={totalCapacity} />
-				<RifeSummaryRow field="350" label="Maximum deductible (lesser of 310 and 340)" value={maxDeductible} />
+				<RifeSummaryRow
+					field="310"
+					label="RIFE from previous tax years (200 + 210 − 220)"
+					value={rifeFromPreviousYears}
+				/>
+				<RifeSummaryRow
+					field="340"
+					label="Total capacity (320 + 330)"
+					value={totalCapacity}
+				/>
+				<RifeSummaryRow
+					field="350"
+					label="Maximum deductible (lesser of 310 and 340)"
+					value={maxDeductible}
+				/>
 			</div>
 			<RifeFieldRow
 				control={control}
@@ -615,7 +731,11 @@ export function RifeContinuitySection({
 				help="Must not exceed line 350 — blank claims the maximum available automatically."
 				disabled={disabled}
 			/>
-			<RifeSummaryRow field="250" label="Closing balance of RIFE" value={closingBalance} />
+			<RifeSummaryRow
+				field="250"
+				label="Closing balance of RIFE"
+				value={closingBalance}
+			/>
 		</div>
 	);
 }
@@ -645,6 +765,34 @@ export function NonCapitalVintageTable({
 		name: "nonCapitalVintages",
 	});
 	const watched = useWatch({ control, name: "nonCapitalVintages" }) ?? [];
+
+	/**
+	 * The form's own Totals row, under four of the eight columns.
+	 *
+	 * Only 155, 159, 167 and 169 are totalled on the page. The two shaded
+	 * columns are not — a loss incurred this year and a loss carried back only
+	 * ever appear on the current-year row, so a column sum of them would be a
+	 * number the form never asks for.
+	 */
+	const totals = watched.reduce<{
+		beginning: number;
+		adjustments: number;
+		applied: number;
+		closing: number;
+	}>(
+		(acc, r) => {
+			const beginning = toNum(r?.balanceAtBeginning) ?? 0;
+			const adjustments = toNum(r?.adjustments) ?? 0;
+			const applied = toNum(r?.applied) ?? 0;
+			return {
+				beginning: acc.beginning + beginning,
+				adjustments: acc.adjustments + adjustments,
+				applied: acc.applied + applied,
+				closing: acc.closing + beginning + adjustments - applied,
+			};
+		},
+		{ beginning: 0, adjustments: 0, applied: 0, closing: 0 },
+	);
 
 	const handleAdd = () => {
 		const used = new Set(
@@ -679,26 +827,58 @@ export function NonCapitalVintageTable({
 						<TableRow>
 							<HeadWithLine lineId={line("151")}>Year of origin</HeadWithLine>
 							<HeadWithLine lineId={line("153")}>Tax year end</HeadWithLine>
-							<HeadWithLine lineId={line("155")} align="right">Opening balance</HeadWithLine>
-							<HeadWithLine lineId={line("159")} align="right">Adjustments</HeadWithLine>
-							<HeadWithLine lineId={line("167")} align="right">Applied</HeadWithLine>
-							<HeadWithLine lineId={line("169")} align="right">Closing balance</HeadWithLine>
+							<HeadWithLine
+								lineId={line("155")}
+								align="right"
+								tooltip="Balance at the beginning of year. Shaded on the current-year row — a loss that arose this year has no opening balance."
+							>
+								Balance at the beginning of year
+							</HeadWithLine>
+							<HeadWithLine
+								lineId={line("157")}
+								align="right"
+								tooltip="Loss incurred in current year. Shaded on every preceding-year row — a vintage from an earlier year cannot incur a loss this year."
+							>
+								Loss incurred in current year
+							</HeadWithLine>
+							<HeadWithLine lineId={line("159")} align="right">
+								Adjustments and transfers
+							</HeadWithLine>
+							<HeadWithLine
+								lineId={line("165")}
+								align="right"
+								tooltip="Loss carried back to a prior year. Shaded on every preceding-year row."
+							>
+								Loss carried back
+							</HeadWithLine>
+							<HeadWithLine
+								lineId={line("167")}
+								align="right"
+								tooltip="Applied to reduce taxable income. Shaded on the current-year row."
+							>
+								Applied to reduce taxable income
+							</HeadWithLine>
+							<HeadWithLine lineId={line("169")} align="right">
+								Balance at end of year 155 + 157 + 159 - 165 - 167
+							</HeadWithLine>
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						<TableRow className="bg-muted/30 hover:bg-muted/30">
 							<TableCell className="font-medium">Current</TableCell>
-							<TableCell colSpan={5} className="text-xs text-muted-foreground">
+							<TableCell colSpan={7} className="text-xs text-muted-foreground">
 								Calculated automatically — see the current-year non-capital loss
-								and carry-back entered above. Not entered here.
+								and carry-back entered above. Not entered here. On the printed
+								form this row's opening balance (155) and amount applied (167)
+								are shaded out.
 							</TableCell>
 							<TableCell />
 						</TableRow>
 						{fields.length === 0 && (
 							<TableRow className="hover:bg-transparent">
 								<TableCell
-									colSpan={7}
+									colSpan={9}
 									className="py-6 text-center text-sm text-muted-foreground"
 								>
 									No prior-year balances yet — click “Add prior-year row” to
@@ -737,12 +917,14 @@ export function NonCapitalVintageTable({
 											name={`nonCapitalVintages.${index}.balanceAtBeginning`}
 										/>
 									</TableCell>
+									<ShadedCell title="Loss incurred in current year (157) — shaded on a preceding-year row." />
 									<TableCell>
 										<NumCell
 											control={control}
 											name={`nonCapitalVintages.${index}.adjustments`}
 										/>
 									</TableCell>
+									<ShadedCell title="Loss carried back (165) — shaded on a preceding-year row." />
 									<TableCell>
 										<NumCell
 											control={control}
@@ -761,6 +943,27 @@ export function NonCapitalVintageTable({
 								</TableRow>
 							);
 						})}
+						{fields.length > 0 && (
+							<TableRow className="border-t-2 font-medium hover:bg-transparent">
+								<TableCell />
+								<TableCell className="text-right text-sm">Totals</TableCell>
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.beginning)}
+								</TableCell>
+								<ShadedCell title="Not totalled on the form." />
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.adjustments)}
+								</TableCell>
+								<ShadedCell title="Not totalled on the form." />
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.applied)}
+								</TableCell>
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.closing)}
+								</TableCell>
+								<TableCell />
+							</TableRow>
+						)}
 					</TableBody>
 				</Table>
 			</div>
@@ -798,6 +1001,20 @@ export function OtherLossVintageTable({
 	});
 	const watched = useWatch({ control, name: "otherLossVintages" }) ?? [];
 
+	/** The form's Totals row, under all three loss columns. */
+	const totals = watched.reduce<{
+		farm: number;
+		restricted: number;
+		lpp: number;
+	}>(
+		(acc, r) => ({
+			farm: acc.farm + (toNum(r?.farmLosses) ?? 0),
+			restricted: acc.restricted + (toNum(r?.restrictedFarmLosses) ?? 0),
+			lpp: acc.lpp + (toNum(r?.listedPersonalPropertyLosses) ?? 0),
+		}),
+		{ farm: 0, restricted: 0, lpp: 0 },
+	);
+
 	const handleAdd = () => {
 		const used = new Set(
 			watched
@@ -832,9 +1049,18 @@ export function OtherLossVintageTable({
 					<TableHeader>
 						<TableRow>
 							<HeadWithLine lineId={line("181")}>Year of origin</HeadWithLine>
-							<HeadWithLine lineId={line("183")} align="right">Farm losses</HeadWithLine>
-							<HeadWithLine lineId={line("185")} align="right">Restricted farm</HeadWithLine>
-							<HeadWithLine lineId={line("187")} align="right">LPP losses</HeadWithLine>
+							{/* The page's own column headings, verbatim, asterisk included —
+							    abbreviating them ("Restricted farm", "LPP losses") made the
+							    screen stop matching the paper a preparer is transcribing. */}
+							<HeadWithLine lineId={line("183")} align="right">
+								Farm losses *
+							</HeadWithLine>
+							<HeadWithLine lineId={line("185")} align="right">
+								Restricted farm losses
+							</HeadWithLine>
+							<HeadWithLine lineId={line("187")} align="right">
+								Listed personal property losses
+							</HeadWithLine>
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
@@ -892,9 +1118,33 @@ export function OtherLossVintageTable({
 								</TableRow>
 							);
 						})}
+						{fields.length > 0 && (
+							<TableRow className="border-t-2 font-medium hover:bg-transparent">
+								<TableCell className="text-right text-sm">Totals</TableCell>
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.farm)}
+								</TableCell>
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.restricted)}
+								</TableCell>
+								<TableCell className="text-right tabular-nums">
+									{CURRENCY_FMT.format(totals.lpp)}
+								</TableCell>
+								<TableCell />
+							</TableRow>
+						)}
 					</TableBody>
 				</Table>
 			</div>
+			{/* The page's own asterisked footnote, transcribed from
+			    AT1SCH21-loss-continuity-TRA11741.pdf page 4. It is what makes the
+			    20-row table make sense: a farm loss arising before 2006 expires
+			    long before the table runs out of rows. */}
+			<p className="text-xs text-muted-foreground">
+				* A farm loss or restricted farm loss expires as follows: after 10 tax
+				years if it arose in a tax year ending before 2006; and after 20 tax
+				years if it arose in a tax year ending after 2005.
+			</p>
 		</div>
 	);
 }

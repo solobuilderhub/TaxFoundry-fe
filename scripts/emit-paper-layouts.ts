@@ -34,14 +34,8 @@ import {
 	AT1_SCHEDULE_2,
 	AT1_SCHEDULE_3,
 	AT1_SCHEDULE_4,
-	AT1_SCHEDULE_5,
-	AT1_SCHEDULE_6,
-	AT1_SCHEDULE_7,
-	AT1_SCHEDULE_8,
-	AT1_SCHEDULE_9,
 	AT1_SCHEDULE_10,
 	AT1_SCHEDULE_12,
-	AT1_SCHEDULE_12_PAIRS,
 	AT1_SCHEDULE_13,
 	AT1_SCHEDULE_13_COLUMNS,
 	AT1_SCHEDULE_15,
@@ -101,12 +95,7 @@ const SCHEDULE_10_PAPER_DEST = `${PAPER_DIR}/schedule10.layout.ts`;
 const SCHEDULE_20_PAPER_DEST = `${PAPER_DIR}/schedule20.layout.ts`;
 const SCHEDULE_3_PAPER_DEST = `${PAPER_DIR}/schedule3.layout.ts`;
 const SCHEDULE_15_PAPER_DEST = `${PAPER_DIR}/schedule15.layout.ts`;
-const SCHEDULE_8_PAPER_DEST = `${PAPER_DIR}/schedule8.layout.ts`;
 const SCHEDULE_4_PAPER_DEST = `${PAPER_DIR}/schedule4.layout.ts`;
-const SCHEDULE_6_PAPER_DEST = `${PAPER_DIR}/schedule6.layout.ts`;
-const SCHEDULE_7_PAPER_DEST = `${PAPER_DIR}/schedule7.layout.ts`;
-const SCHEDULE_5_PAPER_DEST = `${PAPER_DIR}/schedule5.layout.ts`;
-const SCHEDULE_9_PAPER_DEST = `${PAPER_DIR}/schedule9.layout.ts`;
 
 // Federal T2 gets its OWN directory — `at1/paper/` is Alberta-only despite
 // hosting the shared rendering primitives (jurisdiction-generic by design;
@@ -431,28 +420,8 @@ export function schedule15PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_15, "AT1_SCHEDULE_15");
 }
 
-export function schedule8PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_8, "AT1_SCHEDULE_8");
-}
-
 export function schedule4PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_4, "AT1_SCHEDULE_4");
-}
-
-export function schedule6PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_6, "AT1_SCHEDULE_6");
-}
-
-export function schedule7PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_7, "AT1_SCHEDULE_7");
-}
-
-export function schedule5PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_5, "AT1_SCHEDULE_5");
-}
-
-export function schedule9PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_9, "AT1_SCHEDULE_9");
 }
 
 /** Federal T2 Schedule 1 — its own directory (see `T2_PAPER_DIR` above). */
@@ -700,9 +669,13 @@ export function schedule21PaperLayout(): string {
 	out.push("  line: string;");
 	out.push("  role: PaperFieldRole;");
 	out.push(
-		'  /** Where this row carries to on another schedule — printed on the form beside the "applied against income" row only. */',
+		"  /** Where this row carries to on another schedule, when the form says so. */",
 	);
 	out.push("  to?: { form: string; line: string; note?: string };");
+	out.push(
+		"  /** Where this row's figure arrives from, for a `carried-in` row. */",
+	);
+	out.push("  from?: { form: string; line: string; note?: string };");
 	out.push("  note?: string;");
 	out.push("  footnoteMarks?: readonly number[];");
 	out.push("}");
@@ -734,10 +707,23 @@ export function schedule21PaperLayout(): string {
 			const line = scheduleTwentyOneLineId(field as string);
 			const definedField = fieldsByLine.get(line);
 			const role = definedField?.role ?? "input";
-			const to =
-				kind === "appliedAgainstIncome" && pool.toSchedule12
-					? `, to: { form: "AT1SCH12", line: ${q(`012${pool.toSchedule12}001`)}${pool.toSchedule12Note ? `, note: ${q(pool.toSchedule12Note)}` : ""} }`
+			// `to`/`from` come from the FormDefinition's own field, for the same
+			// reason `role` and `note` do. This used to re-derive `to` from
+			// `pool.toSchedule12` under a `kind === "appliedAgainstIncome"`
+			// guard, which meant every OTHER cross-schedule link on a continuity
+			// row was invisible in the grid — the non-capital pool's 017 → AT1
+			// Schedule 12 line 082 among them — and `from` was never emitted at
+			// all, so a carried-in row could not say where it came from. That is
+			// precisely the 21 → 17 / 12 / 10 chain a preparer follows.
+			const ref = (
+				key: "to" | "from",
+				v: { form: string; line: string; note?: string } | undefined,
+			) =>
+				v
+					? `, ${key}: { form: ${q(v.form)}, line: ${q(v.line)}${v.note ? `, note: ${q(v.note)}` : ""} }`
 					: "";
+			const to = ref("to", definedField?.to);
+			const from = ref("from", definedField?.from);
 			// Sourced from the FormDefinition's own field, same as `role` above —
 			// NOT recomputed per-kind here. A narrower per-kind rule (only
 			// `appliedAgainstIncome`, from `pool.appliedAgainstIncomeNote`) used to
@@ -751,7 +737,7 @@ export function schedule21PaperLayout(): string {
 				? `, footnoteMarks: [${definedField.footnoteMarks.join(", ")}]`
 				: "";
 			out.push(
-				`      { kind: ${q(kind)}, caption: ${q(AT1_SCHEDULE_21_CONTINUITY_CAPTIONS[kind])}, line: ${q(line)}, role: ${q(role)}${to}${note}${footnoteMarks} },`,
+				`      { kind: ${q(kind)}, caption: ${q(pool.captions[kind] ?? AT1_SCHEDULE_21_CONTINUITY_CAPTIONS[kind])}, line: ${q(line)}, role: ${q(role)}${to}${from}${note}${footnoteMarks} },`,
 			);
 		}
 		out.push("    ],");
@@ -789,6 +775,10 @@ export function schedule13PaperLayout(): string {
 	out.push("  caption: string;");
 	out.push("  kind: PaperFieldKind;");
 	out.push("  note?: string;");
+	out.push(
+		"  /** The column heading as the form prints it — longer than `caption`, and carrying the column's own arithmetic. Shown on hover. */",
+	);
+	out.push("  printedHeading?: string;");
 	out.push("}");
 	out.push("");
 	out.push(
@@ -798,7 +788,7 @@ export function schedule13PaperLayout(): string {
 		if (!c.line) continue;
 		const kind = c.column === 1 ? "code" : c.column === 20 ? "rate" : "money";
 		out.push(
-			`  { column: ${c.column}, line: ${q(id13(c.line))}, caption: ${q(c.caption)}, kind: ${q(kind)}${c.note ? `, note: ${q(c.note)}` : ""} },`,
+			`  { column: ${c.column}, line: ${q(id13(c.line))}, caption: ${q(c.caption)}, kind: ${q(kind)}${c.note ? `, note: ${q(c.note)}` : ""}${c.printedHeading && c.printedHeading !== c.caption ? `, printedHeading: ${q(c.printedHeading)}` : ""} },`,
 		);
 	}
 	out.push("];");
@@ -1000,33 +990,18 @@ if (process.argv[1]?.endsWith("emit-paper-layouts.ts")) {
 		`${AT1_SCHEDULE_15.id}: ${AT1_SCHEDULE_15.fields.length} fields written to the paper layout`,
 	);
 
-	writeFileSync(SCHEDULE_8_PAPER_DEST, schedule8PaperLayout(), "utf8");
-	console.log(
-		`${AT1_SCHEDULE_8.id}: ${AT1_SCHEDULE_8.fields.length} fields written to the paper layout`,
-	);
+	console.log();
 
 	writeFileSync(SCHEDULE_4_PAPER_DEST, schedule4PaperLayout(), "utf8");
 	console.log(
 		`${AT1_SCHEDULE_4.id}: ${AT1_SCHEDULE_4.fields.length} fields written to the paper layout`,
 	);
 
-	writeFileSync(SCHEDULE_6_PAPER_DEST, schedule6PaperLayout(), "utf8");
-	console.log(
-		`${AT1_SCHEDULE_6.id}: ${AT1_SCHEDULE_6.fields.length} fields written to the paper layout`,
-	);
+	console.log();
 
-	writeFileSync(SCHEDULE_7_PAPER_DEST, schedule7PaperLayout(), "utf8");
-	console.log(
-		`${AT1_SCHEDULE_7.id}: ${AT1_SCHEDULE_7.fields.length} fields written to the paper layout`,
-	);
+	console.log();
 
-	writeFileSync(SCHEDULE_5_PAPER_DEST, schedule5PaperLayout(), "utf8");
-	console.log(
-		`${AT1_SCHEDULE_5.id}: ${AT1_SCHEDULE_5.fields.length} fields written to the paper layout`,
-	);
+	console.log();
 
-	writeFileSync(SCHEDULE_9_PAPER_DEST, schedule9PaperLayout(), "utf8");
-	console.log(
-		`${AT1_SCHEDULE_9.id}: ${AT1_SCHEDULE_9.fields.length} fields written to the paper layout`,
-	);
+	console.log();
 }

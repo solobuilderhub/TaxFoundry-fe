@@ -3,10 +3,16 @@
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Controller, type Control, type Path } from "react-hook-form";
+import { type Control, Controller, type Path } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { at1Money, parseAt1LineItemId } from "../at1-lines";
-import type { LineValue, NavigateToLine, PaperFieldKind, PaperFieldRole, ResolveLine } from "../resolve-line";
+import type {
+	LineValue,
+	NavigateToLine,
+	PaperFieldKind,
+	PaperFieldRole,
+	ResolveLine,
+} from "../resolve-line";
 
 /**
  * The shared visual primitives every paper Form View composes from — a
@@ -36,7 +42,8 @@ const OFFICIAL_PDF: Record<string, string> = {
 	AT1SCH1: "/tra-forms/AT1SCH01-small-business-deduction-TRA11723.pdf",
 	AT1SCH2: "/tra-forms/AT1SCH02-income-allocation-factor-TRA11724.pdf",
 	AT1SCH03: "/tra-forms/AT1SCH03-other-tax-deductions-credits-TRA11725.pdf",
-	AT1SCH04: "/tra-forms/AT1SCH04-foreign-investment-income-tax-credit-TRA11728.pdf",
+	AT1SCH04:
+		"/tra-forms/AT1SCH04-foreign-investment-income-tax-credit-TRA11728.pdf",
 	AT1SCH10: "/tra-forms/AT1SCH10-loss-carryback-TRA11731.pdf",
 	AT1SCH12: "/tra-forms/AT1SCH12-income-loss-reconciliation-TRA11732.pdf",
 	AT1SCH13: "/tra-forms/AT1SCH13-cca-TRA11733.pdf",
@@ -101,7 +108,9 @@ export function PaperSection({
 				<div>
 					<h3 className="text-sm font-semibold">{title}</h3>
 					{description && (
-						<p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+						<p className="mt-0.5 text-xs text-muted-foreground">
+							{description}
+						</p>
 					)}
 				</div>
 				{formId && <OfficialPdfLink formId={formId} />}
@@ -144,10 +153,15 @@ export function formatSignedMoney(n: number): string {
 	return n < 0 ? `(${at1Money(Math.abs(n))})` : at1Money(n);
 }
 
-function formatReadOnly(kind: PaperFieldKind, value: string | number | undefined): string {
+function formatReadOnly(
+	kind: PaperFieldKind,
+	value: string | number | undefined,
+): string {
 	if (value === undefined) return "";
-	if (kind === "money" && typeof value === "number") return formatSignedMoney(value);
-	if (kind === "flag") return value === "yes" ? "Yes" : value === "no" ? "No" : String(value);
+	if (kind === "money" && typeof value === "number")
+		return formatSignedMoney(value);
+	if (kind === "flag")
+		return value === "yes" ? "Yes" : value === "no" ? "No" : String(value);
 	if (kind === "date" && typeof value === "string") {
 		// `engagement.taxYearStart`/`taxYearEnd` (and any other client/engagement
 		// date field) arrive as full ISO datetimes ("2025-08-31T00:00:00.000Z") —
@@ -164,10 +178,65 @@ function isTextKind(kind: PaperFieldKind): boolean {
 	return kind === "code" || kind === "text";
 }
 
+/**
+ * A caption that states its own arithmetic in terms of line numbers —
+ * "Line 001 minus line 013", "Subtotal of lines 002 to 012", "(lines 070 + 071)".
+ */
+const CAPTION_LINE_ARITHMETIC =
+	/\blines?\s*\d{2,4}(?:\s*(?:[+\-−]|plus|minus|to|through)\s*\(?\s*(?:lines?\s*)?\d{2,4}\s*\)?)+/i;
+/** The same thing with the word "line" dropped, as AT1 Schedule 3 prints it: "MAD — total credits applied (104 + 204 + 312)". */
+const CAPTION_BARE_ARITHMETIC = /\(\s*\d{3}(?:\s*[+\-−]\s*\d{3})+\s*\)/;
+
+function countChar(text: string, ch: string): number {
+	let n = 0;
+	for (const c of text) if (c === ch) n++;
+	return n;
+}
+
+/** Drops brackets the match half-opened (the caption's own parenthesis fell outside it), then unwraps a fully-parenthesized formula. */
+function balanceBrackets(text: string): string {
+	let out = text.trim();
+	while (out.endsWith(")") && countChar(out, "(") < countChar(out, ")"))
+		out = out.slice(0, -1).trim();
+	while (out.startsWith("(") && countChar(out, "(") > countChar(out, ")"))
+		out = out.slice(1).trim();
+	if (out.startsWith("(") && out.endsWith(")")) {
+		const inner = out.slice(1, -1).trim();
+		if (countChar(inner, "(") === countChar(inner, ")")) out = inner;
+	}
+	return out;
+}
+
+/**
+ * The arithmetic a `computed`/`total` line's OWN caption prints, when it
+ * prints any — "line 490 minus line 560", "lines 002 to 012", "104 + 204 + 312".
+ *
+ * Nothing here is derived, inferred or reconstructed: the return value is
+ * always a verbatim substring of the caption the form definition already
+ * carries (which is itself the caption exactly as printed — see
+ * `FormField.caption` in `@classytic/ca-tax`). A caption that does not state
+ * its arithmetic returns `undefined` and the line is left alone; a formula
+ * this codebase would have to invent is never worth showing, because a
+ * preparer who trusts it cannot tell it apart from one the form really states.
+ *
+ * Surfaced through `note`, so it reaches the provenance badge's tooltip
+ * instead of living only inside a caption string that the row truncates.
+ * `FormField.note` (when the definition has one) still wins the front of the
+ * tooltip — it carries the caveats and statutory references.
+ */
+export function captionFormula(caption: string): string | undefined {
+	const match =
+		caption.match(CAPTION_LINE_ARITHMETIC) ??
+		caption.match(CAPTION_BARE_ARITHMETIC);
+	if (!match) return undefined;
+	return balanceBrackets(match[0]) || undefined;
+}
+
 /** Small colored badge distinguishing WHY a line is read-only, with a tooltip explaining where the value actually comes from. */
-function ProvenanceBadge({
+export function ProvenanceBadge({
 	role,
 	note,
+	formula,
 	from,
 	to,
 	onNavigate,
@@ -175,6 +244,8 @@ function ProvenanceBadge({
 }: {
 	role?: PaperFieldRole;
 	note?: string;
+	/** The arithmetic the caption itself states, for a `computed`/`total` line — see `captionFormula`. */
+	formula?: string;
 	from?: { form: string; line: string; note?: string };
 	to?: { form: string; line: string; note?: string };
 	onNavigate?: NavigateToLine;
@@ -192,6 +263,7 @@ function ProvenanceBadge({
 				<TooltipWrapper content={note} side="top">
 					<span
 						className="inline-flex size-4 shrink-0 cursor-help items-center justify-center rounded-full border border-muted-foreground/40 text-[10px] text-muted-foreground"
+						role="img"
 						aria-label="Note"
 					>
 						i
@@ -200,18 +272,34 @@ function ProvenanceBadge({
 			);
 		}
 		const isCarriedIn = role === "carried-in";
-		const fromDisplayLine = from?.line ? (parseAt1LineItemId(from.line)?.field ?? from.line) : undefined;
-		const label = isCarriedIn ? sourceLabel || from?.form || "Carried in" : role === "total" ? "Total" : "Computed";
+		const fromDisplayLine = from?.line
+			? (parseAt1LineItemId(from.line)?.field ?? from.line)
+			: undefined;
+		const label = isCarriedIn
+			? sourceLabel || from?.form || "Carried in"
+			: role === "total"
+				? "Total"
+				: "Computed";
 		const tooltip = isCarriedIn
-			? [from?.form && `From ${from.form}${fromDisplayLine ? ` line ${fromDisplayLine}` : ""}`, from?.note]
+			? [
+					from?.form &&
+						`From ${from.form}${fromDisplayLine ? ` line ${fromDisplayLine}` : ""}`,
+					from?.note,
+				]
 					.filter(Boolean)
-					.join(" — ") || sourceLabel || "Carried in from another schedule."
-			: note || "Computed by the engine from this schedule's other lines.";
+					.join(" — ") ||
+				sourceLabel ||
+				"Carried in from another schedule."
+			: [note, formula].filter(Boolean).join(" — ") ||
+				"Computed by the engine from this schedule's other lines.";
 
 		return (
 			<TooltipWrapper content={tooltip} side="top">
 				<span className="inline-flex shrink-0">
-					<Pill variant={isCarriedIn ? "secondary" : "outline"} className="cursor-help text-[10px]">
+					<Pill
+						variant={isCarriedIn ? "secondary" : "outline"}
+						className="cursor-help text-[10px]"
+					>
 						{label}
 					</Pill>
 				</span>
@@ -228,7 +316,8 @@ function ProvenanceBadge({
 	// already stored plain).
 	const toDisplayLine = parseAt1LineItemId(to.line)?.field ?? to.line;
 	const toLabel = `→ ${to.form} line ${toDisplayLine}`;
-	const toTooltip = to.note || `Carries forward to ${to.form}, line ${toDisplayLine}.`;
+	const toTooltip =
+		to.note || `Carries forward to ${to.form}, line ${toDisplayLine}.`;
 	const toBadge = (
 		<TooltipWrapper content={toTooltip} side="top">
 			{onNavigate ? (
@@ -237,7 +326,10 @@ function ProvenanceBadge({
 					onClick={() => onNavigate(to.form, to.line)}
 					className="inline-flex shrink-0"
 				>
-					<Pill variant="outline" className="cursor-pointer text-[10px] hover:bg-accent">
+					<Pill
+						variant="outline"
+						className="cursor-pointer text-[10px] hover:bg-accent"
+					>
 						{toLabel}
 					</Pill>
 				</button>
@@ -266,7 +358,10 @@ function ProvenanceBadge({
  * highlight navigation. `highlightLine` clears itself in the parent after a
  * beat, so clicking the same cross-reference again re-triggers the effect.
  */
-export function useLineHighlight<E extends HTMLElement>(line: string, highlightLine?: string) {
+export function useLineHighlight<E extends HTMLElement>(
+	line: string,
+	highlightLine?: string,
+) {
 	const ref = useRef<E>(null);
 	const [active, setActive] = useState(false);
 	useEffect(() => {
@@ -292,6 +387,11 @@ export function useLineHighlight<E extends HTMLElement>(line: string, highlightL
  * lets a preparer tell "this is a real box I fill in" from "this is derived,
  * and here's the formula or the schedule it was carried in from" without
  * guessing from color alone.
+ *
+ * On a `computed`/`total` line whose caption states its own arithmetic, that
+ * arithmetic also reaches the badge's tooltip (see `captionFormula`) — the row
+ * truncates the caption, and "Computed by the engine from this schedule's
+ * other lines" is a worse answer than the sum the form actually prints.
  */
 export function PaperLeaderRow<T extends Record<string, unknown>>({
 	line,
@@ -322,6 +422,10 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 }) {
 	const resolved: LineValue = resolveLine(line);
 	const { ref, active } = useLineHighlight<HTMLDivElement>(line, highlightLine);
+	const formula =
+		role === "computed" || role === "total"
+			? captionFormula(caption)
+			: undefined;
 
 	return (
 		<div
@@ -349,14 +453,27 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 							// underlying form value stays whichever type the schema
 							// actually declares (never silently coerced to a string the
 							// server would then reject).
-							const isYes = kind === "bool-flag" ? field.value === true : field.value === "yes";
-							const isNo = kind === "bool-flag" ? field.value === false : field.value === "no";
+							const isYes =
+								kind === "bool-flag"
+									? field.value === true
+									: field.value === "yes";
+							const isNo =
+								kind === "bool-flag"
+									? field.value === false
+									: field.value === "no";
 							const setOpt = (opt: "yes" | "no") =>
 								field.onChange(kind === "bool-flag" ? opt === "yes" : opt);
 							return (
-								<div className="flex shrink-0 gap-3" role="radiogroup" aria-label={caption}>
+								<div
+									className="flex shrink-0 gap-3"
+									role="radiogroup"
+									aria-label={caption}
+								>
 									{(["yes", "no"] as const).map((opt) => (
-										<label key={opt} className="flex items-center gap-1 text-xs">
+										<label
+											key={opt}
+											className="flex items-center gap-1 text-xs"
+										>
 											<input
 												type="radio"
 												name={`${resolved.name}-paper`}
@@ -379,9 +496,19 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 						name={resolved.name as Path<T>}
 						render={({ field }) => (
 							<input
-								type={kind === "date" ? "date" : kind === "money" || kind === "rate" ? "number" : "text"}
-								inputMode={kind === "money" || kind === "rate" ? "decimal" : undefined}
-								step={kind === "money" ? "1" : kind === "rate" ? "any" : undefined}
+								type={
+									kind === "date"
+										? "date"
+										: kind === "money" || kind === "rate"
+											? "number"
+											: "text"
+								}
+								inputMode={
+									kind === "money" || kind === "rate" ? "decimal" : undefined
+								}
+								step={
+									kind === "money" ? "1" : kind === "rate" ? "any" : undefined
+								}
 								disabled={disabled}
 								aria-label={caption}
 								className={cn(
@@ -396,7 +523,13 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 								}
 								onChange={(e) => {
 									const v = e.target.value;
-									field.onChange(v === "" ? undefined : kind === "money" || kind === "rate" ? Number(v) : v);
+									field.onChange(
+										v === ""
+											? undefined
+											: kind === "money" || kind === "rate"
+												? Number(v)
+												: v,
+									);
 								}}
 								onBlur={field.onBlur}
 							/>
@@ -406,14 +539,19 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 			) : (
 				<span className="flex w-36 shrink-0 items-center justify-end gap-1.5">
 					<TooltipWrapper
-						content={formatReadOnly(kind, resolved.value) || "No value yet — compute the return, or this line has never been entered."}
+						content={
+							formatReadOnly(kind, resolved.value) ||
+							"No value yet — compute the return, or this line has never been entered."
+						}
 						side="top"
 						disabled={!formatReadOnly(kind, resolved.value)}
 					>
 						<span
 							className={cn(
 								"h-8 flex-1 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right text-sm tabular-nums leading-8",
-								kind === "money" && typeof resolved.value === "number" && resolved.value < 0
+								kind === "money" &&
+									typeof resolved.value === "number" &&
+									resolved.value < 0
 									? "text-red-600 dark:text-red-400"
 									: "text-muted-foreground",
 							)}
@@ -432,10 +570,11 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 				// caveat worth surfacing (see `ProvenanceBadge`'s own `!role ||
 				// role === "input"` branch) must not be silently dropped just
 				// because it has neither a `to` nor a read-only role.
-				(to || note || !resolved.editable) && (
+				(to || note || formula || !resolved.editable) && (
 					<ProvenanceBadge
 						role={role}
 						note={note}
+						formula={formula}
 						from={from}
 						to={to}
 						onNavigate={onNavigate}
@@ -455,8 +594,9 @@ export interface ContinuityPoolInput {
 		kind: string;
 		caption: string;
 		line: string;
-		role: string;
+		role: PaperFieldRole;
 		to?: { form: string; line: string; note?: string };
+		from?: { form: string; line: string; note?: string };
 		note?: string;
 		footnoteMarks?: readonly number[];
 	}[];
@@ -513,22 +653,48 @@ function ContinuityCell<T extends Record<string, unknown>>({
 	footnoteSymbols?: ReadonlyMap<number, string>;
 	footnotes?: readonly string[];
 }) {
-	const { ref, active } = useLineHighlight<HTMLTableCellElement>(poolRow?.line ?? "", highlightLine);
-	const displayLine = poolRow ? (parseAt1LineItemId(poolRow.line)?.field ?? poolRow.line) : undefined;
+	const { ref, active } = useLineHighlight<HTMLTableCellElement>(
+		poolRow?.line ?? "",
+		highlightLine,
+	);
+	const displayLine = poolRow
+		? (parseAt1LineItemId(poolRow.line)?.field ?? poolRow.line)
+		: undefined;
 	const marks = poolRow?.footnoteMarks;
 	// Only a genuine `role: 'input'` row with no editor binding is a real
 	// not-yet-collected gap. Anything else (computed / carried-in / total)
 	// has a real value sitting in the computed return — go get it instead
 	// of claiming this app doesn't capture it.
-	const isUncollectedInput = poolRow ? poolRow.role === "input" && !name : false;
-	const resolved = poolRow && !name && !isUncollectedInput ? resolveLine?.(poolRow.line) : undefined;
-	const resolvedValue = resolved && !resolved.editable ? resolved.value : undefined;
+	const isUncollectedInput = poolRow
+		? poolRow.role === "input" && !name
+		: false;
+	const resolved =
+		poolRow && !name && !isUncollectedInput
+			? resolveLine?.(poolRow.line)
+			: undefined;
+	const resolvedValue =
+		resolved && !resolved.editable ? resolved.value : undefined;
 
 	return (
-		<td ref={ref} className={cn("px-3 py-1.5 transition-colors duration-500", active && "bg-amber-100 dark:bg-amber-900/40")}>
+		<td
+			ref={ref}
+			className={cn(
+				"px-3 py-1.5 transition-colors duration-500",
+				active && "bg-amber-100 dark:bg-amber-900/40",
+			)}
+		>
 			{!poolRow ? (
-				<TooltipWrapper content={`${pool.label} has no line for "${row.caption}" on the printed form — this pool's continuity genuinely skips this row.`} side="top">
-					<span className="block cursor-help text-center text-muted-foreground">—</span>
+				// The printed form SHADES this cell rather than leaving it blank —
+				// shading is how the page says "this column does not have this row",
+				// which is different from "this row is empty". An em dash on a white
+				// cell read as the latter.
+				<TooltipWrapper
+					content={`${pool.label} has no line for "${row.caption}" on the printed form — shaded out on the page, not left blank.`}
+					side="top"
+				>
+					<span className="block h-8 cursor-help rounded-md bg-muted/60 text-center text-muted-foreground leading-8">
+						<span className="sr-only">Shaded out on the printed form</span>
+					</span>
 				</TooltipWrapper>
 			) : (
 				<div className="space-y-0.5">
@@ -539,14 +705,40 @@ function ContinuityCell<T extends Record<string, unknown>>({
 								const symbol = footnoteSymbols?.get(m) ?? "*";
 								const text = footnotes?.[m];
 								return (
-									<TooltipWrapper key={m} content={text} side="top" disabled={!text}>
-										<sup className="ml-0.5 cursor-help font-sans text-[9px] text-amber-600 dark:text-amber-400">{symbol}</sup>
+									<TooltipWrapper
+										key={m}
+										content={text}
+										side="top"
+										disabled={!text}
+									>
+										<sup className="ml-0.5 cursor-help font-sans text-[9px] text-amber-600 dark:text-amber-400">
+											{symbol}
+										</sup>
 									</TooltipWrapper>
 								);
 							})}
 						</span>
-						{poolRow.to && (
-							<ProvenanceBadge to={poolRow.to} onNavigate={onNavigate} />
+						{/*
+						 * The same badge `PaperLeaderRow` renders, with the same
+						 * inputs. It used to be passed `to` alone, so a continuity
+						 * cell showed where its figure GOES but never where it came
+						 * from, and never the arithmetic behind a computed row —
+						 * exactly the two things a preparer checking Schedule 21
+						 * against 17 / 12 / 10 is looking for.
+						 */}
+						{(poolRow.to || poolRow.from || poolRow.role !== "input") && (
+							<ProvenanceBadge
+								role={poolRow.role}
+								note={poolRow.note}
+								formula={
+									poolRow.role === "computed" || poolRow.role === "total"
+										? captionFormula(poolRow.caption ?? row.caption)
+										: undefined
+								}
+								from={poolRow.from}
+								to={poolRow.to}
+								onNavigate={onNavigate}
+							/>
 						)}
 					</div>
 					{name ? (
@@ -566,7 +758,13 @@ function ContinuityCell<T extends Record<string, unknown>>({
 										"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
 									)}
 									value={(field.value as number | undefined) ?? ""}
-									onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+									onChange={(e) =>
+										field.onChange(
+											e.target.value === ""
+												? undefined
+												: Number(e.target.value),
+										)
+									}
 									onBlur={field.onBlur}
 								/>
 							)}
@@ -585,9 +783,16 @@ function ContinuityCell<T extends Record<string, unknown>>({
 						</TooltipWrapper>
 					) : (
 						<TooltipWrapper
-							content={poolRow.note || `${row.caption} — ${poolRow.role === "carried-in" ? "carried in from another schedule" : "computed by the engine"}, not a preparer entry.`}
+							content={
+								poolRow.note ||
+								`${row.caption} — ${poolRow.role === "carried-in" ? "carried in from another schedule" : "computed by the engine"}, not a preparer entry.`
+							}
 							side="top"
-							disabled={!poolRow.note && resolved?.editable === false && resolved.value === undefined}
+							disabled={
+								!poolRow.note &&
+								resolved?.editable === false &&
+								resolved.value === undefined
+							}
 						>
 							<span
 								className={cn(
@@ -597,7 +802,9 @@ function ContinuityCell<T extends Record<string, unknown>>({
 										: "text-muted-foreground",
 								)}
 							>
-								{resolved && !resolved.editable ? formatReadOnly("money", resolvedValue) || "—" : "—"}
+								{resolved && !resolved.editable
+									? formatReadOnly("money", resolvedValue) || "—"
+									: "—"}
 							</span>
 						</TooltipWrapper>
 					)}
@@ -615,6 +822,80 @@ function ContinuityCell<T extends Record<string, unknown>>({
  * field name each (pool, row-kind) pair maps to, via `fieldName` — the
  * schedule's own form-view owns that binding, this grid only lays it out.
  */
+/** One printed row of a continuity grid: a row kind plus the caption the page prints for it, and which pools that caption belongs to. */
+interface PrintedContinuityRow {
+	kind: string;
+	caption: string;
+	/**
+	 * The pools this printed row covers, when the block's pools word the row
+	 * differently and the page therefore prints it more than once. `undefined`
+	 * means every pool in the block shares this row.
+	 */
+	only?: ReadonlySet<string>;
+	/** True on the last printed row for its kind — where a `dividerAfter` marker belongs. */
+	lastOfKind: boolean;
+}
+
+/**
+ * The rows this block actually prints, in print order.
+ *
+ * Two rules, both taken from the page rather than imposed on it:
+ *
+ * 1. **A row no pool in this block has is not printed.** The form lays the five
+ *    pools out in three blocks — non-capital with capital, farm with restricted
+ *    farm, listed personal property alone — and the row set genuinely differs:
+ *    no wind-up transfer or section 80 adjustment in the LPP block, no
+ *    allowable-business-investment-loss row outside capital. Printing every row
+ *    for every block filled the screen with dashes.
+ *
+ * 2. **A row whose pools word it DIFFERENTLY is printed once per wording**,
+ *    with the other columns shaded. That is not a stylistic choice — the page
+ *    does exactly this, and the two rows are two different deductions:
+ *
+ *      041  Deduct: Amount applied against taxable income     (non-capital)
+ *      061  Amount applied against current year capital gain  (capital)
+ *
+ *    Collapsing them into one row under one caption said the capital column
+ *    was applied against taxable income, which it is not.
+ */
+function printedRows(
+	pools: readonly ContinuityPoolInput[],
+	rowOrder: readonly { kind: string; caption: string }[],
+): PrintedContinuityRow[] {
+	const out: PrintedContinuityRow[] = [];
+	for (const row of rowOrder) {
+		const present = pools.filter((p) =>
+			p.rows.some((r) => r.kind === row.kind),
+		);
+		if (present.length === 0) continue;
+
+		// Group the pools that have this row by the caption they print for it,
+		// preserving column order so the split rows come out in the page's order.
+		const byCaption = new Map<string, string[]>();
+		for (const pool of present) {
+			const caption =
+				pool.rows.find((r) => r.kind === row.kind)?.caption ?? row.caption;
+			const keys = byCaption.get(caption);
+			if (keys) keys.push(pool.key);
+			else byCaption.set(caption, [pool.key]);
+		}
+
+		const entries = [...byCaption.entries()];
+		entries.forEach(([caption, keys], i) => {
+			out.push({
+				kind: row.kind,
+				caption,
+				// One wording for the whole block needs no per-pool restriction —
+				// keeping it undefined also keeps a single-pool block's cell out of
+				// the "shaded because it belongs to the other column" branch.
+				only: entries.length > 1 ? new Set(keys) : undefined,
+				lastOfKind: i === entries.length - 1,
+			});
+		});
+	}
+	return out;
+}
+
 export function PaperContinuityGrid<T extends Record<string, unknown>>({
 	pools,
 	rowOrder,
@@ -659,47 +940,71 @@ export function PaperContinuityGrid<T extends Record<string, unknown>>({
 							&nbsp;
 						</th>
 						{pools.map((p) => (
-							<th key={p.key} className="min-w-[9rem] px-3 py-2 text-left font-medium">
+							<th
+								key={p.key}
+								className="min-w-[9rem] px-3 py-2 text-left font-medium"
+							>
 								{p.label}
 							</th>
 						))}
 					</tr>
 				</thead>
 				<tbody>
-					{rowOrder.map((row) => (
-						<Fragment key={row.kind}>
-						<tr className="border-b last:border-b-0">
-							<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">
-								{row.caption}
-							</td>
-							{pools.map((pool) => {
-								const poolRow = pool.rows.find((r) => r.kind === row.kind);
-								const name = poolRow ? fieldName(pool.key, row.kind) : undefined;
-								return (
-									<ContinuityCell
-										key={pool.key}
-										pool={pool}
-										row={row}
-										poolRow={poolRow}
-										name={name}
-										control={control}
-										disabled={disabled}
-										onNavigate={onNavigate}
-										highlightLine={highlightLine}
-										resolveLine={resolveLine}
-										footnoteSymbols={footnoteSymbols}
-										footnotes={footnotes}
-									/>
-								);
-							})}
-						</tr>
-						{dividerAfter?.includes(row.kind) && (
-							<tr className="border-b bg-muted/20">
-								<td colSpan={pools.length + 1} className="sticky left-0 px-3 py-1 text-center text-xs font-medium text-muted-foreground">
-									Subtotal
+					{/*
+					 * A row no pool in THIS grid has is not rendered at all.
+					 *
+					 * The printed form does not lay the five pools out side by side.
+					 * It uses three blocks — non-capital with capital, farm with
+					 * restricted farm, and listed personal property on its own — and
+					 * the row set genuinely differs between them: there is no wind-up
+					 * transfer or section 80 adjustment on the listed personal
+					 * property block, and no allowable business investment loss
+					 * anywhere but capital. Rendering every row for every block filled
+					 * the screen with dashes for rows the block does not have.
+					 */}
+					{printedRows(pools, rowOrder).map((row) => (
+						<Fragment key={`${row.kind}:${row.caption}`}>
+							<tr className="border-b last:border-b-0">
+								<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">
+									{row.caption}
 								</td>
+								{pools.map((pool) => {
+									const poolRow = row.only?.has(pool.key)
+										? pool.rows.find((r) => r.kind === row.kind)
+										: row.only
+											? undefined
+											: pool.rows.find((r) => r.kind === row.kind);
+									const name = poolRow
+										? fieldName(pool.key, row.kind)
+										: undefined;
+									return (
+										<ContinuityCell
+											key={pool.key}
+											pool={pool}
+											row={row}
+											poolRow={poolRow}
+											name={name}
+											control={control}
+											disabled={disabled}
+											onNavigate={onNavigate}
+											highlightLine={highlightLine}
+											resolveLine={resolveLine}
+											footnoteSymbols={footnoteSymbols}
+											footnotes={footnotes}
+										/>
+									);
+								})}
 							</tr>
-						)}
+							{row.lastOfKind && dividerAfter?.includes(row.kind) && (
+								<tr className="border-b bg-muted/20">
+									<td
+										colSpan={pools.length + 1}
+										className="sticky left-0 px-3 py-1 text-center text-xs font-medium text-muted-foreground"
+									>
+										Subtotal
+									</td>
+								</tr>
+							)}
 						</Fragment>
 					))}
 				</tbody>
@@ -715,6 +1020,15 @@ export interface ClassGridColumn {
 	kind: PaperFieldKind;
 	/** The row object's field to bind, when this column is directly editable. Omitted = always read-only (computed/derived — see `resolveCell`). */
 	fieldName?: string;
+	/**
+	 * The column heading as the form prints it, where that is longer than
+	 * `caption`. Shown on hover rather than in the cell: AT1 Schedule 13 states
+	 * each derived column's arithmetic inside its own heading ("UCC at the end
+	 * of the year (column 10 minus column 23)"), which is the wrong thing to
+	 * print twenty-four times across a scrolling grid and the right thing to
+	 * have within reach of someone reconciling against the paper.
+	 */
+	printedHeading?: string;
 }
 
 /** One conceptual row of a class/type grid. */
@@ -758,7 +1072,10 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	columns: readonly ClassGridColumn[];
 	control: Control<T>;
 	/** The read-only value for a cell with no `fieldName`, or whose row has no `arrayIndex`. */
-	resolveCell: (row: ClassGridRow, column: ClassGridColumn) => string | number | undefined;
+	resolveCell: (
+		row: ClassGridRow,
+		column: ClassGridColumn,
+	) => string | number | undefined;
 	disabled?: boolean;
 	/**
 	 * Override the printed line number PER CELL instead of per column —
@@ -782,11 +1099,29 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 							&nbsp;
 						</th>
 						{columns.map((c, i) => (
-							<th key={c.fieldName ?? `col-${i}`} className="min-w-[7rem] px-2 py-2 text-left font-medium">
+							<th
+								key={c.fieldName ?? `col-${i}`}
+								className="min-w-[7rem] px-2 py-2 text-left font-medium"
+							>
 								{!lineFor && (
-									<span className="block font-mono text-[10px] text-muted-foreground">{c.line}</span>
+									<span className="block font-mono text-[10px] text-muted-foreground">
+										{c.line}
+									</span>
 								)}
-								{c.caption}
+								<TooltipWrapper
+									content={c.printedHeading}
+									side="top"
+									disabled={!c.printedHeading}
+								>
+									<span
+										className={cn(
+											c.printedHeading &&
+												"cursor-help underline decoration-dotted underline-offset-2",
+										)}
+									>
+										{c.caption}
+									</span>
+								</TooltipWrapper>
 							</th>
 						))}
 					</tr>
@@ -794,10 +1129,15 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 				<tbody>
 					{rows.map((row) => (
 						<tr key={row.key} className="border-b last:border-b-0">
-							<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">{row.label}</td>
+							<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">
+								{row.label}
+							</td>
 							{columns.map((col, i) => {
 								const editable = row.arrayIndex !== undefined && col.fieldName;
-								const readOnlyText = formatReadOnly(col.kind, resolveCell(row, col));
+								const readOnlyText = formatReadOnly(
+									col.kind,
+									resolveCell(row, col),
+								);
 								const cellLine = lineFor?.(row, col);
 								return (
 									<td key={col.fieldName ?? `col-${i}`} className="px-2 py-1.5">
@@ -809,29 +1149,52 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 										{editable ? (
 											<Controller
 												control={control}
-												name={`${arrayName}.${row.arrayIndex}.${col.fieldName}` as Path<T>}
+												name={
+													`${arrayName}.${row.arrayIndex}.${col.fieldName}` as Path<T>
+												}
 												render={({ field }) => (
 													<input
-														type={col.kind === "date" ? "date" : isTextKind(col.kind) ? "text" : "number"}
-														inputMode={col.kind === "date" || isTextKind(col.kind) ? undefined : "decimal"}
+														type={
+															col.kind === "date"
+																? "date"
+																: isTextKind(col.kind)
+																	? "text"
+																	: "number"
+														}
+														inputMode={
+															col.kind === "date" || isTextKind(col.kind)
+																? undefined
+																: "decimal"
+														}
 														step="any"
 														disabled={disabled}
 														aria-label={`${row.label} — ${col.caption}`}
 														className={cn(
 															"h-8 w-full min-w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm tabular-nums outline-none",
-															col.kind === "date" || isTextKind(col.kind) ? "text-left" : "text-right",
+															col.kind === "date" || isTextKind(col.kind)
+																? "text-left"
+																: "text-right",
 															"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
 															"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
 														)}
 														value={
 															col.kind === "date"
-																? dateInputValue(field.value as string | number | undefined)
-																: ((field.value as string | number | undefined) ?? "")
+																? dateInputValue(
+																		field.value as string | number | undefined,
+																	)
+																: ((field.value as
+																		| string
+																		| number
+																		| undefined) ?? "")
 														}
 														onChange={(e) => {
 															const v = e.target.value;
 															field.onChange(
-																v === "" ? undefined : col.kind === "date" || isTextKind(col.kind) ? v : Number(v),
+																v === ""
+																	? undefined
+																	: col.kind === "date" || isTextKind(col.kind)
+																		? v
+																		: Number(v),
 															);
 														}}
 														onBlur={field.onBlur}
@@ -876,7 +1239,11 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
  * Form-wide guidance, not tied to one line, so a plain numbered list at the
  * foot of the section rather than a per-field tooltip.
  */
-export function PaperFootnotes({ notes }: { notes: readonly string[] | undefined }) {
+export function PaperFootnotes({
+	notes,
+}: {
+	notes: readonly string[] | undefined;
+}) {
 	if (!notes || notes.length === 0) return null;
 	return (
 		<ol className="space-y-1 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">

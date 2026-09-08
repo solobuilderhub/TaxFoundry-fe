@@ -1,7 +1,10 @@
 "use client";
 
 import type { ComputedReturn } from "@/api/computed-returns";
-import { AT1_SCHEDULE_2_FIELDS, AT1_SCHEDULE_2_SECTIONS } from "./generated/schedule2.layout";
+import {
+	AT1_SCHEDULE_2_FIELDS,
+	AT1_SCHEDULE_2_SECTIONS,
+} from "./generated/schedule2.layout";
 import { ReadOnlyScheduleView } from "./read-only-schedule-view";
 import type { NavigateToLine } from "./resolve-line";
 
@@ -32,7 +35,7 @@ export function Schedule2View({
 			stale={stale}
 			onNavigate={onNavigate}
 			highlightLine={highlightLine}
-			notComputedMessage="Not yet computed — Schedule 2 only files when the corporation has permanent establishments outside Alberta. Compute the return first."
+			notComputedMessage="Not yet computed — Schedule 2 only files when the corporation has permanent establishments outside Alberta. Its four figures appear once you compute the return."
 			nothingToReportMessage="Computed, and Schedule 2 has nothing to report — the corporation has no permanent establishments outside Alberta this filing."
 		/>
 	);

@@ -1,18 +1,22 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { CcaClass, CcaValues } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
+	type ClassGridColumn,
+	type ClassGridRow,
 	PaperClassGrid,
 	PaperFootnotes,
 	PaperLeaderRow,
 	PaperSection,
-	type ClassGridColumn,
-	type ClassGridRow,
 } from "./components/paper-primitives";
-import { AT1_SCHEDULE_13_FIELDS, AT1_SCHEDULE_13_FOOTNOTES, AT1_SCHEDULE_13_GRID_COLUMNS } from "./generated/schedule13.layout";
+import {
+	AT1_SCHEDULE_13_FIELDS,
+	AT1_SCHEDULE_13_FOOTNOTES,
+	AT1_SCHEDULE_13_GRID_COLUMNS,
+} from "./generated/schedule13.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 /** The two Alberta-specific override fields Schedule 13 collects — everything else is assumed equal to federal (or computed by the engine) and shown read-only. */
@@ -25,10 +29,18 @@ const FIELD_NAME: Partial<Record<string, keyof CcaClass>> = {
 const SCHEDULE_ID = "013";
 
 /** The three totals (023/025/027) — always engine-computed, never a box a preparer fills; resolved from the last filed values the same way Schedule 21's read-only Part 1 is. */
-function buildTotalsResolveLine(filedByFieldOccurrence: Map<string, string | number>): ResolveLine {
+function buildTotalsResolveLine(
+	filedByFieldOccurrence: Map<string, string | number>,
+): ResolveLine {
 	return (line: string): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
-		return { editable: false, value: filedByFieldOccurrence.get(`${field}-1`) as string | number | undefined };
+		return {
+			editable: false,
+			value: filedByFieldOccurrence.get(`${field}-1`) as
+				| string
+				| number
+				| undefined,
+		};
 	};
 }
 
@@ -56,15 +68,21 @@ export function Schedule13FormView({
 	const ccaControl = control as unknown as Control<CcaValues>;
 	const classes = useWatch({ control: ccaControl, name: "classes" }) ?? [];
 
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
+	const filed = computed?.schedulePayloads?.find(
+		(p) => p.scheduleId === SCHEDULE_ID,
+	);
 	const filedByFieldOccurrence = new Map(
 		(filed?.values ?? []).flatMap((v) => {
 			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const] : [];
+			return parsed
+				? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const]
+				: [];
 		}),
 	);
 	const resolveTotalsLine = buildTotalsResolveLine(filedByFieldOccurrence);
-	const totalsFields = AT1_SCHEDULE_13_FIELDS.filter((f) => f.section === "totals");
+	const totalsFields = AT1_SCHEDULE_13_FIELDS.filter(
+		(f) => f.section === "totals",
+	);
 
 	const rows: ClassGridRow[] = classes.map((c, i) => ({
 		key: `class-${i}`,
@@ -74,7 +92,13 @@ export function Schedule13FormView({
 
 	const columns: ClassGridColumn[] = AT1_SCHEDULE_13_GRID_COLUMNS.map((c) => {
 		const field = c.line.slice(3, 6);
-		return { line: field, caption: c.caption, kind: c.kind, fieldName: FIELD_NAME[c.line] };
+		return {
+			line: field,
+			caption: c.caption,
+			kind: c.kind,
+			fieldName: FIELD_NAME[c.line],
+			printedHeading: c.printedHeading,
+		};
 	});
 
 	return (
@@ -97,10 +121,9 @@ export function Schedule13FormView({
 							// occurrence = array index + 1, the convention this engine uses
 							// elsewhere for repeating schedule rows).
 							if (row.arrayIndex === undefined) return undefined;
-							return filedByFieldOccurrence.get(`${col.line}-${row.arrayIndex + 1}`) as
-								| string
-								| number
-								| undefined;
+							return filedByFieldOccurrence.get(
+								`${col.line}-${row.arrayIndex + 1}`,
+							) as string | number | undefined;
 						}}
 					/>
 				</div>

@@ -5,10 +5,24 @@ import { createElement } from "react";
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaContinuityValues } from "../../../../_lib/return-input";
-import { LimitedPartnershipTable, NonCapitalVintageTable, OtherLossVintageTable, RifeContinuitySection } from "../alberta-loss-vintage-tables";
+import {
+	LimitedPartnershipTable,
+	NonCapitalVintageTable,
+	OtherLossVintageTable,
+	RifeContinuitySection,
+} from "../alberta-loss-vintage-tables";
 import { parseAt1LineItemId } from "./at1-lines";
-import { PaperContinuityGrid, PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_SCHEDULE_21_FIELDS, AT1_SCHEDULE_21_FOOTNOTES, AT1_SCHEDULE_21_POOL_TABLE } from "./generated/schedule21.layout";
+import {
+	PaperContinuityGrid,
+	PaperFootnotes,
+	PaperLeaderRow,
+	PaperSection,
+} from "./components/paper-primitives";
+import {
+	AT1_SCHEDULE_21_FIELDS,
+	AT1_SCHEDULE_21_FOOTNOTES,
+	AT1_SCHEDULE_21_POOL_TABLE,
+} from "./generated/schedule21.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "021";
@@ -24,7 +38,9 @@ const SCHEDULE_ID = "021";
  * follows for anything this product doesn't collect.
  */
 function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
+	const filed = computed?.schedulePayloads?.find(
+		(p) => p.scheduleId === SCHEDULE_ID,
+	);
 	const filedByField = new Map(
 		(filed?.values ?? []).flatMap((v) => {
 			const parsed = parseAt1LineItemId(v.lineItemId);
@@ -33,7 +49,10 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 	);
 	return (line: string): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
-		return { editable: false, value: filedByField.get(field) as string | number | undefined };
+		return {
+			editable: false,
+			value: filedByField.get(field) as string | number | undefined,
+		};
 	};
 }
 
@@ -51,8 +70,14 @@ function tableProps(
 	control: Control<AlbertaContinuityValues>,
 	onNavigate: NavigateToLine | undefined,
 	disabled?: boolean,
-): FieldComponentProps<AlbertaContinuityValues> & { onNavigate?: NavigateToLine } {
-	return { control, onNavigate, disabled } as FieldComponentProps<AlbertaContinuityValues> & {
+): FieldComponentProps<AlbertaContinuityValues> & {
+	onNavigate?: NavigateToLine;
+} {
+	return {
+		control,
+		onNavigate,
+		disabled,
+	} as FieldComponentProps<AlbertaContinuityValues> & {
 		onNavigate?: NavigateToLine;
 	};
 }
@@ -94,7 +119,8 @@ function fieldName(poolKey: string, rowKind: string): string | undefined {
 			return `${p}WindUpTransfer`;
 		case "currentYearLoss":
 			if (isLpp) return "lppCurrentYearLoss";
-			if (poolKey === "farm" || poolKey === "restricted-farm") return `${p}CurrentYearLoss`;
+			if (poolKey === "farm" || poolKey === "restricted-farm")
+				return `${p}CurrentYearLoss`;
 			return undefined; // non-capital/capital derive this automatically — see alberta-continuity.ts's module doc comment
 		case "appliedAgainstIncome":
 			return isLpp ? "lppApplied" : `${p}Applied`;
@@ -139,6 +165,39 @@ const ROW_ORDER = (() => {
  * all (see `RifeContinuitySection`'s doc comment), so they're computed
  * live from the watched inputs instead of resolved from a payload.
  */
+/**
+ * The form's own grouping of the five pools, in page order.
+ *
+ * Page 1 sets non-capital beside capital; page 2 sets farm beside restricted
+ * farm and then gives listed personal property a block of its own. The pairing
+ * is not arbitrary — each pair shares a row set and a "Deduct:" line that the
+ * other pairs do not.
+ */
+const CONTINUITY_BLOCKS: readonly {
+	title: string;
+	description?: string;
+	pools: readonly string[];
+}[] = [
+	{
+		title: "Continuity of losses — non-capital and capital",
+		description:
+			"Page 1. Capital losses are the gross amount, and the allowable business investment loss row belongs to this block alone.",
+		pools: ["non-capital", "capital"],
+	},
+	{
+		title: "Continuity of losses — farm and restricted farm",
+		description:
+			"Page 2. A farm loss is applied against taxable income; a restricted farm loss only against farming income, which is why the two carry forward to different Schedule 12 lines.",
+		pools: ["farm", "restricted-farm"],
+	},
+	{
+		title: "Continuity of losses — listed personal property",
+		description:
+			"Page 2, its own block. Seven-year expiry, applied only against listed personal property gains, and no wind-up transfer or section 80 adjustment.",
+		pools: ["listed-personal"],
+	},
+];
+
 export function Schedule21FormView({
 	control,
 	disabled,
@@ -157,7 +216,9 @@ export function Schedule21FormView({
 	// continuity grid's computed/carried-in rows — one filed-payload map
 	// for the whole schedule, not two.
 	const resolvePart1Line = buildResolveLine(computed);
-	const part1Fields = AT1_SCHEDULE_21_FIELDS.filter((f) => f.section === "current-year");
+	const part1Fields = AT1_SCHEDULE_21_FIELDS.filter(
+		(f) => f.section === "current-year",
+	);
 
 	return (
 		<div className="space-y-4">
@@ -184,49 +245,81 @@ export function Schedule21FormView({
 					/>
 				))}
 			</PaperSection>
-			<PaperSection title="Continuity of losses">
-				<div className="p-2">
-					<PaperContinuityGrid
-						pools={AT1_SCHEDULE_21_POOL_TABLE}
-						rowOrder={ROW_ORDER}
-						control={c}
-						fieldName={fieldName}
-						disabled={disabled}
-						onNavigate={onNavigate}
-						highlightLine={highlightLine}
-						resolveLine={resolvePart1Line}
-						// The printed form groups the additions (carried forward /
-						// expired / balance-at-beginning / wind-up transfer /
-						// current-year loss) above a plain "Subtotal" divider, then
-						// the "Deduct:" block below it. Not a numbered line — pure
-						// print layout, confirmed against the TRA spec (no field for
-						// it anywhere in §3.2.3.21).
-						dividerAfter={["currentYearLoss"]}
-						footnotes={AT1_SCHEDULE_21_FOOTNOTES}
-					/>
-				</div>
-				<PaperFootnotes notes={AT1_SCHEDULE_21_FOOTNOTES} />
-			</PaperSection>
+			{/*
+			 * Three blocks, because the form has three.
+			 *
+			 * This used to be one grid with all five pools side by side, which is
+			 * not how the page is laid out and not how the pools behave. Page 1
+			 * carries non-capital beside capital; page 2 carries farm beside
+			 * restricted farm, then listed personal property on its own. The row
+			 * sets differ — an allowable business investment loss exists only for
+			 * capital, and listed personal property has no wind-up transfer and no
+			 * section 80 adjustment — so a single grid had to show a dash wherever a
+			 * pool lacked a row, and had to crowd three different destinations onto
+			 * one "Applied against income" line. Each block now shows only the rows
+			 * its own pools have, and each carry-forward sits on the row that
+			 * actually carries it.
+			 *
+			 * `dividerAfter` is the plain "Subtotal" rule the form prints between the
+			 * additions and the "Deduct:" block. Not a numbered line — pure print
+			 * layout, confirmed against the TRA spec (no field for it in §3.2.3.21).
+			 */}
+			{CONTINUITY_BLOCKS.map((block) => (
+				<PaperSection
+					key={block.title}
+					title={block.title}
+					description={block.description}
+				>
+					<div className="p-2">
+						<PaperContinuityGrid
+							pools={AT1_SCHEDULE_21_POOL_TABLE.filter((p) =>
+								block.pools.includes(p.key),
+							)}
+							rowOrder={ROW_ORDER}
+							control={c}
+							fieldName={fieldName}
+							disabled={disabled}
+							onNavigate={onNavigate}
+							highlightLine={highlightLine}
+							resolveLine={resolvePart1Line}
+							dividerAfter={["currentYearLoss"]}
+							footnotes={AT1_SCHEDULE_21_FOOTNOTES}
+						/>
+					</div>
+				</PaperSection>
+			))}
+			<PaperFootnotes notes={AT1_SCHEDULE_21_FOOTNOTES} />
 			<PaperSection
 				title="Continuity of limited partnership losses"
 				description="A sixth pool, laid out per partnership rather than by jurisdiction."
 			>
-				<div className="p-3">{createElement(LimitedPartnershipTable, tableProps(c, onNavigate))}</div>
+				<div className="p-3">
+					{createElement(LimitedPartnershipTable, tableProps(c, onNavigate))}
+				</div>
 			</PaperSection>
 			<PaperSection
 				title="Non-capital losses by year of origin"
 				description="The current year's row is derived from the grid above; only prior vintages are entered here."
 			>
-				<div className="p-3">{createElement(NonCapitalVintageTable, tableProps(c, onNavigate))}</div>
+				<div className="p-3">
+					{createElement(NonCapitalVintageTable, tableProps(c, onNavigate))}
+				</div>
 			</PaperSection>
 			<PaperSection title="Farm, restricted farm & listed personal property losses by year of origin">
-				<div className="p-3">{createElement(OtherLossVintageTable, tableProps(c, onNavigate))}</div>
+				<div className="p-3">
+					{createElement(OtherLossVintageTable, tableProps(c, onNavigate))}
+				</div>
 			</PaperSection>
 			<PaperSection
 				title="Continuity of restricted interest and financing expenses (RIFE)"
 				description="Page 5 of the printed form — a separate continuity from the five pools above. Not part of Schedule 21's own filed payload; line 240 feeds AT1 Schedule 12 line 130 directly."
 			>
-				<div className="p-3">{createElement(RifeContinuitySection, tableProps(c, onNavigate, disabled))}</div>
+				<div className="p-3">
+					{createElement(
+						RifeContinuitySection,
+						tableProps(c, onNavigate, disabled),
+					)}
+				</div>
 			</PaperSection>
 		</div>
 	);

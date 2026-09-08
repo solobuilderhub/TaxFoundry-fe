@@ -1,12 +1,21 @@
 "use client";
 
-import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import { cn } from "@/lib/utils";
 import type { ComputedReturn } from "@/api/computed-returns";
+import { cn } from "@/lib/utils";
 import { parseAt1LineItemId } from "./at1-lines";
-import { formatSignedMoney, OfficialPdfLink, useLineHighlight } from "./components/paper-primitives";
-import type { NavigateToLine, PaperField, PaperSectionDef } from "./resolve-line";
+import {
+	captionFormula,
+	formatSignedMoney,
+	OfficialPdfLink,
+	ProvenanceBadge,
+	useLineHighlight,
+} from "./components/paper-primitives";
+import type {
+	NavigateToLine,
+	PaperField,
+	PaperSectionDef,
+} from "./resolve-line";
 
 function ReadOnlyRow({
 	field,
@@ -22,15 +31,20 @@ function ReadOnlyRow({
 	const lineNumber = parseAt1LineItemId(field.line)?.field ?? field.line;
 	const value = filedByField.get(lineNumber);
 	const isNegative = typeof value === "number" && value < 0;
-	const display = typeof value === "number" ? formatSignedMoney(value) : value != null ? String(value) : "—";
-	const tooltip =
-		field.note ??
-		(field.from
-			? [`From ${field.from.form}${field.from.line ? ` line ${field.from.line}` : ""}`, field.from.note]
-					.filter(Boolean)
-					.join(" — ")
-			: undefined);
-	const { ref, active } = useLineHighlight<HTMLDivElement>(field.line, highlightLine);
+	const display =
+		typeof value === "number"
+			? formatSignedMoney(value)
+			: value != null
+				? String(value)
+				: "";
+	const formula =
+		field.role === "computed" || field.role === "total"
+			? captionFormula(field.caption)
+			: undefined;
+	const { ref, active } = useLineHighlight<HTMLDivElement>(
+		field.line,
+		highlightLine,
+	);
 
 	return (
 		<div
@@ -46,34 +60,34 @@ function ReadOnlyRow({
 			<span className="min-w-0 flex-1 truncate" title={field.caption}>
 				{field.caption}
 			</span>
-			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
-				<span
-					className={cn(
-						"w-32 shrink-0 cursor-help text-right text-sm tabular-nums",
-						isNegative ? "text-red-600 dark:text-red-400" : "text-muted-foreground",
-					)}
-				>
-					{display}
-				</span>
-			</TooltipWrapper>
-			{field.to &&
-				(onNavigate ? (
-					<TooltipWrapper content={field.to.note || `Carries forward to ${field.to.form}, line ${field.to.line}.`} side="top">
-						<button type="button" onClick={() => onNavigate(field.to!.form, field.to!.line)} className="inline-flex shrink-0">
-							<Pill variant="outline" className="cursor-pointer text-[10px] hover:bg-accent">
-								{`→ ${field.to.form} line ${field.to.line}`}
-							</Pill>
-						</button>
-					</TooltipWrapper>
-				) : (
-					<TooltipWrapper content={field.to.note || `Carries forward to ${field.to.form}, line ${field.to.line}.`} side="top">
-						<span className="inline-flex shrink-0">
-							<Pill variant="outline" className="cursor-help text-[10px]">
-								{`→ ${field.to.form} line ${field.to.line}`}
-							</Pill>
-						</span>
-					</TooltipWrapper>
-				))}
+			{/*
+			 * The absent-figure state is the same dashed empty box `PaperLeaderRow`
+			 * shows for a read-only line with nothing in it — an em dash, never a
+			 * zero. A zero on a tax form is an assertion ("this line is nil"); a
+			 * blank box is the truth here ("nothing has been computed for it").
+			 */}
+			<span className="flex w-36 shrink-0 items-center justify-end gap-1.5">
+				<TooltipWrapper content={display} side="top" disabled={!display}>
+					<span
+						className={cn(
+							"h-8 flex-1 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right text-sm tabular-nums leading-8",
+							isNegative
+								? "text-red-600 dark:text-red-400"
+								: "text-muted-foreground",
+						)}
+					>
+						{display || "—"}
+					</span>
+				</TooltipWrapper>
+			</span>
+			<ProvenanceBadge
+				role={field.role}
+				note={field.note}
+				formula={formula}
+				from={field.from}
+				to={field.to}
+				onNavigate={onNavigate}
+			/>
 		</div>
 	);
 }
@@ -85,6 +99,13 @@ function ReadOnlyRow({
  * them lives entirely in OTHER schedules' fields). Each gets its own
  * nav entry outside the normal registry (see `return-editor.tsx`), the same
  * special-cased pattern as "Tax Summary (jacket)".
+ *
+ * The FORM always renders — every section, line number, caption, role badge,
+ * note and carry-forward pill — whether or not a computed return exists. A
+ * paper Form View exists to show the form; a preparer who opens one before
+ * computing is looking for its shape, and an empty form answers that where a
+ * single sentence does not. The two "why are the figures blank" explanations
+ * moved to a line above the form rather than replacing it.
  */
 export function ReadOnlyScheduleView({
 	scheduleId,
@@ -105,14 +126,16 @@ export function ReadOnlyScheduleView({
 	fields: readonly PaperField[];
 	computed?: ComputedReturn;
 	stale?: boolean;
-	/** Shown when the return has never been computed at all — nothing here reflects a real filing yet. */
+	/** Shown above the form when the return has never been computed at all — no figure on it reflects a real filing yet. */
 	notComputedMessage: string;
-	/** Shown when the return HAS been computed but this schedule genuinely has nothing to report — a real, correct outcome, not a gap. */
+	/** Shown above the form when the return HAS been computed but this schedule genuinely has nothing to report — a real, correct outcome, not a gap. */
 	nothingToReportMessage: string;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === scheduleId);
+	const filed = computed?.schedulePayloads?.find(
+		(p) => p.scheduleId === scheduleId,
+	);
 	const filedByField = new Map(
 		(filed?.values ?? []).flatMap((v) => {
 			const parsed = parseAt1LineItemId(v.lineItemId);
@@ -124,13 +147,13 @@ export function ReadOnlyScheduleView({
 	// conflating them into one message reads as "is this even real?" (the
 	// exact question this distinction exists to answer). No computed return at
 	// all is a genuinely different state from a computed return where this
-	// schedule correctly had nothing to reconcile.
-	if (!computed) {
-		return <p className="text-sm text-muted-foreground">{notComputedMessage}</p>;
-	}
-	if (!filed) {
-		return <p className="text-sm text-muted-foreground">{nothingToReportMessage}</p>;
-	}
+	// schedule correctly had nothing to reconcile. Either way the form below is
+	// the same form; only the reason its value cells are empty differs.
+	const emptyReason = !computed
+		? notComputedMessage
+		: !filed
+			? nothingToReportMessage
+			: undefined;
 
 	return (
 		<div className="space-y-4">
@@ -138,6 +161,11 @@ export function ReadOnlyScheduleView({
 				<div className="flex justify-end">
 					<OfficialPdfLink formId={formId} />
 				</div>
+			)}
+			{emptyReason && (
+				<p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+					{emptyReason}
+				</p>
 			)}
 			{stale && (
 				<p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -152,7 +180,9 @@ export function ReadOnlyScheduleView({
 						<div className="border-b bg-muted/40 px-4 py-2">
 							<h3 className="text-sm font-semibold">{section.title}</h3>
 							{section.description && (
-								<p className="mt-0.5 text-xs text-muted-foreground">{section.description}</p>
+								<p className="mt-0.5 text-xs text-muted-foreground">
+									{section.description}
+								</p>
 							)}
 						</div>
 						<div className="divide-y">
