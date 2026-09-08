@@ -56,6 +56,7 @@ export type ReturnInput = {
 	albertaSbd?: AlbertaSbdValues;
 	albertaDonations?: AlbertaDonationsValues;
 	albertaContinuity?: AlbertaContinuityValues;
+	albertaReconciliation12?: AlbertaReconciliation12Values;
 	albertaIeg?: AlbertaIegValues;
 	albertaOtherCredits3?: AlbertaOtherCredits3Values;
 	albertaForeignInvestment4?: AlbertaForeignInvestment4Values;
@@ -1065,8 +1066,72 @@ export type AlbertaDonationsValues = {
 	carryforwardMedicine?: number;
 };
 export type AlbertaContinuityValues = {
+	/**
+	 * 021002 — RIFE deducted in the year under ITA paragraph 111(1)(a.1). A POSITIVE amount; the form subtracts it. The SAME figure the form asks for again at line 240 on page 5 (`rifeDeductedForTaxYear`), which is where it is capped. Kept as two fields because the form prints two boxes with two line ids and both are filed; nothing yet reconciles them.
+	 */
+	rifeDeducted?: number;
+	/**
+	 * 021003 — net capital losses deducted in the year. A POSITIVE amount.
+	 */
+	netCapitalLossesDeducted?: number;
+	/**
+	 * 021005
+	 */
+	taxableDividendsDeductible?: number;
+	/**
+	 * 021007
+	 */
+	partVI1TaxDeductible?: number;
+	/**
+	 * 021011
+	 */
+	prospectorAndGrubstakerShares?: number;
+	/**
+	 * 021012 — employer deduction for non-qualified securities, ITA paragraph 110(1)(e).
+	 */
+	nonQualifiedSecuritiesDeduction?: number;
+	/**
+	 * 021017 — ITA section 110.5 / subparagraph 115(1)(a)(vii) additions for foreign tax credits. Deducted, and carried forward to Schedule 12 line 082.
+	 */
+	foreignTaxCreditAdditions?: number;
+	/**
+	 * 021019 — "Add: Current year farm loss", the Part 1 ADD-BACK. Distinct from `farmCurrentYearLoss` (line 077), which is the farm pool’s own continuity entry: farm losses are tracked in their own pool, so Part 1 adds the amount back when arriving at the NON-capital loss. Same figure in the ordinary case, different lines.
+	 */
+	currentYearFarmLossAddBack?: number;
+	/**
+	 * 021200 — RIFE at the end of the previous tax year.
+	 */
+	rifeClosingPreviousYear?: number;
+	/**
+	 * 021210 — RIFE transferred on an amalgamation or on the wind-up of a subsidiary corporation.
+	 */
+	rifeTransferredOnAmalgamation?: number;
+	/**
+	 * 021220 — RIFE adjustment for an acquisition of control. DEDUCTED at line 310.
+	 */
+	rifeAcquisitionOfControlAdjustment?: number;
+	/**
+	 * 021240 — RIFE deducted for the tax year, carried to Schedule 12 line 130. MUST NOT exceed line 350 (the deductible ceiling), a cap the form states and nothing here enforces yet. Same figure as `rifeDeducted` (line 002).
+	 */
+	rifeDeductedForTaxYear?: number;
+	/**
+	 * 021230 — current-year restricted interest and financing expenses under ITA subsection 111(8). Federal Schedule 4, line 710.
+	 */
+	rifeCurrentYear?: number;
+	/**
+	 * 021320 — the corporation's excess capacity. Federal Schedule 130, line 129.
+	 */
+	excessCapacityForYear?: number;
+	/**
+	 * 021330 — total received capacity for the year. Federal Schedule 130, line 130.
+	 */
+	receivedCapacityForYear?: number;
 	nonCapitalOpening?: number;
 	capitalOpening?: number;
+	/**
+	 * 021057 — the capital pool’s current-year loss. The form carries this in from federal Schedule 4 line 210, and this engine has no federal net-capital-loss figure to derive it from, so the preparer transcribes it. Blank = nil.
+	 */
+	capitalCurrentYearLoss?: number;
 	farmOpening?: number;
 	/**
 	 * Blank = same as federal. Unlike non-capital (whose current-year loss is derived automatically from Schedule 12’s Alberta reconciliation), no federal input in this engine breaks losses down by farm/non-farm activity, so a genuine Alberta-federal divergence here can only be stated directly.
@@ -1193,17 +1258,31 @@ export type RifeContinuityValues = {
 };
 export type NonCapitalLossVintageRow = {
 	/**
-	 * 1 = the immediately preceding taxation year, up to 20 (the expiry limit).
+	 * 151 — 0 is the CURRENT year, 1 to 20 the preceding taxation years (20 being the expiry limit).
 	 */
 	yearsAgo?: number;
+	/**
+	 * 153
+	 */
 	taxYearEnd?: string;
+	/**
+	 * 155 — shaded on the current-year row: a loss arising this year has no opening balance.
+	 */
 	balanceAtBeginning?: number;
 	/**
-	 * Signed — an addition or a reduction to this vintage.
+	 * 157 — the CURRENT-year row only; the form shades this column for every preceding vintage.
+	 */
+	lossIncurredInCurrentYear?: number;
+	/**
+	 * 159 — signed: an addition or a reduction to this vintage.
 	 */
 	adjustments?: number;
 	/**
-	 * Applied to reduce taxable income this year, from THIS vintage specifically.
+	 * 165 — the CURRENT-year row only; shaded for every preceding vintage. A carry-back also requires Schedule 10.
+	 */
+	lossCarriedBack?: number;
+	/**
+	 * 167 — applied to reduce taxable income this year, from THIS vintage specifically.
 	 */
 	applied?: number;
 };
@@ -1215,6 +1294,192 @@ export type OtherLossVintageRow = {
 	 * Refused (zeroed) beyond yearIndex 7 — listed personal property expires after 7 years, not 20.
 	 */
 	listedPersonalPropertyLosses?: number;
+};
+export type AlbertaReconciliation12Values = {
+	/**
+	 * 012002 — T2 line 300.
+	 */
+	netIncomeFederal?: number;
+	/**
+	 * 012005 — Federal Schedule 1 line 403.
+	 */
+	ccaFederal?: number;
+	/**
+	 * 012007 — Federal Schedule 1 line 107.
+	 */
+	ccaRecaptureFederal?: number;
+	/**
+	 * 012009 — Federal Schedule 1 line 404.
+	 */
+	terminalLossFederal?: number;
+	/**
+	 * 012015 — Federal Schedule 1 line 224.
+	 */
+	farmingMandatoryCurrentFederal?: number;
+	/**
+	 * 012017 — Federal Schedule 1 line 309.
+	 */
+	farmingMandatoryPriorFederal?: number;
+	/**
+	 * 012019 — Federal Schedule 1 line 229.
+	 */
+	farmingOptionalCurrentFederal?: number;
+	/**
+	 * 012021 — Federal Schedule 1 line 313.
+	 */
+	farmingOptionalPriorFederal?: number;
+	/**
+	 * 012023 — Federal Schedule 1 line 344.
+	 */
+	depletionFederal?: number;
+	/**
+	 * 012027 — Federal Schedule 1 line 341.
+	 */
+	ceeFederal?: number;
+	/**
+	 * 012029 — Federal Schedule 1 line 340.
+	 */
+	cdeFederal?: number;
+	/**
+	 * 012031 — Federal Schedule 1 line 345.
+	 */
+	foreignExplorationFederal?: number;
+	/**
+	 * 012033 — Federal Schedule 1 line 342.
+	 */
+	cogpeFederal?: number;
+	/**
+	 * 012035 — net: minus Federal Schedule 1 line 411, plus line 231.
+	 */
+	sredFederal?: number;
+	/**
+	 * 012037 — Federal Schedule 1 line 125.
+	 */
+	taxReservesPriorFederal?: number;
+	/**
+	 * 012039 — Federal Schedule 1 line 413.
+	 */
+	taxReservesCurrentFederal?: number;
+	/**
+	 * 012041 — Other. Fed Schedule 1 line 113 minus 406, plus other Additions, minus Fed Schedule 21 Part 1 column D, minus Fed Schedule 1 line 218.
+	 */
+	otherFederal?: number;
+	/**
+	 * 012014
+	 */
+	farmingMandatoryCurrentAlberta?: number;
+	/**
+	 * 012016
+	 */
+	farmingMandatoryPriorAlberta?: number;
+	/**
+	 * 012018
+	 */
+	farmingOptionalCurrentAlberta?: number;
+	/**
+	 * 012020
+	 */
+	farmingOptionalPriorAlberta?: number;
+	/**
+	 * 012040 — Other. Schedule 18 line 076 + 094, plus Schedule 15 AREAs C/D/F/G/H, minus the ACTA s.8(2.2) deduction, plus foreign affiliate property income after ITA s.152(6.1). An amount here requires the explanation at line 048.
+	 */
+	otherAlberta?: number;
+	/**
+	 * 012042 — Alberta only; the form shades the federal side of this row.
+	 */
+	capitalTaxOtherProvinces?: number;
+	/**
+	 * 012048 — required when line 040 carries an amount.
+	 */
+	otherExplanation?: string;
+	/**
+	 * 012057 — T2 line 311.
+	 */
+	charitableDonationsFederal?: number;
+	/**
+	 * 012059 — T2 lines 312 + 313 + 314.
+	 */
+	giftsFederal?: number;
+	/**
+	 * 012061 — T2 line 320.
+	 */
+	taxableDividendsFederal?: number;
+	/**
+	 * 012063 — T2 line 325.
+	 */
+	partVI1Federal?: number;
+	/**
+	 * 012065 — T2 line 331.
+	 */
+	nonCapitalLossesFederal?: number;
+	/**
+	 * 012067 — T2 line 332.
+	 */
+	netCapitalLossesFederal?: number;
+	/**
+	 * 012069 — T2 line 333.
+	 */
+	restrictedFarmLossesFederal?: number;
+	/**
+	 * 012071 — T2 line 334.
+	 */
+	farmLossesFederal?: number;
+	/**
+	 * 012073 — T2 line 335.
+	 */
+	limitedPartnershipLossesFederal?: number;
+	/**
+	 * 012131 — T2 line 336.
+	 */
+	rifeFederal?: number;
+	/**
+	 * 012075 — T2 line 340.
+	 */
+	centralCreditUnionFederal?: number;
+	/**
+	 * 012079 — T2 line 350.
+	 */
+	prospectorSharesFederal?: number;
+	/**
+	 * 012141 — T2 line 352.
+	 */
+	nonQualifiedSecuritiesFederal?: number;
+	/**
+	 * 012083 — ITA s.110.5 / 115(1)(a)(vii) additions. The form prints T2 line 335 here, the same line it gives at 073; transcribed as printed.
+	 */
+	section110AdditionsFederal?: number;
+	/**
+	 * 012060 — T2 line 320.
+	 */
+	taxableDividendsAlberta?: number;
+	/**
+	 * 012062 — T2 line 325.
+	 */
+	partVI1Alberta?: number;
+	/**
+	 * 012074 — T2 line 340.
+	 */
+	centralCreditUnionAlberta?: number;
+	/**
+	 * 012078 — T2 line 350.
+	 */
+	prospectorSharesAlberta?: number;
+	/**
+	 * 012140 — T2 line 352.
+	 */
+	nonQualifiedSecuritiesAlberta?: number;
+	/**
+	 * 012100 — does Alberta ABI differ from federal? An unanswered question is not "No"; the rest of this block is completed only when the answer is Yes.
+	 */
+	abiDiffers?: YesNo;
+	/**
+	 * 012102 — federal Schedule 7 amount "Q", or federal Schedule 16 line 124. A negative amount is shown in brackets.
+	 */
+	abiFederal?: number;
+	/**
+	 * 012104 — adjustment to ABI for Alberta purposes due to discretionary items. May be negative.
+	 */
+	abiAdjustment?: number;
 };
 export type AlbertaIegValues = {
 	/**

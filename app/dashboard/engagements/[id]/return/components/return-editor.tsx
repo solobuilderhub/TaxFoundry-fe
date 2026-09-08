@@ -44,7 +44,11 @@ import {
 } from "../_config/registry";
 import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
 import { Schedule10View } from "../_config/schedules/at1/paper/schedule10-view";
+<<<<<<< Updated upstream
 import { Schedule12View } from "../_config/schedules/at1/paper/schedule12-view";
+=======
+import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
+>>>>>>> Stashed changes
 import type { NavigateToLine } from "../_config/schedules/shared/define";
 import { bookNetIncomeOf } from "../_lib/calc";
 import type { ReturnInput } from "../_lib/return-input";
@@ -61,11 +65,16 @@ const money = (n: number) =>
 	}).format(n);
 
 /**
- * AT1 schedules with no `ScheduleDef`/editable side at all — each is fully
- * computed from OTHER schedules' fields (Schedule 12), or has no dedicated
- * `ReturnInput` slice to write to (Schedules 2 and 10). Special-cased nav
- * entries, the same pattern already used for "Tax Summary (jacket)", rather
- * than the normal registry (which requires a real `ReturnInput` key).
+ * AT1 schedules with no `ScheduleDef`/editable side at all — neither has a
+ * dedicated `ReturnInput` slice to write to. Special-cased nav entries, the
+ * same pattern already used for "Tax Summary (jacket)", rather than the normal
+ * registry (which requires a real `ReturnInput` key).
+ *
+ * Schedule 12 used to be here too, on the reasoning that the engine derives it
+ * from the other schedules' Alberta overrides. That covers the Alberta column
+ * of a reconciling pair and nothing else — 46 of its 74 lines are the
+ * preparer's — so it is now a real registry schedule with an editable Form
+ * View. See `_config/schedules/at1/alberta-reconciliation12.ts`.
  */
 const READ_ONLY_SCHEDULES = [
 	{
@@ -82,13 +91,6 @@ const READ_ONLY_SCHEDULES = [
 		hint: "Read-only — non-capital and capital carrybacks, as filed",
 		View: Schedule10View,
 	},
-	{
-		key: "schedule12" as const,
-		num: "012",
-		label: "Alberta Income/Loss Reconciliation (S12)",
-		hint: "Read-only — computed from the Alberta-override fields on CCA, Reserves, Dispositions and Loss Continuity",
-		View: Schedule12View,
-	},
 ];
 
 /**
@@ -104,7 +106,7 @@ const READ_ONLY_SCHEDULES = [
  */
 const FORM_ID_TO_SCHEDULE_KEY: Record<
 	string,
-	ScheduleKey | "schedule2" | "schedule10" | "schedule12"
+	ScheduleKey | "schedule2" | "schedule10"
 > = {
 	AT1: "alberta",
 	AT1SCH1: "albertaSbd",
@@ -117,7 +119,7 @@ const FORM_ID_TO_SCHEDULE_KEY: Record<
 	AT1SCH08: "albertaPoliticalContributions8",
 	AT1SCH09: "albertaSredCredit9",
 	AT1SCH10: "schedule10",
-	AT1SCH12: "schedule12",
+	AT1SCH12: "albertaReconciliation12",
 	AT1SCH13: "cca",
 	AT1SCH15: "albertaResourceDeductions15",
 	AT1SCH17: "reserves",
@@ -141,7 +143,7 @@ export function ReturnEditor({ id }: { id: string }) {
 	const { data: client } = useClient(engagement?.clientId);
 
 	const [active, setActive] = useState<
-		ScheduleKey | "summary" | "schedule12" | "schedule2" | "schedule10"
+		ScheduleKey | "summary" | "schedule2" | "schedule10"
 	>("incomeStatement");
 	// The line to scroll to and briefly highlight after a paper Form View's
 	// cross-reference badge switches `active` to another schedule — cleared on

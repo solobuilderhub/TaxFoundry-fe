@@ -22,40 +22,64 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { AlbertaContinuityValues } from "../../../_lib/return-input";
+import { AT1_SCHEDULE_21_FIELDS } from "./paper/generated/schedule21.layout";
 import { parseAt1LineItemId } from "./paper/at1-lines";
 import type { NavigateToLine } from "./paper/resolve-line";
 import { type RifeLineKey, rifeFormText } from "./rife-lines";
 
-/** `021FFF001` — this file is Schedule 21 only, so the schedule prefix is fixed. */
-const line = (field: string): string => `021${field}001`;
+/**
+ * The horizontal inset every cell's CONTENT shares.
+ *
+ * Inputs carry their own `px-1.5`, so a header or a total sitting directly in
+ * the table cell lands 1.5 units further out than the figure in the box above
+ * or below it. Applying the same inset to headers, computed cells and the
+ * totals row gives the whole column one right edge — which is the point of a
+ * money column, and what makes it checkable against the printed form.
+ */
+const CELL_INSET = "px-1.5";
+
+/** 3-digit printed line number → that column's field on the form. */
+const FIELD_BY_LINE = new Map(
+	AT1_SCHEDULE_21_FIELDS.map((f) => [parseAt1LineItemId(f.line)?.field ?? f.line, f]),
+);
 
 /**
- * A `TableHead` with the printed form's own 3-digit line number as a small
- * mono sub-label, matching the badge convention `PaperLeaderRow`/
- * `PaperContinuityGrid` already use elsewhere on this schedule's paper Form
- * View — this file predates that convention (it's shared with the GUIDED
- * editor too, not paper-view-only), so it gets its own copy rather than
- * importing the paper components into a file the guided editor also
- * renders. `lineId` is still the full 9-digit composite id (kept for any
- * future highlight-sync use), but only the printed 3-digit field — what a
- * preparer actually sees on the form — is DISPLAYED; the raw composite id
- * (e.g. "021131001") is an internal key, not something to show someone
- * filling out a return.
+ * A column header: the form's own 3-digit line number over the form's own
+ * caption.
+ *
+ * The caption is READ FROM THE REGISTRY, not passed in. These headers used to
+ * be hand-typed abbreviations — "Opening balance" for *"Limited partnership
+ * losses at end of preceding taxation year"*, "Applied" for *"Limited
+ * partnership loss applied"*, "Restricted farm" for *"Restricted farm losses"*
+ * — so a preparer reconciling this table against the paper was matching on
+ * position and line number alone, and any correction to the definition left
+ * these untouched.
+ *
+ * The carries-forward badge comes from the same place — the field's own `to` —
+ * rather than being passed in with a hand-written form id and line number.
  */
 function HeadWithLine({
-	lineId,
-	children,
+	field,
 	align,
+<<<<<<< Updated upstream
 	tooltip,
+=======
+	onNavigate,
+>>>>>>> Stashed changes
 }: {
-	lineId: string;
-	children: React.ReactNode;
+	/** The printed 3-digit line number, e.g. `"133"`. */
+	field: string;
 	align?: "right";
+<<<<<<< Updated upstream
 	/** The printed form's own full caption — the abbreviated column label above is a fit for a table header, not a replacement for what the line actually says. */
 	tooltip?: string;
+=======
+	onNavigate?: NavigateToLine;
+>>>>>>> Stashed changes
 }) {
-	const displayLine = parseAt1LineItemId(lineId)?.field ?? lineId;
+	const definition = FIELD_BY_LINE.get(field);
 	return (
+<<<<<<< Updated upstream
 		<TableHead className={align === "right" ? "text-right" : undefined}>
 			<span className="block font-mono text-[10px] font-normal text-muted-foreground">{displayLine}</span>
 			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
@@ -63,6 +87,25 @@ function HeadWithLine({
 					{children}
 				</span>
 			</TooltipWrapper>
+=======
+		<TableHead
+			className={cn(
+				"align-bottom whitespace-normal",
+				align === "right" && "text-right",
+			)}
+		>
+			<span className={cn("block max-w-[13rem]", CELL_INSET)}>
+				<span className="block font-mono text-[10px] font-normal text-muted-foreground">
+					{field}
+				</span>
+				<span className="block text-xs leading-snug font-normal">
+					{definition?.caption ?? field}
+					{definition?.to && (
+						<CarriesToBadge to={definition.to} onNavigate={onNavigate} />
+					)}
+				</span>
+			</span>
+>>>>>>> Stashed changes
 		</TableHead>
 	);
 }
@@ -174,7 +217,7 @@ function NumCell({
 					disabled={disabled}
 					aria-label={name}
 					className={cn(
-						"h-8 w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none",
+						"h-8 w-full min-w-[5rem] rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none",
 						"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
 						"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
 					)}
@@ -207,7 +250,7 @@ function DateCell({
 					type="date"
 					aria-label={name}
 					className={cn(
-						"h-8 w-[8.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm outline-none",
+						"h-8 w-full min-w-[8.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm outline-none",
 						"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
 					)}
 					value={(field.value as string | undefined) ?? ""}
@@ -239,7 +282,7 @@ function YearSelect({
 			render={({ field }) => (
 				<select
 					aria-label={name}
-					className="h-8 w-32 rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring"
+					className="h-8 w-full min-w-[8rem] rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring"
 					value={(field.value as number | undefined) ?? ""}
 					onChange={(e) =>
 						field.onChange(
@@ -283,6 +326,65 @@ function RemoveRowButton({
 	);
 }
 
+/**
+ * Column-wise sum over a repeating table's rows, blanks counting as zero.
+ *
+ * Typed to return a plain `Record<K, number>` rather than inferring from the
+ * row shape: every field on a vintage row is optional, so an inferred
+ * accumulator comes back `number | undefined` and every total then needs a
+ * guard it doesn't deserve.
+ */
+function sumColumns<K extends string>(
+	rows: readonly (Record<string, unknown> | undefined)[],
+	keys: readonly K[],
+): Record<K, number> {
+	const out = Object.fromEntries(keys.map((k) => [k, 0])) as Record<K, number>;
+	for (const row of rows) {
+		for (const key of keys) out[key] += toNum(row?.[key]) ?? 0;
+	}
+	return out;
+}
+
+/**
+ * The `Totals:` row both by-year-of-origin ledgers print under their columns.
+ *
+ * Read-only and derived — the form has a totals box per numeric column, and a
+ * preparer reconciling against the paper needs the same figure in the same
+ * place. `leadingCells` is how many non-numeric columns (year of origin, tax
+ * year end) the label spans before the first total.
+ */
+function TotalsRow({
+	label,
+	values,
+	leadingCells,
+}: {
+	label: string;
+	values: readonly number[];
+	leadingCells: number;
+}) {
+	return (
+		<TableRow className="border-t-2 bg-muted/30 font-medium hover:bg-muted/30">
+			<TableCell colSpan={leadingCells} className="text-sm">
+				<span className={cn("inline-block", CELL_INSET)}>{label}</span>
+			</TableCell>
+			{values.map((v, i) => (
+				<TableCell
+					// Fixed-length, fixed-order list of column totals — index is the
+					// column, and there is nothing else to key on.
+					// biome-ignore lint/suspicious/noArrayIndexKey: positional by construction
+					key={i}
+					className="text-right"
+				>
+					<span className={cn("inline-block tabular-nums", CELL_INSET)}>
+						{CURRENCY_FMT.format(v)}
+					</span>
+				</TableCell>
+			))}
+			<TableCell />
+		</TableRow>
+	);
+}
+
 function TextCell({
 	control,
 	name,
@@ -299,7 +401,7 @@ function TextCell({
 					type="text"
 					aria-label={name}
 					className={cn(
-						"h-8 w-28 rounded-md border border-input bg-transparent px-1.5 text-sm outline-none",
+						"h-8 w-full min-w-[7rem] rounded-md border border-input bg-transparent px-1.5 text-sm outline-none",
 						"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
 					)}
 					value={(field.value as string | undefined) ?? ""}
@@ -354,6 +456,7 @@ export function LimitedPartnershipTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
+<<<<<<< Updated upstream
 							<HeadWithLine lineId={line("131")} tooltip="Partnership identifier (if known).">Partnership</HeadWithLine>
 							<HeadWithLine
 								lineId={line("133")}
@@ -390,6 +493,14 @@ export function LimitedPartnershipTable({
 							>
 								Closing balance
 							</HeadWithLine>
+=======
+							<HeadWithLine field="131" />
+							<HeadWithLine field="133" align="right" />
+							<HeadWithLine field="135" align="right" />
+							<HeadWithLine field="137" align="right" />
+							<HeadWithLine field="139" align="right" onNavigate={onNavigate} />
+							<HeadWithLine field="141" align="right" />
+>>>>>>> Stashed changes
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
@@ -455,8 +566,15 @@ export function LimitedPartnershipTable({
 											name={`limitedPartnerships.${index}.applied`}
 										/>
 									</TableCell>
-									<TableCell className="text-right tabular-nums text-muted-foreground">
-										{hasAny ? CURRENCY_FMT.format(closing) : "—"}
+									<TableCell className="text-right">
+										<span
+											className={cn(
+												"inline-block tabular-nums text-muted-foreground",
+												CELL_INSET,
+											)}
+										>
+											{hasAny ? CURRENCY_FMT.format(closing) : "—"}
+										</span>
 									</TableCell>
 									<TableCell>
 										<RemoveRowButton
@@ -627,15 +745,23 @@ export function RifeContinuitySection({
 const YEARS_AGO_OPTIONS = Array.from({ length: 20 }, (_, i) => i + 1); // 1..20
 
 /**
- * Row 0 ("Current") is deliberately NOT part of this array at all — it is
- * derived server-side from the current-year non-capital loss and carry-back
- * entered elsewhere on this schedule, so it renders as a fixed informational
- * row instead of an editable one. Only prior vintages (1st-20th preceding
- * taxation year) are genuinely enterable, and only 4 of the PDF's 7 data
- * columns apply to them: 153 (tax year end), 155 (balance at beginning), 159
- * (adjustments/transfers), 167 (applied) — 157 (loss incurred) and 165 (loss
- * carried back) exist only for the current-year row. Column 169 (balance at
- * end) is shown computed/read-only per the PDF's own formula, never entered.
+ * The page-3 ledger, all EIGHT of the printed columns.
+ *
+ * Which columns apply depends on the vintage, and the form says so by shading:
+ *   · the CURRENT year (row 0) has no opening balance (155) and nothing
+ *     "applied to reduce taxable income" (167) — the loss arose this year;
+ *   · a PRECEDING vintage has no "loss incurred in current year" (157) and no
+ *     "loss carried back" (165) — a carry-back is a current-year loss going
+ *     backwards.
+ *
+ * Columns 157 and 165 used to be omitted from this table entirely, on the
+ * reasoning that they only apply to the current year and the current year was
+ * not enterable. That made two of the form's own columns unreachable. The
+ * current-year row is a real row here now, and each cell is disabled exactly
+ * where the form shades it.
+ *
+ * Column 169 (balance at end) is always computed, per the formula the form
+ * prints in its own column heading.
  */
 export function NonCapitalVintageTable({
 	control,
@@ -652,77 +778,101 @@ export function NonCapitalVintageTable({
 				.map((r) => r?.yearsAgo)
 				.filter((v): v is number => typeof v === "number"),
 		);
-		append({ yearsAgo: nextAvailable(used, 1, 20) });
+		append({ yearsAgo: nextAvailable(used, 0, 20) });
 	};
+
+	/** Column totals — the form prints a Totals row under every numeric column. */
+	const totals = sumColumns(watched, [
+		"balanceAtBeginning",
+		"lossIncurredInCurrentYear",
+		"adjustments",
+		"lossCarriedBack",
+		"applied",
+	]);
+	const totalBalanceAtEnd =
+		totals.balanceAtBeginning +
+		totals.lossIncurredInCurrentYear +
+		totals.adjustments -
+		totals.lossCarriedBack -
+		totals.applied;
 
 	return (
 		<div className="space-y-3">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<p className="text-xs text-muted-foreground">
-					One row per PRIOR taxation year — non-capital losses expire after 20
-					years.
+					One row per taxation year — the current year, then up to the 20th
+					preceding (non-capital losses expire after 20 years). Cells the form
+					shades for a given vintage are disabled here.
 				</p>
 				<Button
 					type="button"
 					variant="outline"
 					size="sm"
 					onClick={handleAdd}
-					disabled={fields.length >= 20}
+					disabled={fields.length >= 21}
 				>
 					<Plus className="size-4" />
-					Add prior-year row
+					Add row
 				</Button>
 			</div>
 			<div className="rounded-lg border">
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<HeadWithLine lineId={line("151")}>Year of origin</HeadWithLine>
-							<HeadWithLine lineId={line("153")}>Tax year end</HeadWithLine>
-							<HeadWithLine lineId={line("155")} align="right">Opening balance</HeadWithLine>
-							<HeadWithLine lineId={line("159")} align="right">Adjustments</HeadWithLine>
-							<HeadWithLine lineId={line("167")} align="right">Applied</HeadWithLine>
-							<HeadWithLine lineId={line("169")} align="right">Closing balance</HeadWithLine>
+							<HeadWithLine field="151" />
+							<HeadWithLine field="153" />
+							<HeadWithLine field="155" align="right" />
+							<HeadWithLine field="157" align="right" />
+							<HeadWithLine field="159" align="right" />
+							<HeadWithLine field="165" align="right" />
+							<HeadWithLine field="167" align="right" />
+							<HeadWithLine field="169" align="right" />
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						<TableRow className="bg-muted/30 hover:bg-muted/30">
-							<TableCell className="font-medium">Current</TableCell>
-							<TableCell colSpan={5} className="text-xs text-muted-foreground">
-								Calculated automatically — see the current-year non-capital loss
-								and carry-back entered above. Not entered here.
-							</TableCell>
-							<TableCell />
-						</TableRow>
 						{fields.length === 0 && (
 							<TableRow className="hover:bg-transparent">
 								<TableCell
-									colSpan={7}
+									colSpan={9}
 									className="py-6 text-center text-sm text-muted-foreground"
 								>
-									No prior-year balances yet — click “Add prior-year row” to
-									start.
+									No vintages yet — click “Add row” to start.
 								</TableCell>
 							</TableRow>
 						)}
 						{fields.map((rhfField, index) => {
 							const row = watched[index] ?? {};
+							const yearIndex = toNum(row.yearsAgo);
+							// The form shades by vintage: the current year (0) has no
+							// opening balance and nothing applied; a preceding year has no
+							// current-year loss and no carry-back.
+							const isCurrent = yearIndex === 0;
 							const beginning = toNum(row.balanceAtBeginning);
+							const incurred = toNum(row.lossIncurredInCurrentYear);
 							const adjustments = toNum(row.adjustments);
+							const carriedBack = toNum(row.lossCarriedBack);
 							const applied = toNum(row.applied);
 							const hasAny =
-								beginning != null || adjustments != null || applied != null;
+								beginning != null ||
+								incurred != null ||
+								adjustments != null ||
+								carriedBack != null ||
+								applied != null;
 							const balanceAtEnd =
-								(beginning ?? 0) + (adjustments ?? 0) - (applied ?? 0);
+								(beginning ?? 0) +
+								(incurred ?? 0) +
+								(adjustments ?? 0) -
+								(carriedBack ?? 0) -
+								(applied ?? 0);
 							return (
 								<TableRow key={rhfField.id}>
 									<TableCell>
 										<YearSelect
 											control={control}
 											name={`nonCapitalVintages.${index}.yearsAgo`}
-											options={YEARS_AGO_OPTIONS}
-											formatLabel={(y) => `${ordinal(y)} preceding year`}
+											options={YEAR_INDEX_OPTIONS}
+											formatLabel={yearIndexLabel}
 										/>
 									</TableCell>
 									<TableCell>
@@ -735,6 +885,14 @@ export function NonCapitalVintageTable({
 										<NumCell
 											control={control}
 											name={`nonCapitalVintages.${index}.balanceAtBeginning`}
+											disabled={isCurrent}
+										/>
+									</TableCell>
+									<TableCell>
+										<NumCell
+											control={control}
+											name={`nonCapitalVintages.${index}.lossIncurredInCurrentYear`}
+											disabled={!isCurrent}
 										/>
 									</TableCell>
 									<TableCell>
@@ -746,11 +904,26 @@ export function NonCapitalVintageTable({
 									<TableCell>
 										<NumCell
 											control={control}
-											name={`nonCapitalVintages.${index}.applied`}
+											name={`nonCapitalVintages.${index}.lossCarriedBack`}
+											disabled={!isCurrent}
 										/>
 									</TableCell>
-									<TableCell className="text-right tabular-nums text-muted-foreground">
-										{hasAny ? CURRENCY_FMT.format(balanceAtEnd) : "—"}
+									<TableCell>
+										<NumCell
+											control={control}
+											name={`nonCapitalVintages.${index}.applied`}
+											disabled={isCurrent}
+										/>
+									</TableCell>
+									<TableCell className="text-right">
+										<span
+											className={cn(
+												"inline-block tabular-nums text-muted-foreground",
+												CELL_INSET,
+											)}
+										>
+											{hasAny ? CURRENCY_FMT.format(balanceAtEnd) : "—"}
+										</span>
 									</TableCell>
 									<TableCell>
 										<RemoveRowButton
@@ -761,6 +934,18 @@ export function NonCapitalVintageTable({
 								</TableRow>
 							);
 						})}
+						{fields.length > 0 && <TotalsRow
+							label="Totals:"
+							values={[
+								totals.balanceAtBeginning,
+								totals.lossIncurredInCurrentYear,
+								totals.adjustments,
+								totals.lossCarriedBack,
+								totals.applied,
+								totalBalanceAtEnd,
+							]}
+							leadingCells={2}
+						/>}
 					</TableBody>
 				</Table>
 			</div>
@@ -798,6 +983,13 @@ export function OtherLossVintageTable({
 	});
 	const watched = useWatch({ control, name: "otherLossVintages" }) ?? [];
 
+	/** Column totals — the form prints a Totals row under all three columns. */
+	const totals = sumColumns(watched, [
+		"farmLosses",
+		"restrictedFarmLosses",
+		"listedPersonalPropertyLosses",
+	]);
+
 	const handleAdd = () => {
 		const used = new Set(
 			watched
@@ -831,10 +1023,10 @@ export function OtherLossVintageTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<HeadWithLine lineId={line("181")}>Year of origin</HeadWithLine>
-							<HeadWithLine lineId={line("183")} align="right">Farm losses</HeadWithLine>
-							<HeadWithLine lineId={line("185")} align="right">Restricted farm</HeadWithLine>
-							<HeadWithLine lineId={line("187")} align="right">LPP losses</HeadWithLine>
+							<HeadWithLine field="181" />
+							<HeadWithLine field="183" align="right" />
+							<HeadWithLine field="185" align="right" />
+							<HeadWithLine field="187" align="right" />
 							<TableHead className="w-10" />
 						</TableRow>
 					</TableHeader>
@@ -892,6 +1084,17 @@ export function OtherLossVintageTable({
 								</TableRow>
 							);
 						})}
+						{fields.length > 0 && (
+							<TotalsRow
+								label="Totals:"
+								values={[
+									totals.farmLosses,
+									totals.restrictedFarmLosses,
+									totals.listedPersonalPropertyLosses,
+								]}
+								leadingCells={1}
+							/>
+						)}
 					</TableBody>
 				</Table>
 			</div>

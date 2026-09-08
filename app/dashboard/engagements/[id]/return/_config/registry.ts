@@ -20,6 +20,7 @@ import { albertaDonations } from "./schedules/at1/alberta-donations";
 import { albertaSbd } from "./schedules/at1/alberta-sbd";
 import { albertaIeg } from "./schedules/at1/alberta-ieg";
 import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
+import { albertaReconciliation12 } from "./schedules/at1/alberta-reconciliation12";
 import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
 import { albertaRoyaltyDeduction5 } from "./schedules/at1/alberta-schedule5";
 import { albertaRoyaltyCredit6 } from "./schedules/at1/alberta-schedule6";
@@ -76,6 +77,7 @@ export const SCHEDULES = [
 	alberta,
 	albertaSbd,
 	albertaDonations,
+	albertaReconciliation12,
 	albertaContinuity,
 	albertaIeg,
 	albertaOtherCredits3,

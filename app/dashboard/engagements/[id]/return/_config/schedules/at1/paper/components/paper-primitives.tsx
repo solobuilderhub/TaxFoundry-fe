@@ -302,6 +302,7 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	disabled,
 	role,
 	note,
+	formula,
 	from,
 	to,
 	onNavigate,
@@ -315,6 +316,12 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	disabled?: boolean;
 	role?: PaperFieldRole;
 	note?: string;
+	/**
+	 * How the FORM says this line is calculated, shown beside the caption. Only
+	 * ever the arithmetic the form itself prints — a reviewer cross-checking a
+	 * computed box against the paper should see the same rule in both places.
+	 */
+	formula?: { expression: string; inputs: readonly string[] };
 	from?: { form: string; line: string; note?: string };
 	to?: { form: string; line: string; note?: string };
 	onNavigate?: NavigateToLine;
@@ -336,6 +343,16 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 			</span>
 			<span className="min-w-0 flex-1 truncate" title={caption}>
 				{caption}
+				{formula && (
+					<TooltipWrapper
+						content={`The form states this line as: ${formula.expression}`}
+						side="top"
+					>
+						<span className="ml-2 cursor-help rounded bg-muted/60 px-1 py-0.5 align-middle font-mono text-[10px] text-muted-foreground">
+							= {formula.expression}
+						</span>
+					</TooltipWrapper>
+				)}
 			</span>
 			{resolved.editable ? (
 				kind === "flag" || kind === "bool-flag" ? (
@@ -377,30 +394,51 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 					<Controller
 						control={control}
 						name={resolved.name as Path<T>}
-						render={({ field }) => (
-							<input
-								type={kind === "date" ? "date" : kind === "money" || kind === "rate" ? "number" : "text"}
-								inputMode={kind === "money" || kind === "rate" ? "decimal" : undefined}
-								step={kind === "money" ? "1" : kind === "rate" ? "any" : undefined}
-								disabled={disabled}
-								aria-label={caption}
-								className={cn(
-									"h-8 w-36 shrink-0 rounded-md border border-l-2 border-input border-l-blue-500/60 bg-transparent px-1.5 text-right text-sm tabular-nums outline-none dark:border-l-blue-400/70",
-									"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-									"disabled:cursor-not-allowed disabled:border-dashed disabled:border-l-2 disabled:bg-muted/50 disabled:opacity-50",
-								)}
-								value={
-									kind === "date"
-										? dateInputValue(field.value as string | number | undefined)
-										: ((field.value as string | number | undefined) ?? "")
-								}
-								onChange={(e) => {
-									const v = e.target.value;
-									field.onChange(v === "" ? undefined : kind === "money" || kind === "rate" ? Number(v) : v);
-								}}
-								onBlur={field.onBlur}
-							/>
-						)}
+						render={({ field }) => {
+							const input = (
+								<input
+									type={kind === "date" ? "date" : kind === "money" || kind === "rate" ? "number" : "text"}
+									inputMode={kind === "money" || kind === "rate" ? "decimal" : undefined}
+									step={kind === "money" ? "1" : kind === "rate" ? "any" : undefined}
+									disabled={disabled}
+									aria-label={caption}
+									className={cn(
+										"h-8 rounded-md border border-l-2 border-input border-l-blue-500/60 bg-transparent px-1.5 text-right text-sm tabular-nums outline-none dark:border-l-blue-400/70",
+										// A money box leaves room for the currency mark below.
+										kind === "money" ? "w-full pl-5" : "w-36 shrink-0",
+										"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
+										"disabled:cursor-not-allowed disabled:border-dashed disabled:border-l-2 disabled:bg-muted/50 disabled:opacity-50",
+									)}
+									value={
+										kind === "date"
+											? dateInputValue(field.value as string | number | undefined)
+											: ((field.value as string | number | undefined) ?? "")
+									}
+									onChange={(e) => {
+										const v = e.target.value;
+										field.onChange(v === "" ? undefined : kind === "money" || kind === "rate" ? Number(v) : v);
+									}}
+									onBlur={field.onBlur}
+								/>
+							);
+							// Money boxes carry a currency mark, so an editable amount reads
+							// as money the same way the read-only ones already do (those go
+							// through `formatSignedMoney`, which prints "$"). Without it the
+							// two states of the same line looked like different kinds of
+							// value.
+							if (kind !== "money") return input;
+							return (
+								<span className="relative inline-flex w-36 shrink-0 items-center">
+									<span
+										aria-hidden
+										className="pointer-events-none absolute left-2 text-sm text-muted-foreground"
+									>
+										$
+									</span>
+									{input}
+								</span>
+							);
+						}}
 					/>
 				)
 			) : (

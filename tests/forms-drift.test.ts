@@ -15,7 +15,6 @@ import {
 	AT1_SCHEDULE_1,
 	AT1_SCHEDULE_2,
 	AT1_SCHEDULE_10,
-	AT1_SCHEDULE_12_PAIRS,
 	AT1_SCHEDULE_13_COLUMNS,
 	AT1_SCHEDULE_17_RESERVES,
 	AT1_SCHEDULE_20,
@@ -28,10 +27,15 @@ import {
 	T2_SCHEDULE_4,
 	T2_SCHEDULE_7,
 	T2_SCHEDULE_13,
+<<<<<<< Updated upstream
 	T2_SCHEDULE_130,
 	T2_SCHEDULE_141,
 } from "@classytic/ca-tax/t2";
 import { describe, expect, it } from "vitest";
+=======
+	AT1_SCHEDULE_12_PAIRS,
+} from "../forms";
+>>>>>>> Stashed changes
 import {
 	co17PaperLayout,
 	jacketPaperLayout,
@@ -270,11 +274,43 @@ describe("the Schedule 12 paper layout is in step with AT1_SCHEDULE_12", () => {
 	});
 
 	it("has a federal AND an Alberta field for every reconciling pair", () => {
+		// Checks what its name says. This used to assert
+		// `lines.length === 6 + pairs * 2`, an arithmetic identity that happened
+		// to hold for the field count at the time — so it broke the moment the
+		// form's own missing lines were added back, while never once verifying
+		// that a pair's two lines actually exist.
 		const onDisk = readFileSync(SCHEDULE_12_CHECKED_IN, "utf8");
+<<<<<<< Updated upstream
 		const lines = [...onDisk.matchAll(/ {2}\{ line: "(\d+)"/g)].map(
 			(m) => m[1] as string,
 		);
 		expect(lines.length).toBe(6 + AT1_SCHEDULE_12_PAIRS.length * 2);
+=======
+		const lines = new Set(
+			[...onDisk.matchAll(/ {2}\{ line: "(\d+)"/g)].map((m) =>
+				(m[1] as string).slice(3, 6),
+			),
+		);
+		const missing = AT1_SCHEDULE_12_PAIRS.flatMap((p) =>
+			[p.federal, p.alberta]
+				.filter((l) => !lines.has(l))
+				.map((l) => `${p.label} → line ${l}`),
+		);
+		expect(missing).toEqual([]);
+	});
+
+	it("pairs each line at most once", () => {
+		const seen = new Map<string, string>();
+		const clashes: string[] = [];
+		for (const p of AT1_SCHEDULE_12_PAIRS) {
+			for (const l of [p.federal, p.alberta]) {
+				const already = seen.get(l);
+				if (already) clashes.push(`line ${l}: "${already}" and "${p.label}"`);
+				seen.set(l, p.label);
+			}
+		}
+		expect(clashes).toEqual([]);
+>>>>>>> Stashed changes
 	});
 });
 

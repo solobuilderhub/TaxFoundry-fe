@@ -41,7 +41,6 @@ import {
 	AT1_SCHEDULE_9,
 	AT1_SCHEDULE_10,
 	AT1_SCHEDULE_12,
-	AT1_SCHEDULE_12_PAIRS,
 	AT1_SCHEDULE_13,
 	AT1_SCHEDULE_13_COLUMNS,
 	AT1_SCHEDULE_15,
@@ -49,7 +48,7 @@ import {
 	AT1_SCHEDULE_17_RESERVES,
 	AT1_SCHEDULE_20,
 	AT1_SCHEDULE_21,
-	AT1_SCHEDULE_21_CONTINUITY_CAPTIONS,
+	AT1_SCHEDULE_21_BLOCKS,
 	AT1_SCHEDULE_21_CONTINUITY_ORDER,
 	AT1_SCHEDULE_21_POOLS,
 	AT1_SCHEDULE_29,
@@ -76,11 +75,19 @@ import {
 	T2_SCHEDULE_33,
 	T2_SCHEDULE_43,
 	T2_SCHEDULE_50,
+<<<<<<< Updated upstream
 	T2_SCHEDULE_53,
 	T2_SCHEDULE_55,
 	T2_SCHEDULE_130,
 	T2_SCHEDULE_141,
 } from "@classytic/ca-tax/t2";
+=======
+	T2_SCHEDULE_8,
+	type FormDefinition,
+	type FormField,
+	AT1_SCHEDULE_12_PAIRS,
+} from '../forms';
+>>>>>>> Stashed changes
 
 // ── Destinations — all local to THIS repo ────────────────────────────────
 
@@ -265,6 +272,11 @@ function emitField(f: FormField): string {
 		`section: ${q(f.section)}`,
 	];
 	if (f.requirement) parts.push(`requirement: ${q(f.requirement)}`);
+	if (f.formula) {
+		parts.push(
+			`formula: { expression: ${q(f.formula.expression)}, inputs: [${f.formula.inputs.map(q).join(', ')}] }`,
+		);
+	}
 	if (f.note) parts.push(`note: ${q(f.note)}`);
 	if (f.from) {
 		const fromParts = [`form: ${q(f.from.form)}`, `line: ${q(f.from.line)}`];
@@ -297,6 +309,7 @@ function emitPaperTypes(out: string[]): void {
 	out.push("  role: PaperFieldRole;");
 	out.push("  section: string;");
 	out.push('  requirement?: "mandatory" | "optional" | "conditional";');
+<<<<<<< Updated upstream
 	out.push("  note?: string;");
 	out.push("  from?: { form: string; line: string; note?: string };");
 	out.push("  to?: { form: string; line: string; note?: string };");
@@ -308,6 +321,21 @@ function emitPaperTypes(out: string[]): void {
 	out.push("  title: string;");
 	out.push("  description?: string;");
 	out.push("}");
+=======
+	out.push('  /** How the form itself says this line is calculated, where it prints the arithmetic. */');
+	out.push('  formula?: { expression: string; inputs: readonly string[] };');
+	out.push('  note?: string;');
+	out.push('  from?: { form: string; line: string; note?: string };');
+	out.push('  to?: { form: string; line: string; note?: string };');
+	out.push('  footnoteMarks?: readonly number[];');
+	out.push('}');
+	out.push('');
+	out.push('export interface PaperSectionDef {');
+	out.push('  id: string;');
+	out.push('  title: string;');
+	out.push('  description?: string;');
+	out.push('}');
+>>>>>>> Stashed changes
 }
 
 function emitFootnotes(
@@ -694,6 +722,7 @@ export function schedule21PaperLayout(): string {
 	out.push("");
 	emitFootnotes(out, AT1_SCHEDULE_21, "AT1_SCHEDULE_21");
 
+<<<<<<< Updated upstream
 	out.push("export interface Schedule21PoolRow {");
 	out.push("  kind: string;");
 	out.push("  caption: string;");
@@ -713,6 +742,27 @@ export function schedule21PaperLayout(): string {
 	out.push("  rows: readonly Schedule21PoolRow[];");
 	out.push("}");
 	out.push("");
+=======
+	out.push('export interface Schedule21PoolRow {');
+	out.push('  kind: string;');
+	out.push('  caption: string;');
+	out.push('  line: string;');
+	out.push('  role: PaperFieldRole;');
+	out.push('  /** Where this row\'s figure arrives from, when the form names another schedule. */');
+	out.push('  from?: { form: string; line: string; note?: string };');
+	out.push('  /** Where this row carries to on another schedule — the form prints this beside the row. */');
+	out.push('  to?: { form: string; line: string; note?: string };');
+	out.push('  note?: string;');
+	out.push('  footnoteMarks?: readonly number[];');
+	out.push('}');
+	out.push('');
+	out.push('export interface Schedule21Pool {');
+	out.push('  key: string;');
+	out.push('  label: string;');
+	out.push('  rows: readonly Schedule21PoolRow[];');
+	out.push('}');
+	out.push('');
+>>>>>>> Stashed changes
 	// Role comes from `AT1_SCHEDULE_21.fields` — the FormDefinition already
 	// built above — NOT recomputed here. Two places deciding "is this row
 	// input or computed" is exactly how this drifted before this generator
@@ -729,10 +779,11 @@ export function schedule21PaperLayout(): string {
 		out.push(`    label: ${q(pool.label)},`);
 		out.push("    rows: [");
 		for (const kind of AT1_SCHEDULE_21_CONTINUITY_ORDER) {
-			const field = pool[kind];
+			const field = pool.lines[kind];
 			if (!field) continue;
-			const line = scheduleTwentyOneLineId(field as string);
+			const line = scheduleTwentyOneLineId(field);
 			const definedField = fieldsByLine.get(line);
+<<<<<<< Updated upstream
 			const role = definedField?.role ?? "input";
 			const to =
 				kind === "appliedAgainstIncome" && pool.toSchedule12
@@ -750,16 +801,113 @@ export function schedule21PaperLayout(): string {
 			const footnoteMarks = definedField?.footnoteMarks?.length
 				? `, footnoteMarks: [${definedField.footnoteMarks.join(", ")}]`
 				: "";
+=======
+			if (!definedField) {
+				throw new Error(
+					`AT1SCH21 pool "${pool.key}" row "${kind}" points at line ${line}, which has no field in AT1_SCHEDULE_21. ` +
+						'The pool table and the form definition have to agree — add the field, or drop the row.',
+				);
+			}
+			// EVERYTHING below comes from the FormDefinition's own field, keyed by
+			// line. The pool table supplies the line number and nothing else.
+			//
+			// It used to supply the caption too, from a per-ROW map shared across
+			// every pool — which is why line 061 ("applied against current year
+			// capital gain") and line 099 ("applied against farming income") both
+			// rendered as "Applied against income". Two places describing one line
+			// is how that happens; reading it from one place is how it stays fixed.
+			const ref = (rel: 'from' | 'to') => {
+				const r = definedField[rel];
+				return r
+					? `, ${rel}: { form: ${q(r.form)}, line: ${q(r.line)}${r.note ? `, note: ${q(r.note)}` : ''} }`
+					: '';
+			};
+			const note = definedField.note ? `, note: ${q(definedField.note)}` : '';
+			const footnoteMarks = definedField.footnoteMarks?.length
+				? `, footnoteMarks: [${definedField.footnoteMarks.join(', ')}]`
+				: '';
+>>>>>>> Stashed changes
 			out.push(
-				`      { kind: ${q(kind)}, caption: ${q(AT1_SCHEDULE_21_CONTINUITY_CAPTIONS[kind])}, line: ${q(line)}, role: ${q(role)}${to}${note}${footnoteMarks} },`,
+				`      { kind: ${q(kind)}, caption: ${q(definedField.caption)}, line: ${q(line)}, role: ${q(definedField.role)}${ref('from')}${ref('to')}${note}${footnoteMarks} },`,
 			);
 		}
 		out.push("    ],");
 		out.push("  },");
 	}
+<<<<<<< Updated upstream
 	out.push("];");
 	out.push("");
 	return out.join("\n");
+=======
+	out.push('];');
+	out.push('');
+	// The grid's row order and row labels, in PRINT order — emitted rather than
+	// re-derived in the view. A view that derived it by walking the pools in
+	// order got "first pool to mention a row wins", which puts a row only the
+	// second pool has (the capital column's ABIL-expired, line 059) at the
+	// BOTTOM of the grid instead of between the current-year loss and the
+	// deductions where the form prints it.
+	/** The caption the form prints beside a row, taken from the first pool that has it. */
+	const captionFor = (kind: string, pools: readonly (typeof AT1_SCHEDULE_21_POOLS)[number][]) => {
+		const owning = pools.find((p) => p.lines[kind as keyof typeof p.lines]);
+		if (!owning) return undefined;
+		return fieldsByLine.get(
+			scheduleTwentyOneLineId(owning.lines[kind as keyof typeof owning.lines] as string),
+		)?.caption;
+	};
+
+	out.push('/** Grid rows in print order, with the caption the form prints beside each. */');
+	out.push('export const AT1_SCHEDULE_21_ROW_ORDER: readonly { kind: string; caption: string }[] = [');
+	for (const kind of AT1_SCHEDULE_21_CONTINUITY_ORDER) {
+		const caption = captionFor(kind, AT1_SCHEDULE_21_POOLS);
+		if (!caption) continue;
+		out.push(`  { kind: ${q(kind)}, caption: ${q(caption)} },`);
+	}
+	out.push('];');
+	out.push('');
+
+	// The printed form's THREE continuity blocks, each with only its own columns
+	// and only the rows those columns actually have. Rendering all five pools as
+	// one grid manufactured a cell for every (pool, row) pair and filled the
+	// missing ones with "—" — most of the table, and unreadable against paper.
+	out.push('export interface Schedule21Block {');
+	out.push('  id: string;');
+	out.push('  page: number;');
+	out.push('  /** Column keys into `AT1_SCHEDULE_21_POOL_TABLE`, left to right. */');
+	out.push('  poolKeys: readonly string[];');
+	out.push('  /** Rows this block prints, already filtered to the ones its columns use. */');
+	out.push('  rowOrder: readonly { kind: string; caption: string }[];');
+	out.push('  /** Row after which the form prints its unnumbered "Subtotal" divider. */');
+	out.push('  subtotalAfter: string;');
+	out.push('}');
+	out.push('');
+	out.push('/** The continuity as three separate tables, exactly as the form prints it. */');
+	out.push('export const AT1_SCHEDULE_21_BLOCK_TABLE: readonly Schedule21Block[] = [');
+	for (const block of AT1_SCHEDULE_21_BLOCKS) {
+		const pools = AT1_SCHEDULE_21_POOLS.filter((p) => block.poolKeys.includes(p.key));
+		if (pools.length !== block.poolKeys.length) {
+			throw new Error(
+				`AT1SCH21 block "${block.id}" names a pool that does not exist: ${block.poolKeys.join(', ')}`,
+			);
+		}
+		out.push('  {');
+		out.push(`    id: ${q(block.id)},`);
+		out.push(`    page: ${block.page},`);
+		out.push(`    poolKeys: [${block.poolKeys.map(q).join(', ')}],`);
+		out.push(`    subtotalAfter: ${q(block.subtotalAfter)},`);
+		out.push('    rowOrder: [');
+		for (const kind of AT1_SCHEDULE_21_CONTINUITY_ORDER) {
+			const caption = captionFor(kind, pools);
+			if (!caption) continue; // no column in this block has the row — the form omits it
+			out.push(`      { kind: ${q(kind)}, caption: ${q(caption)} },`);
+		}
+		out.push('    ],');
+		out.push('  },');
+	}
+	out.push('];');
+	out.push('');
+	return out.join('\n');
+>>>>>>> Stashed changes
 }
 
 export function schedule13PaperLayout(): string {

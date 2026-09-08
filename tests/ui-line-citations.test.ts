@@ -18,7 +18,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FORMS } from "@classytic/ca-tax/forms";
+import { FORMS } from "../forms";
 
 const SCHEDULE_DIR = join(
 	import.meta.dirname,

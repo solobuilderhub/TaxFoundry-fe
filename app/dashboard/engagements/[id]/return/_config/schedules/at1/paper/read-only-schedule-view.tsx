@@ -43,7 +43,13 @@ function ReadOnlyRow({
 			<span className="w-16 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center font-mono text-[11px] text-muted-foreground">
 				{lineNumber}
 			</span>
-			<span className="min-w-0 flex-1 truncate" title={field.caption}>
+			{/*
+			 * Wraps rather than truncating. Schedule 12's captions carry the column
+			 * they belong to ("… — Federal" / "… — Alberta"), which is exactly the
+			 * part a middle-truncated caption loses — leaving two adjacent rows
+			 * reading identically.
+			 */}
+			<span className="min-w-0 flex-1 leading-snug" title={field.caption}>
 				{field.caption}
 			</span>
 			<TooltipWrapper content={tooltip} side="top" disabled={!tooltip}>
@@ -125,12 +131,13 @@ export function ReadOnlyScheduleView({
 	// exact question this distinction exists to answer). No computed return at
 	// all is a genuinely different state from a computed return where this
 	// schedule correctly had nothing to reconcile.
-	if (!computed) {
-		return <p className="text-sm text-muted-foreground">{notComputedMessage}</p>;
-	}
-	if (!filed) {
-		return <p className="text-sm text-muted-foreground">{nothingToReportMessage}</p>;
-	}
+	//
+	// Both are a BANNER over the form, never a replacement for it. Returning
+	// early with just the message hid every line of the schedule until a compute
+	// had run, so a preparer could not see what the form even asks for — the
+	// same reasoning that keeps an uncollected line rendering as an empty box
+	// rather than vanishing. The figures are what's missing, not the form.
+	const status = !computed ? notComputedMessage : !filed ? nothingToReportMessage : undefined;
 
 	return (
 		<div className="space-y-4">
@@ -138,6 +145,11 @@ export function ReadOnlyScheduleView({
 				<div className="flex justify-end">
 					<OfficialPdfLink formId={formId} />
 				</div>
+			)}
+			{status && (
+				<p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+					{status}
+				</p>
 			)}
 			{stale && (
 				<p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">

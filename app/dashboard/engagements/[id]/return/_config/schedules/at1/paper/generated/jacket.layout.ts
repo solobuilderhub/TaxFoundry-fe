@@ -24,6 +24,8 @@ export interface PaperField {
   role: PaperFieldRole;
   section: string;
   requirement?: "mandatory" | "optional" | "conditional";
+  /** How the form itself says this line is calculated, where it prints the arithmetic. */
+  formula?: { expression: string; inputs: readonly string[] };
   note?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
