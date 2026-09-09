@@ -41,6 +41,7 @@ import {
 	AT1_SCHEDULE_15,
 	AT1_SCHEDULE_17,
 	AT1_SCHEDULE_17_RESERVES,
+	AT1_SCHEDULE_18,
 	AT1_SCHEDULE_20,
 	AT1_SCHEDULE_21,
 	AT1_SCHEDULE_21_CONTINUITY_CAPTIONS,
@@ -89,6 +90,7 @@ const SCHEDULE_13_PAPER_DEST = `${PAPER_DIR}/schedule13.layout.ts`;
 const SCHEDULE_17_PAPER_DEST = `${PAPER_DIR}/schedule17.layout.ts`;
 const SCHEDULE_29_PAPER_DEST = `${PAPER_DIR}/schedule29.layout.ts`;
 const SCHEDULE_12_PAPER_DEST = `${PAPER_DIR}/schedule12.layout.ts`;
+const SCHEDULE_18_PAPER_DEST = `${PAPER_DIR}/schedule18.layout.ts`;
 const SCHEDULE_1_PAPER_DEST = `${PAPER_DIR}/schedule1.layout.ts`;
 const SCHEDULE_2_PAPER_DEST = `${PAPER_DIR}/schedule2.layout.ts`;
 const SCHEDULE_10_PAPER_DEST = `${PAPER_DIR}/schedule10.layout.ts`;
@@ -394,6 +396,10 @@ function emitFlatSchedule(
 
 export function schedule29PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_29, "AT1_SCHEDULE_29");
+}
+
+export function schedule18PaperLayout(): string {
+	return emitFlatSchedule(AT1_SCHEDULE_18, "AT1_SCHEDULE_18");
 }
 
 export function schedule12PaperLayout(): string {
@@ -958,6 +964,11 @@ if (process.argv[1]?.endsWith("emit-paper-layouts.ts")) {
 	writeFileSync(SCHEDULE_12_PAPER_DEST, schedule12PaperLayout(), "utf8");
 	console.log(
 		`${AT1_SCHEDULE_12.id}: ${AT1_SCHEDULE_12.fields.length} fields written to the paper layout`,
+	);
+
+	writeFileSync(SCHEDULE_18_PAPER_DEST, schedule18PaperLayout(), "utf8");
+	console.log(
+		`${AT1_SCHEDULE_18.id}: ${AT1_SCHEDULE_18.fields.length} fields written to the paper layout`,
 	);
 
 	writeFileSync(SCHEDULE_1_PAPER_DEST, schedule1PaperLayout(), "utf8");

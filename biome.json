@@ -1,9 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
   "vcs": {
-    "enabled": false,
+    "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": false
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
   },
   "files": {
     "ignoreUnknown": false,
@@ -20,7 +21,8 @@
       "!node_modules",
       "!.next",
       "!coverage",
-      "!**/paper/generated/**"
+      "!**/paper/generated/**",
+      "!**/return/_lib/return-input.ts"
     ]
   },
   "assist": {

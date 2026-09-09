@@ -605,4 +605,29 @@ describe("the formatter cannot rewrite a generated layout", () => {
 			"removing this exclusion lets `biome check --write` rewrite the emitted layouts",
 		).toContain("!**/paper/generated/**");
 	});
+
+	/**
+	 * `_lib/return-input.ts` is generated too — by the SERVER's
+	 * `scripts/emit-return-input.ts`, which writes across the repo boundary into
+	 * this app so the editor's field types cannot drift from the Zod contracts
+	 * the API validates against. Its drift guard lives over there
+	 * (`apps/server/tests/return-input-drift.test.ts`), which is exactly why the
+	 * exclusion here was missed: nothing in this app's own tree looks generated,
+	 * the file sits in an ordinary `_lib/` beside hand-written modules, and it
+	 * was duly reformatted by a whole-app `biome check --write` — 43 lines of
+	 * pure re-wrapping inside a real feature diff, which is the worst place for
+	 * it to hide.
+	 *
+	 * The fix is the same as above: keep the formatter away from it, and re-run
+	 * the emitter if it ever does get rewritten.
+	 */
+	it("biome.json excludes the emitted return-input contract", () => {
+		const config = JSON.parse(readFileSync("biome.json", "utf8")) as {
+			files?: { includes?: string[] };
+		};
+		expect(
+			config.files?.includes,
+			"removing this exclusion lets `biome check --write` rewrite the emitted ReturnInput types, and the drift test that notices lives in apps/server",
+		).toContain("!**/return/_lib/return-input.ts");
+	});
 });

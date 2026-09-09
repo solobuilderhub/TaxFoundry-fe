@@ -21,7 +21,9 @@ import { albertaIeg } from "./schedules/at1/alberta-ieg";
 import { albertaSbd } from "./schedules/at1/alberta-sbd";
 import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
 import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
+import { albertaSchedule12 } from "./schedules/at1/alberta-schedule12";
 import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
+import { albertaSchedule18Abil } from "./schedules/at1/alberta-schedule18";
 import { quebec } from "./schedules/co17/quebec";
 import type { ScheduleDef, ScheduleProgram } from "./schedules/shared/define";
 import { balanceSheet } from "./schedules/t2/balance-sheet";
@@ -75,6 +77,8 @@ export const SCHEDULES = [
 	albertaIeg,
 	albertaOtherCredits3,
 	albertaForeignInvestment4,
+	albertaSchedule12,
+	albertaSchedule18Abil,
 	albertaResourceDeductions15,
 	payments,
 	internetBusiness,

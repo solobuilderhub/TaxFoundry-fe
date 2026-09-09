@@ -31,9 +31,19 @@ function ReadOnlyRow({
 	const lineNumber = parseAt1LineItemId(field.line)?.field ?? field.line;
 	const value = filedByField.get(lineNumber);
 	const isNegative = typeof value === "number" && value < 0;
+	/*
+	 * Only MONEY gets the money treatment. A `code` field is a selector the
+	 * form prints as a bare digit — AT1 Schedule 18's line 084, "Specify:
+	 * 1 = shares or 2 = debt", rendered as "$1" here, which reads as a
+	 * one-dollar figure rather than the code it is. `rate` is likewise a
+	 * decimal (Schedule 10's inclusion rate is filed to six places), and a
+	 * `flag`/`date`/`text` value is already a string by the time it arrives.
+	 */
 	const display =
 		typeof value === "number"
-			? formatSignedMoney(value)
+			? field.kind === "money"
+				? formatSignedMoney(value)
+				: String(value)
 			: value != null
 				? String(value)
 				: "";

@@ -59,6 +59,8 @@ export type ReturnInput = {
 	albertaIeg?: AlbertaIegValues;
 	albertaOtherCredits3?: AlbertaOtherCredits3Values;
 	albertaForeignInvestment4?: AlbertaForeignInvestment4Values;
+	albertaSchedule12?: AlbertaSchedule12Values;
+	albertaSchedule18?: AlbertaSchedule18Values;
 	albertaResourceDeductions15?: AlbertaResourceDeductions15Values;
 };
 export type IdentificationValues = {
@@ -1504,6 +1506,80 @@ export type ForeignInvestmentCountry4Row = {
 	 * 004008 — federal non-business foreign tax credit. Must equal federal Schedule 21’s matching occurrence.
 	 */
 	fedNonBusinessForeignTaxCredit?: number;
+};
+export type AlbertaSchedule12Values = {
+	/**
+	 * 012061 — taxable dividends deductible under ITA section 112 or 113, or subsection 138(6). Federal T2 line 320.
+	 */
+	taxableDividendsDeductible?: number;
+	/**
+	 * 012060 — Alberta override. Leave blank when it equals the federal amount.
+	 */
+	albertaTaxableDividendsDeductible?: number;
+	/**
+	 * 012075 — taxable capital gains or taxable dividends allocated from a central credit union. Federal T2 line 340.
+	 */
+	centralCreditUnionAllocation?: number;
+	/**
+	 * 012074 — Alberta override. Leave blank when it equals the federal amount.
+	 */
+	albertaCentralCreditUnionAllocation?: number;
+	/**
+	 * 012079 — prospector's and grubstaker's shares. Federal T2 line 350.
+	 */
+	prospectorsShares?: number;
+	/**
+	 * 012078 — Alberta override. Leave blank when it equals the federal amount.
+	 */
+	albertaProspectorsShares?: number;
+	/**
+	 * 012141 — employer deduction for non-qualified securities. Federal T2 line 352.
+	 */
+	nonQualifiedSecuritiesDeduction?: number;
+	/**
+	 * 012140 — Alberta override. Leave blank when it equals the federal amount.
+	 */
+	albertaNonQualifiedSecuritiesDeduction?: number;
+	/**
+	 * 012083 — ITA section 110.5 and/or subparagraph 115(1)(a)(vii) additions. Federal T2 line 355. NOTE: the printed AT1 Schedule 12 annotates this "T2 line 335", which is a typo — 335 is limited partnership losses (this schedule’s 072/073) and is a deduction, not an addition. §3.2.3.13’s own rule says "must equal fed 200355", and CRA line 355 is the s.110.5 additions line.
+	 */
+	section110_5Additions?: number;
+	/**
+	 * 012082 — Alberta override, from AT1 Schedule 21 line 017. Leave blank when it equals the federal amount.
+	 */
+	albertaSection110_5Additions?: number;
+};
+export type AlbertaSchedule18Values = {
+	/**
+	 * One row per small business corporation disposed of at a loss. 018094 (the allowable business investment loss, at the inclusion rate) is computed from these — not entered directly.
+	 */
+	abilEntries?: AlbertaAbilEntry[];
+};
+export type AlbertaAbilEntry = {
+	/**
+	 * 018082 — name of the small business corporation.
+	 */
+	name?: string;
+	/**
+	 * 018084 — specify: 1 = shares or 2 = debt.
+	 */
+	kind?: "shares" | "debt";
+	/**
+	 * 018086 — date of acquisition (YYYY-MM-DD).
+	 */
+	dateOfAcquisition?: string;
+	/**
+	 * 018088 — A, proceeds of disposition.
+	 */
+	proceeds?: number;
+	/**
+	 * 018090 — B, adjusted cost base.
+	 */
+	acb?: number;
+	/**
+	 * 018092 — C, outlays and expenses (re dispositions).
+	 */
+	outlays?: number;
 };
 export type AlbertaResourceDeductions15Values = {
 	/**

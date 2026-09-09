@@ -26,6 +26,7 @@ import {
 } from "@/hooks/query/use-engagements";
 import { useReviewMemos } from "@/hooks/query/use-review-memos";
 import { getCertificationSchema } from "../../../_config/certification-config";
+import { FiledLinesReview } from "./filed-lines-review";
 
 interface Payload {
 	payloadHash: string;
@@ -291,6 +292,18 @@ export function EngagementExport({ id }: { id: string }) {
 					)}
 				</div>
 			</div>
+
+			{/*
+			 * What is going to TRA, captioned — placed BEFORE the raw XML because a
+			 * preparer reviews the return, not the serialisation. The XML card below
+			 * is still the authority on what is on the wire; this is the same values
+			 * against the lines they are filed as, which is the form a mistake is
+			 * actually visible in.
+			 *
+			 * AT1 only for now: the captions come from the AT1 paper layouts, and the
+			 * federal T2 and Québec CO-17 have no equivalent generated set yet.
+			 */}
+			{isAt1 && <FiledLinesReview computed={computed} />}
 
 			{/* Filing payload (XML). */}
 			<Card>

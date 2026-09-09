@@ -12,7 +12,10 @@
     "check:contrast": "node scripts/check-contrast.mjs",
     "generate:forms": "tsx scripts/emit-paper-layouts.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "format": "biome check --write --staged",
+    "format:baseline": "biome check --write .",
+    "lint:biome": "biome check ."
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -48,7 +51,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@classytic/ca-tax": "^0.0.18",
+    "@classytic/ca-tax": "^0.0.19",
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@tailwindcss/typography": "^0.5.16",
