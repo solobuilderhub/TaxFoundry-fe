@@ -128,20 +128,59 @@ function fieldName(poolKey: string, rowKind: string): string | undefined {
 			return `${p}Section80Adjustment`;
 		case "otherAdjustments":
 			return `${p}OtherAdjustments`;
+		/**
+		 * Capital's line 059 — an allowable business investment loss that has
+		 * expired and so becomes a net capital loss. Deliberately unbound: the
+		 * row renders (the page prints it, so this view prints it) but reads
+		 * "not collected", because there is no field for it to bind to.
+		 *
+		 * It must NOT be bound to `capitalExpired`, the one field whose name
+		 * looks like a fit. 059 is an ADDITION — it sits in the "Add:" block
+		 * above the Subtotal rule and grows the pool — while `capitalExpired`
+		 * is fed to the engine as the continuity's `expired`, which DEDUCTS.
+		 * Wiring the two together would file the preparer's figure with the
+		 * sign reversed and still foot, which is the failure mode this
+		 * schedule can least afford. Collecting it properly needs a new
+		 * additive input on the contract AND on the engine's
+		 * `LossContinuityInput` (whose only ADDS-to-pool slot today is
+		 * `windUpTransfer`) — a ca-tax change, not an app-side one.
+		 */
+		case "abilExpired":
+			return undefined;
 		default:
 			return undefined; // "opening" (033-style), "carryBack", "closing" — not a simple per-pool field in this app
 	}
 }
 
-/** The full row order + captions, derived from the generated pool table rather than hand-typed — no separate copy to drift. */
+/**
+ * The full row order + captions, derived from the generated pool table rather
+ * than hand-typed — no separate copy to drift.
+ *
+ * The merge preserves EVERY pool's own row order, not just the first pool's.
+ * This used to take the first pool's order and append whatever later pools
+ * added, which put a row belonging to one pool alone at the bottom of the
+ * block instead of where the page prints it: capital's allowable business
+ * investment loss (059) is the only such row, it sits between "Current year
+ * loss" and the Subtotal rule on page 1, and appending it dropped it below
+ * the closing balance — a position the form has no row in at all.
+ *
+ * So each pool's rows are spliced in after the last kind that pool shares
+ * with the order built so far, rather than pushed onto the end.
+ */
 const ROW_ORDER = (() => {
-	const seen = new Set<string>();
 	const rows: { kind: string; caption: string }[] = [];
 	for (const pool of AT1_SCHEDULE_21_POOL_TABLE) {
+		// Where this pool's next not-yet-merged row belongs: just after the
+		// previous row of its own that the merged order already carries.
+		let at = 0;
 		for (const row of pool.rows) {
-			if (seen.has(row.kind)) continue;
-			seen.add(row.kind);
-			rows.push({ kind: row.kind, caption: row.caption });
+			const seen = rows.findIndex((r) => r.kind === row.kind);
+			if (seen === -1) {
+				rows.splice(at, 0, { kind: row.kind, caption: row.caption });
+				at += 1;
+			} else {
+				at = seen + 1;
+			}
 		}
 	}
 	return rows;
@@ -177,24 +216,34 @@ const CONTINUITY_BLOCKS: readonly {
 	title: string;
 	description?: string;
 	pools: readonly string[];
+	/**
+	 * The row kind the block's "Subtotal" rule follows — per block, because
+	 * the additions block does not end on the same row in all three. Page 1
+	 * ends on capital's allowable business investment loss (059), which the
+	 * other two blocks do not have; they end on the current-year loss.
+	 */
+	dividerAfter: readonly string[];
 }[] = [
 	{
 		title: "Continuity of losses — non-capital and capital",
 		description:
 			"Page 1. Capital losses are the gross amount, and the allowable business investment loss row belongs to this block alone.",
 		pools: ["non-capital", "capital"],
+		dividerAfter: ["abilExpired"],
 	},
 	{
 		title: "Continuity of losses — farm and restricted farm",
 		description:
 			"Page 2. A farm loss is applied against taxable income; a restricted farm loss only against farming income, which is why the two carry forward to different Schedule 12 lines.",
 		pools: ["farm", "restricted-farm"],
+		dividerAfter: ["currentYearLoss"],
 	},
 	{
 		title: "Continuity of losses — listed personal property",
 		description:
 			"Page 2, its own block. Seven-year expiry, applied only against listed personal property gains, and no wind-up transfer or section 80 adjustment.",
 		pools: ["listed-personal"],
+		dividerAfter: ["currentYearLoss"],
 	},
 ];
 
@@ -282,7 +331,7 @@ export function Schedule21FormView({
 							onNavigate={onNavigate}
 							highlightLine={highlightLine}
 							resolveLine={resolvePart1Line}
-							dividerAfter={["currentYearLoss"]}
+							dividerAfter={block.dividerAfter}
 							footnotes={AT1_SCHEDULE_21_FOOTNOTES}
 						/>
 					</div>
