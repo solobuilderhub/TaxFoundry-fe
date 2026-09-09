@@ -29,6 +29,8 @@ export interface PaperField {
 	section: string;
 	requirement?: "mandatory" | "optional" | "conditional";
 	note?: string;
+	/** What the form prints over the box to say where the figure comes from, verbatim. Present even where `from` is not — a sum or a conditional has no single line to link to. */
+	sourceText?: string;
 	from?: { form: string; line: string; note?: string };
 	to?: { form: string; line: string; note?: string };
 }

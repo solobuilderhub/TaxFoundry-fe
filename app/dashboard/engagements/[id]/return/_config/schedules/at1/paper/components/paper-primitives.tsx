@@ -241,6 +241,7 @@ export function ProvenanceBadge({
 	to,
 	onNavigate,
 	sourceLabel,
+	sourceText,
 }: {
 	role?: PaperFieldRole;
 	note?: string;
@@ -250,14 +251,75 @@ export function ProvenanceBadge({
 	to?: { form: string; line: string; note?: string };
 	onNavigate?: NavigateToLine;
 	sourceLabel?: string;
+	/** The form's own printed "where this comes from" text — shown as the badge where there is no single line to link to. See `PaperField.sourceText`. */
+	sourceText?: string;
 }) {
 	const fromBadge = (() => {
 		if (!role || role === "input") {
-			// An editable field can still carry a `note` worth surfacing (a caveat,
-			// a cross-reference, a "this line means the opposite of what you'd
-			// expect" warning) — the "Computed"/"Carried in"/"Total" pills below
-			// are provenance-specific and would misrepresent a genuinely editable
-			// field, so this is a plain info marker instead, not a colored pill.
+			/*
+			 * An editable field can still have a STATED ORIGIN, and the form is
+			 * where it is stated: AT1 Schedule 21 line 059 is captioned "…as
+			 * reported on Federal Schedule 4 line 220", and the farm /
+			 * restricted-farm current-year losses default to federal's own
+			 * figure unless Alberta diverges. Those rows are typed into, so they
+			 * are `input`, and this branch used to return before `from` was ever
+			 * read — dropping every one of them silently. The `to` half of the
+			 * same badge has always rendered on an editable row, which is what
+			 * made the omission look deliberate rather than missed.
+			 *
+			 * Deliberately NOT the "Carried in" pill below: that one states the
+			 * figure arrives from elsewhere and is not the preparer's to set,
+			 * which would misrepresent a field they are expected to fill. This
+			 * says where the number comes from and leaves it editable — the
+			 * distinction the original comment here was protecting.
+			 */
+			if (from) {
+				const originLine = parseAt1LineItemId(from.line)?.field ?? from.line;
+				const originTooltip =
+					[sourceText, from.note, note].filter(Boolean).join(" — ") ||
+					`Stated on the form as coming from ${from.form}, line ${originLine}.`;
+				return (
+					<TooltipWrapper content={originTooltip} side="top">
+						<span className="inline-flex shrink-0">
+							<Pill variant="outline" className="cursor-help text-[10px]">
+								{`← ${from.form} line ${originLine}`}
+							</Pill>
+						</span>
+					</TooltipWrapper>
+				);
+			}
+			/*
+			 * A source the page states but no single line ref can express — a sum
+			 * ("Schedule 15 lines 007 + 019 +031"), a conditional ("Schedule 16
+			 * line 016 OR line 20"), a multiplier ("Schedule 21 line 061 x
+			 * Inclusion Rate").
+			 *
+			 * These print just as prominently on the page as the single-line ones
+			 * beside them, so showing an anonymous "i" here while the federal
+			 * column opposite gets a labelled pill reads as the Alberta source
+			 * being missing. It isn't — it just cannot be a link. Show the page's
+			 * own words instead.
+			 */
+			if (sourceText) {
+				return (
+					<TooltipWrapper
+						content={[sourceText, note].filter(Boolean).join(" — ")}
+						side="top"
+					>
+						<span className="inline-flex shrink-0">
+							<Pill
+								variant="outline"
+								className="max-w-[16rem] cursor-help truncate text-[10px]"
+							>
+								{`← ${sourceText}`}
+							</Pill>
+						</span>
+					</TooltipWrapper>
+				);
+			}
+			// No origin, but a `note` can still be worth surfacing (a caveat, a
+			// cross-reference, a "this line means the opposite of what you'd
+			// expect" warning) — a plain info marker, not a colored pill.
 			if (!note) return null;
 			return (
 				<TooltipWrapper content={note} side="top">
@@ -402,6 +464,7 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	disabled,
 	role,
 	note,
+	sourceText,
 	from,
 	to,
 	onNavigate,
@@ -415,6 +478,8 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	disabled?: boolean;
 	role?: PaperFieldRole;
 	note?: string;
+	/** The form's own printed "where this comes from" text — see `PaperField.sourceText`. */
+	sourceText?: string;
 	from?: { form: string; line: string; note?: string };
 	to?: { form: string; line: string; note?: string };
 	onNavigate?: NavigateToLine;
@@ -576,6 +641,7 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 						note={note}
 						formula={formula}
 						from={from}
+						sourceText={sourceText}
 						to={to}
 						onNavigate={onNavigate}
 						sourceLabel={!resolved.editable ? resolved.sourceLabel : undefined}

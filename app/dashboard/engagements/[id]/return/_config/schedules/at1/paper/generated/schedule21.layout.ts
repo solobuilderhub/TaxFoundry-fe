@@ -26,6 +26,8 @@ export interface PaperField {
   section: string;
   requirement?: "mandatory" | "optional" | "conditional";
   note?: string;
+  /** What the form prints over the box to say where the figure comes from, verbatim. Present even where `from` is not — a sum or a conditional has no single line to link to. */
+  sourceText?: string;
   from?: { form: string; line: string; note?: string };
   to?: { form: string; line: string; note?: string };
   footnoteMarks?: readonly number[];
@@ -66,15 +68,15 @@ export const AT1_SCHEDULE_21_FIELDS: readonly PaperField[] = [
   { line: "021045001", caption: "Non-capital losses — Other adjustments (enter as a positive amount)", kind: "money", role: "input", section: "continuity" },
   { line: "021047001", caption: "Non-capital losses — Total loss carry back to prior taxation years (Schedule 10 must also be completed)", kind: "money", role: "computed", section: "continuity", note: "The sum of the per-year amounts entered on this schedule’s own \"carry back to prior years\" section — a carry-back also requires Schedule 10 to be completed." },
   { line: "021049001", caption: "Non-capital losses — Losses - closing balance", kind: "money", role: "computed", section: "continuity", footnoteMarks: [2] },
-  { line: "021051001", caption: "Net capital losses — Losses carried forward from preceding taxation year", kind: "money", role: "input", section: "continuity" },
-  { line: "021055001", caption: "Net capital losses — Add: Losses transfer from wind-up of a wholly-owned subsidiary or amalgamation", kind: "money", role: "input", section: "continuity" },
-  { line: "021057001", caption: "Net capital losses — Current year loss", kind: "money", role: "carried-in", section: "continuity", from: { form: "T2SCH4", line: "210", note: "Current-year capital loss — Alberta has no override for this pool; it always equals federal." } },
-  { line: "021059001", caption: "Net capital losses — Allowable business investment loss expired as reported on Federal Schedule 4 line 220", kind: "money", role: "input", section: "continuity" },
-  { line: "021061001", caption: "Net capital losses — Amount applied against current year capital gain", kind: "money", role: "input", section: "continuity", to: { form: "AT1SCH12", line: "012066001", note: "Carry forward this amount × the inclusion rate. Schedule 21 tracks capital losses at their full amount; Schedule 12 wants the allowable portion — carrying the raw figure over-deducts by roughly two." } },
-  { line: "021063001", caption: "Net capital losses — ITA section 80 adjustment", kind: "money", role: "input", section: "continuity" },
-  { line: "021065001", caption: "Net capital losses — Other adjustments (enter as a positive amount)", kind: "money", role: "input", section: "continuity" },
-  { line: "021067001", caption: "Net capital losses — Total loss carry back to prior taxation years (Schedule 10 must also be completed)", kind: "money", role: "computed", section: "continuity", note: "The sum of the per-year amounts entered on this schedule’s own \"carry back to prior years\" section — a carry-back also requires Schedule 10 to be completed." },
-  { line: "021069001", caption: "Net capital losses — Losses - closing balance", kind: "money", role: "computed", section: "continuity", footnoteMarks: [3] },
+  { line: "021051001", caption: "Net capital losses (Gross amount) — Losses carried forward from preceding taxation year", kind: "money", role: "input", section: "continuity" },
+  { line: "021055001", caption: "Net capital losses (Gross amount) — Add: Losses transfer from wind-up of a wholly-owned subsidiary or amalgamation", kind: "money", role: "input", section: "continuity" },
+  { line: "021057001", caption: "Net capital losses (Gross amount) — Current year loss", kind: "money", role: "carried-in", section: "continuity", from: { form: "T2SCH4", line: "210", note: "Current-year capital loss — Alberta has no override for this pool; it always equals federal." } },
+  { line: "021059001", caption: "Net capital losses (Gross amount) — Allowable business investment loss expired as reported on Federal Schedule 4 line 220", kind: "money", role: "input", section: "continuity", from: { form: "T2SCH4", line: "220", note: "Printed on the form: \"as reported on Federal Schedule 4 line 220\" — federal line 220 is \"ABILs expired as non-capital losses (line 215 multiplied by 2)\". An expiring ABIL leaves the non-capital pool and arrives here as a net capital loss." } },
+  { line: "021061001", caption: "Net capital losses (Gross amount) — Amount applied against current year capital gain", kind: "money", role: "input", section: "continuity", to: { form: "AT1SCH12", line: "012066001", note: "Carry forward this amount × the inclusion rate. Schedule 21 tracks capital losses at their full amount; Schedule 12 wants the allowable portion — carrying the raw figure over-deducts by roughly two." } },
+  { line: "021063001", caption: "Net capital losses (Gross amount) — ITA section 80 adjustment", kind: "money", role: "input", section: "continuity" },
+  { line: "021065001", caption: "Net capital losses (Gross amount) — Other adjustments (enter as a positive amount)", kind: "money", role: "input", section: "continuity" },
+  { line: "021067001", caption: "Net capital losses (Gross amount) — Total loss carry back to prior taxation years (Schedule 10 must also be completed)", kind: "money", role: "computed", section: "continuity", note: "The sum of the per-year amounts entered on this schedule’s own \"carry back to prior years\" section — a carry-back also requires Schedule 10 to be completed." },
+  { line: "021069001", caption: "Net capital losses (Gross amount) — Losses - closing balance", kind: "money", role: "computed", section: "continuity", footnoteMarks: [3] },
   { line: "021071001", caption: "Farm losses — Losses carried forward from preceding taxation year", kind: "money", role: "input", section: "continuity" },
   { line: "021072001", caption: "Farm losses — Deduct: losses expired (see note on page 4)", kind: "money", role: "input", section: "continuity" },
   { line: "021073001", caption: "Farm losses — Losses - beginning of taxation year", kind: "money", role: "computed", section: "continuity" },
@@ -162,12 +164,12 @@ export const AT1_SCHEDULE_21_POOL_TABLE: readonly Schedule21Pool[] = [
   },
   {
     key: "capital",
-    label: "Net capital losses",
+    label: "Net capital losses (Gross amount)",
     rows: [
       { kind: "carriedForward", caption: "Losses carried forward from preceding taxation year", line: "021051001", role: "input" },
       { kind: "windUpTransfer", caption: "Add: Losses transfer from wind-up of a wholly-owned subsidiary or amalgamation", line: "021055001", role: "input" },
       { kind: "currentYearLoss", caption: "Current year loss", line: "021057001", role: "carried-in", from: { form: "T2SCH4", line: "210", note: "Current-year capital loss — Alberta has no override for this pool; it always equals federal." } },
-      { kind: "abilExpired", caption: "Allowable business investment loss expired as reported on Federal Schedule 4 line 220", line: "021059001", role: "input" },
+      { kind: "abilExpired", caption: "Allowable business investment loss expired as reported on Federal Schedule 4 line 220", line: "021059001", role: "input", from: { form: "T2SCH4", line: "220", note: "Printed on the form: \"as reported on Federal Schedule 4 line 220\" — federal line 220 is \"ABILs expired as non-capital losses (line 215 multiplied by 2)\". An expiring ABIL leaves the non-capital pool and arrives here as a net capital loss." } },
       { kind: "appliedAgainstIncome", caption: "Amount applied against current year capital gain", line: "021061001", role: "input", to: { form: "AT1SCH12", line: "012066001", note: "Carry forward this amount × the inclusion rate. Schedule 21 tracks capital losses at their full amount; Schedule 12 wants the allowable portion — carrying the raw figure over-deducts by roughly two." } },
       { kind: "section80Adjustment", caption: "ITA section 80 adjustment", line: "021063001", role: "input" },
       { kind: "otherAdjustments", caption: "Other adjustments (enter as a positive amount)", line: "021065001", role: "input" },

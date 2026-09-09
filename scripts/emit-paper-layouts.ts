@@ -257,6 +257,10 @@ function emitField(f: FormField): string {
 	];
 	if (f.requirement) parts.push(`requirement: ${q(f.requirement)}`);
 	if (f.note) parts.push(`note: ${q(f.note)}`);
+	// What the page prints over the box to say where the figure comes from.
+	// Carried separately from `from` because a quarter of them are sums or
+	// conditionals no single line ref can state — see `FormField.sourceText`.
+	if (f.sourceText) parts.push(`sourceText: ${q(f.sourceText)}`);
 	if (f.from) {
 		const fromParts = [`form: ${q(f.from.form)}`, `line: ${q(f.from.line)}`];
 		if (f.from.note) fromParts.push(`note: ${q(f.from.note)}`);
@@ -289,6 +293,10 @@ function emitPaperTypes(out: string[]): void {
 	out.push("  section: string;");
 	out.push('  requirement?: "mandatory" | "optional" | "conditional";');
 	out.push("  note?: string;");
+	out.push(
+		"  /** What the form prints over the box to say where the figure comes from, verbatim. Present even where `from` is not — a sum or a conditional has no single line to link to. */",
+	);
+	out.push("  sourceText?: string;");
 	out.push("  from?: { form: string; line: string; note?: string };");
 	out.push("  to?: { form: string; line: string; note?: string };");
 	out.push("  footnoteMarks?: readonly number[];");

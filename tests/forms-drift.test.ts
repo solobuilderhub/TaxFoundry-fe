@@ -271,15 +271,21 @@ describe("the Schedule 12 paper layout is in step with AT1_SCHEDULE_12", () => {
 
 	/**
 	 * Every reconciling item is two lines, federal and Alberta, and Schedule 12
-	 * additionally carries ten lines that stand alone: the two net-income lines
-	 * and two adjustments in Area A, and in Area B the two subtotals and the two
-	 * taxable-income figures they produce.
+	 * additionally carries fourteen lines that stand alone: the two net-income
+	 * lines and two adjustments in Area A, in Area B the two subtotals and the
+	 * two taxable-income figures they produce, and the four of the
+	 * active-business-income reconciliation block on page 2 (100/102/104/106).
 	 *
 	 * Area B used to stop at line 075, so those last four and three whole pairs
 	 * were missing — which is how Schedule 21's line 017 came to print "Carry
 	 * forward to Schedule 12, line 082" against a line that did not exist.
+	 *
+	 * The ABI block was missing for longer and more quietly, because nothing
+	 * pointed at it from inside this schedule: AT1 Schedule 1 line 003 names
+	 * "Schedule 12, line 106" from the OTHER side, and a cross-form check can
+	 * only catch a link to a line that is absent, never a line nobody links to.
 	 */
-	const STAND_ALONE_LINES = 10;
+	const STAND_ALONE_LINES = 14;
 
 	it("has a federal AND an Alberta field for every reconciling pair", () => {
 		const onDisk = readFileSync(SCHEDULE_12_CHECKED_IN, "utf8");

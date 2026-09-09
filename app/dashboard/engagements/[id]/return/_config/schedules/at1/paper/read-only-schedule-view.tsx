@@ -95,6 +95,7 @@ function ReadOnlyRow({
 				note={field.note}
 				formula={formula}
 				from={field.from}
+				sourceText={field.sourceText}
 				to={field.to}
 				onNavigate={onNavigate}
 			/>
