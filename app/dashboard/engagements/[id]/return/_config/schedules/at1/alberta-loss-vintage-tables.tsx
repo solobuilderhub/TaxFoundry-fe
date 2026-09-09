@@ -491,25 +491,25 @@ export function LimitedPartnershipTable({
 											name={`limitedPartnerships.${index}.identifier`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`limitedPartnerships.${index}.precedingYearBalance`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`limitedPartnerships.${index}.transferredOnWindUp`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`limitedPartnerships.${index}.currentYearLoss`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`limitedPartnerships.${index}.applied`}
@@ -728,7 +728,7 @@ export function RifeContinuitySection({
 				name="rife.deductedClaim"
 				field="240"
 				label="RIFE deducted for the tax year"
-				help="Must not exceed line 350 — blank claims the maximum available automatically."
+				help="Blank claims the maximum available automatically."
 				disabled={disabled}
 			/>
 			<RifeSummaryRow
@@ -911,21 +911,21 @@ export function NonCapitalVintageTable({
 											name={`nonCapitalVintages.${index}.taxYearEnd`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`nonCapitalVintages.${index}.balanceAtBeginning`}
 										/>
 									</TableCell>
 									<ShadedCell title="Loss incurred in current year (157) — shaded on a preceding-year row." />
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`nonCapitalVintages.${index}.adjustments`}
 										/>
 									</TableCell>
 									<ShadedCell title="Loss carried back (165) — shaded on a preceding-year row." />
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`nonCapitalVintages.${index}.applied`}
@@ -1090,19 +1090,19 @@ export function OtherLossVintageTable({
 											formatLabel={yearIndexLabel}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`otherLossVintages.${index}.farmLosses`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`otherLossVintages.${index}.restrictedFarmLosses`}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="text-right">
 										<NumCell
 											control={control}
 											name={`otherLossVintages.${index}.listedPersonalPropertyLosses`}

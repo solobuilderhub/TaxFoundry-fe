@@ -37,9 +37,32 @@ export const RIFE_FIELD: ReadonlyMap<string, PaperField> = new Map(
 	),
 );
 
-/** The form's own caption and note for a line, for the hover text beside the editor's shorter label. */
+/**
+ * The form's own caption, note and carry-forward instruction for a line, for
+ * the hover text beside the editor's shorter label.
+ *
+ * `to` is part of what the page prints, not metadata about it: line 240's row
+ * reads "RIFE deducted for the tax year. Line 240 must not exceed line 350
+ * (Enter amount on line 130 of the Schedule 12)", and that parenthesis is the
+ * only place the form says where the figure goes. It was being dropped here,
+ * so the tooltip stated the cap on the line and stayed silent on its
+ * destination — while `tests/rife-line-provenance.test.ts` was already
+ * asserting the `to` exists, which made the omission look intended.
+ *
+ * `to.note` carries the printed wording verbatim and is preferred for that
+ * reason; the composed fallback is for a line that has a `to` without one.
+ * Same precedence `ProvenanceBadge` uses for its own `to` tooltip.
+ */
 export function rifeFormText(key: RifeLineKey): string | undefined {
 	const f = RIFE_FIELD.get(key);
 	if (!f) return undefined;
-	return f.note ? `${f.caption} — ${f.note}` : f.caption;
+	const carriesTo = f.to
+		? (f.to.note ??
+			`Carries forward to ${f.to.form}, line ${parseAt1LineItemId(f.to.line)?.field ?? f.to.line}.`)
+		: undefined;
+	return (
+		[f.note ? `${f.caption} — ${f.note}` : f.caption, carriesTo]
+			.filter(Boolean)
+			.join(" ") || undefined
+	);
 }
