@@ -57,6 +57,18 @@ export type ScheduleDef<K extends keyof ReturnInput = keyof ReturnInput> = {
     onNavigate?: NavigateToLine;
     /** The line to scroll to and briefly highlight on THIS schedule, when navigation just landed here. */
     highlightLine?: string;
+    /**
+     * The whole working return, for a figure this schedule displays but
+     * another schedule's slice owns — a T2 amount a Schedule 21 box reads from
+     * Schedule 12's slice, say. Read-only here; write through `writeInput`.
+     */
+    returnInput?: ReturnInput;
+    /**
+     * Persist one value into ANOTHER schedule's slice of the working return,
+     * immediately. Not for this schedule's own fields — bind those through
+     * `control`, or this schedule's next save overwrites the write.
+     */
+    writeInput?: (path: string, value: number | undefined) => Promise<void>;
   }) => ReactNode;
 };
 

@@ -71,6 +71,14 @@ export const albertaSchedule12Schema: FormSchema = defineSchema({
 					},
 				),
 				money(
+					"partVI1TaxDeductible",
+					"Part VI.1 tax deduction (line 063)",
+					{
+						description:
+							"Federal T2 line 325. Leave blank to use the figure the engine computes from the T2 preferred-share schedules; enter it when the T2 was prepared outside this app and there is nothing to compute it from. Also AT1 Schedule 21 line 007.",
+					},
+				),
+				money(
 					"centralCreditUnionAllocation",
 					"Taxable capital gains or taxable dividends allocated from a central credit union (line 075)",
 					{ description: "Federal T2 line 340." },

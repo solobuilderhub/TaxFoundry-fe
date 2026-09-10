@@ -1,32 +1,44 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
+import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
+import type { ReturnInput } from "../../../../_lib/return-input";
 import { cn } from "@/lib/utils";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	captionFormula,
 	formatSignedMoney,
+	GlobalLinkedValue,
 	OfficialPdfLink,
+	OwnLinkedValue,
 	ProvenanceBadge,
 	useLineHighlight,
 } from "./components/paper-primitives";
 import type {
+	LinkedSlot,
 	NavigateToLine,
 	PaperField,
 	PaperSectionDef,
 } from "./resolve-line";
+
+/** A line on a read-only schedule whose figure is really a T2 amount kept in the working return — see `LinkedSlot`. */
+export type LinkedLines = Record<string, { path: string; label: string }>;
 
 function ReadOnlyRow({
 	field,
 	filedByField,
 	highlightLine,
 	onNavigate,
+	linked,
+	control,
 }: {
 	field: PaperField;
 	filedByField: Map<string, string | number>;
 	highlightLine?: string;
 	onNavigate?: NavigateToLine;
+	linked?: LinkedSlot;
+	control?: Control<Record<string, unknown>>;
 }) {
 	const lineNumber = parseAt1LineItemId(field.line)?.field ?? field.line;
 	const value = filedByField.get(lineNumber);
@@ -76,6 +88,22 @@ function ReadOnlyRow({
 			 * zero. A zero on a tax form is an assertion ("this line is nil"); a
 			 * blank box is the truth here ("nothing has been computed for it").
 			 */}
+			{linked?.backing === "global" ? (
+				<GlobalLinkedValue
+					kind={field.kind}
+					caption={field.caption}
+					slot={linked}
+					computedValue={value}
+				/>
+			) : linked?.backing === "own" && control ? (
+				<OwnLinkedValue
+					kind={field.kind}
+					caption={field.caption}
+					slot={linked}
+					computedValue={value}
+					control={control}
+				/>
+			) : (
 			<span className="flex w-36 shrink-0 items-center justify-end gap-1.5">
 				<TooltipWrapper content={display} side="top" disabled={!display}>
 					<span
@@ -90,6 +118,7 @@ function ReadOnlyRow({
 					</span>
 				</TooltipWrapper>
 			</span>
+			)}
 			<ProvenanceBadge
 				role={field.role}
 				note={field.note}
@@ -129,6 +158,11 @@ export function ReadOnlyScheduleView({
 	nothingToReportMessage,
 	onNavigate,
 	highlightLine,
+	linkedLines,
+	returnInput,
+	writeInput,
+	control,
+	ownSlice,
 }: {
 	scheduleId: string;
 	/** The `FormDefinition.id` (e.g. `"AT1SCH12"`) — for the "View official PDF" link, when a vendored copy exists (see `OFFICIAL_PDF`). */
@@ -143,7 +177,46 @@ export function ReadOnlyScheduleView({
 	nothingToReportMessage: string;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	/**
+	 * Lines (by printed three-digit number) that show a T2 figure the working
+	 * return keeps in one slot — locked, with a toggle to type it in. Honoured
+	 * only when `writeInput` is supplied; otherwise they stay plain read-only.
+	 */
+	linkedLines?: LinkedLines;
+	returnInput?: ReturnInput;
+	writeInput?: (path: string, value: number | undefined) => Promise<void>;
+	/**
+	 * Set when this view is a schedule's OWN Form View — the form whose slice
+	 * (`ownSlice`) some linked lines live in. Those lines then bind through
+	 * `control` and save with the schedule. Writing them through `writeInput`
+	 * instead would be undone by the schedule's next save, which writes the
+	 * form's (stale) copy of the same field back over it.
+	 */
+	control?: Control<Record<string, unknown>>;
+	ownSlice?: string;
 }) {
+	const linkFor = (field: PaperField): LinkedSlot | undefined => {
+		const slot = linkedLines?.[parseAt1LineItemId(field.line)?.field ?? field.line];
+		if (!slot) return undefined;
+		if (control && ownSlice && slot.path.startsWith(`${ownSlice}.`)) {
+			return {
+				backing: "own",
+				name: slot.path.slice(ownSlice.length + 1),
+				label: slot.label,
+			};
+		}
+		if (!writeInput) return undefined;
+		let stored: unknown = returnInput;
+		for (const k of slot.path.split("."))
+			stored = (stored as Record<string, unknown> | undefined)?.[k];
+		return {
+			backing: "global",
+			path: slot.path,
+			label: slot.label,
+			stored: typeof stored === "number" ? stored : undefined,
+			write: (v) => writeInput(slot.path, v),
+		};
+	};
 	const filed = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === scheduleId,
 	);
@@ -204,6 +277,8 @@ export function ReadOnlyScheduleView({
 									filedByField={filedByField}
 									highlightLine={highlightLine}
 									onNavigate={onNavigate}
+									linked={linkFor(f)}
+									control={control}
 								/>
 							))}
 						</div>

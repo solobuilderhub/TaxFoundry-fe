@@ -13,7 +13,7 @@ import {
 	ScrollText,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Client } from "@/api/clients";
 import type { EngagementYear } from "@/api/engagements";
@@ -129,6 +129,28 @@ const hasData = (v: unknown): boolean =>
 		(x) => x != null && x !== "" && !(Array.isArray(x) && x.length === 0),
 	);
 
+/**
+ * The working return with ONE value replaced at a dotted path, every object on
+ * the way copied rather than mutated — `undefined` removes the key, so a
+ * cleared box goes back to "not entered" rather than storing an explicit
+ * nothing the contract would have to interpret.
+ */
+function withValueAt(ri: ReturnInput, path: string, value: unknown): ReturnInput {
+	const [head, ...rest] = path.split(".");
+	const root: Record<string, unknown> = { ...(ri as Record<string, unknown>) };
+	let parent = root;
+	let key = head as string;
+	for (const next of rest) {
+		const child = { ...((parent[key] as Record<string, unknown> | undefined) ?? {}) };
+		parent[key] = child;
+		parent = child;
+		key = next;
+	}
+	if (value === undefined) delete parent[key];
+	else parent[key] = value;
+	return root as ReturnInput;
+}
+
 export function ReturnEditor({ id }: { id: string }) {
 	const { data: engagement, isLoading } = useEngagement(id);
 	const { saveInput, compute } = useEngagementActions();
@@ -162,6 +184,8 @@ export function ReturnEditor({ id }: { id: string }) {
 	// Bumped when values change outside the form (GIFI import) to force a remount
 	// so SchemaForm's mount-only defaultValues pick up the new numbers.
 	const [formVersion, setFormVersion] = useState(0);
+	// The newest working return, for `writeInput` — see its doc comment.
+	const latestRi = useRef<ReturnInput>({});
 
 	// Seed local working copy from the persisted returnInput once loaded.
 	const seeded =
@@ -206,6 +230,36 @@ export function ReturnEditor({ id }: { id: string }) {
 			toast.success("Saved");
 		} catch {
 			toast.error("Save failed");
+		}
+	};
+
+	/**
+	 * Write ONE value into the working return, wherever it lives — the path a
+	 * paper Form View's linked T2 box names ("albertaSchedule12.prospectorsShares").
+	 *
+	 * Distinct from `saveSlice`, which replaces a whole slice with a form's
+	 * values: a Schedule 21 box that edits a figure Schedule 12's slice owns must
+	 * change exactly that field and nothing else in either slice. The schedule
+	 * being edited is not remounted (its key does not change), so an unsaved
+	 * edit elsewhere on it survives; and its own later save spreads over the
+	 * return this wrote, so it cannot undo this.
+	 *
+	 * Based on `latestRi`, not the render's `seeded`, so two edits made in quick
+	 * succession each build on the other rather than the second silently
+	 * dropping the first.
+	 */
+	latestRi.current = seeded;
+	const writeInput = async (path: string, value: number | undefined) => {
+		const next = withValueAt(latestRi.current, path, value);
+		latestRi.current = next;
+		setRi(next);
+		try {
+			await saveInput.mutateAsync({ id, returnInput: next });
+			setDirty(true);
+			toast.success("Saved");
+		} catch (err) {
+			toast.error("Save failed");
+			throw err; // keep the box open, so the typed figure is not lost
 		}
 	};
 
@@ -512,6 +566,8 @@ export function ReturnEditor({ id }: { id: string }) {
 													highlightLine={
 														active === meta.key ? highlightLine : undefined
 													}
+													returnInput={seeded}
+													writeInput={writeInput}
 												/>
 											</div>
 										);
@@ -534,6 +590,8 @@ export function ReturnEditor({ id }: { id: string }) {
 										client={client}
 										onNavigate={onNavigate}
 										highlightLine={highlightLine}
+										returnInput={seeded}
+										writeInput={writeInput}
 										footer={
 											active === "incomeStatement" ? (
 												<p className="text-sm text-muted-foreground">
@@ -574,6 +632,8 @@ function ScheduleForm({
 	client,
 	onNavigate,
 	highlightLine,
+	returnInput,
+	writeInput,
 }: {
 	schedule: ScheduleKey;
 	value: Record<string, unknown>;
@@ -586,6 +646,8 @@ function ScheduleForm({
 	client?: Client;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	returnInput?: ReturnInput;
+	writeInput?: (path: string, value: number | undefined) => Promise<void>;
 }) {
 	const meta = SCHEDULE_TREE.find((s) => s.key === schedule)!;
 	const formView = formViewFor(schedule);
@@ -651,6 +713,8 @@ function ScheduleForm({
 										client,
 										onNavigate,
 										highlightLine,
+										returnInput,
+										writeInput,
 									})}
 								</div>
 							)}

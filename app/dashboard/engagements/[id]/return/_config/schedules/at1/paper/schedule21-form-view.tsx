@@ -4,7 +4,10 @@ import type { FieldComponentProps } from "@classytic/formkit";
 import { createElement } from "react";
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import type { AlbertaContinuityValues } from "../../../../_lib/return-input";
+import type {
+	AlbertaContinuityValues,
+	ReturnInput,
+} from "../../../../_lib/return-input";
 import {
 	LimitedPartnershipTable,
 	NonCapitalVintageTable,
@@ -28,16 +31,77 @@ import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 const SCHEDULE_ID = "021";
 
 /**
- * Part 1 (lines 001-021, "Calculation of Current Year Non-Capital Loss") has
- * no editable field of its own anywhere in this app — every one of its
- * inputs (002/003/005/007/011/012/017/019) is a deduction/addition this
- * engine does not collect as a distinct entry point yet (they fold into the
- * federal figures Schedule 12 already reconciles). All of it is read-only
- * here, sourced from the last computed return — genuinely absent, not
- * guessed, matching the same rule the rest of this paper view already
- * follows for anything this product doesn't collect.
+ * The T2 figures Part 1 reads, and the ONE place the working return keeps
+ * each — the same slot Schedule 12's Area B reads, so an edit made in this
+ * box is an edit to Schedule 12 too, and to what the engine files on both.
+ *
+ * §3.2.3.21 names each source ("Value must equal fed 200320", …). A preparer
+ * whose T2 was prepared elsewhere has no T2 in this app for these to come
+ * from, so each line is shown locked with a toggle to type the figure in.
  */
-function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
+const PART_1_T2_SLOTS: Record<string, { path: string; label: string }> = {
+	"005": {
+		path: "albertaSchedule12.taxableDividendsDeductible",
+		label: "T2 line 320",
+	},
+	"007": {
+		path: "albertaSchedule12.partVI1TaxDeductible",
+		label: "T2 line 325",
+	},
+	"011": { path: "albertaSchedule12.prospectorsShares", label: "T2 line 350" },
+	"012": {
+		path: "albertaSchedule12.nonQualifiedSecuritiesDeduction",
+		label: "T2 line 352",
+	},
+	// Alberta's own additions — the figure Schedule 12 line 082 carries — which
+	// default to federal T2 line 355 when blank.
+	"017": {
+		path: "albertaSchedule12.albertaSection110_5Additions",
+		label: "Alberta s.110.5 additions (defaults to T2 line 355)",
+	},
+};
+
+/**
+ * 019 is the one T2-derived line whose slot is on THIS schedule's own form —
+ * the farm pool's current-year loss override — so it binds through `control`
+ * and is saved with the schedule, rather than written straight to the return.
+ */
+const PART_1_OWN_SLOTS: Record<string, { name: string; label: string }> = {
+	"019": { name: "farmCurrentYearLoss", label: "federal Schedule 4 line 310" },
+};
+
+/** Part 1's deductions, summed into 013 — "Subtotal of lines 002 to 012". */
+const PART_1_DEDUCTIONS = ["002", "003", "005", "007", "011", "012"] as const;
+
+const valueAt = (ri: ReturnInput | undefined, path: string): number | undefined => {
+	let cur: unknown = ri;
+	for (const k of path.split(".")) cur = (cur as Record<string, unknown> | undefined)?.[k];
+	return typeof cur === "number" ? cur : undefined;
+};
+
+/**
+ * One filed-payload lookup for the whole schedule — Part 1 and the continuity
+ * grid's computed/carried-in rows.
+ *
+ * Part 1 gets three things the grid does not:
+ *
+ *   linked T2 lines   005/007/011/012/017 (and 019, on this form) are shown
+ *                     locked with a toggle — see `LinkedSlot`. Only when the
+ *                     host can write the return (`writeInput`); without it the
+ *                     line is plain read-only, never a box that cannot save.
+ *   013 and 015       subtotals the form prints but the specification gives no
+ *                     line code, so they are never filed and never arrive in
+ *                     the payload. Worked here from the filed lines, with the
+ *                     form's own arithmetic, so the printed shape reads through
+ *                     — a view of what was filed, not a second calculation.
+ *   the rest          001, 002, 003, 021 are computed by the engine and read
+ *                     straight off the payload.
+ */
+function buildResolveLine(
+	computed: ComputedReturn | undefined,
+	returnInput?: ReturnInput,
+	writeInput?: (path: string, value: number | undefined) => Promise<void>,
+): ResolveLine {
 	const filed = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === SCHEDULE_ID,
 	);
@@ -47,12 +111,52 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 			return parsed ? [[parsed.field, v.value] as const] : [];
 		}),
 	);
+	const num = (field: string) => {
+		const v = filedByField.get(field);
+		return typeof v === "number" ? v : 0;
+	};
+	// Only once the schedule has actually been computed — before that there is
+	// nothing to sum, and a 0 would read as a computed nil.
+	const subtotal013 = filed
+		? PART_1_DEDUCTIONS.reduce((n, f) => n + num(f), 0)
+		: undefined;
+
 	return (line: string): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
-		return {
-			editable: false,
-			value: filedByField.get(field) as string | number | undefined,
-		};
+		if (field === "013") return { editable: false, value: subtotal013 };
+		if (field === "015") {
+			return {
+				editable: false,
+				value:
+					subtotal013 === undefined
+						? undefined
+						: Math.min(0, num("001") - subtotal013) + 0,
+			};
+		}
+		const value = filedByField.get(field) as string | number | undefined;
+		const t2 = PART_1_T2_SLOTS[field];
+		if (t2 && writeInput) {
+			return {
+				editable: false,
+				value,
+				linked: {
+					backing: "global",
+					path: t2.path,
+					label: t2.label,
+					stored: valueAt(returnInput, t2.path),
+					write: (v) => writeInput(t2.path, v),
+				},
+			};
+		}
+		const own = PART_1_OWN_SLOTS[field];
+		if (own) {
+			return {
+				editable: false,
+				value,
+				linked: { backing: "own", name: own.name, label: own.label },
+			};
+		}
+		return { editable: false, value };
 	};
 }
 
@@ -253,18 +357,22 @@ export function Schedule21FormView({
 	computed,
 	onNavigate,
 	highlightLine,
+	returnInput,
+	writeInput,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	returnInput?: ReturnInput;
+	writeInput?: (path: string, value: number | undefined) => Promise<void>;
 }) {
 	const c = control as unknown as Control<AlbertaContinuityValues>;
 	// Same lookup for both Part 1 (already read-only throughout) and the
 	// continuity grid's computed/carried-in rows — one filed-payload map
 	// for the whole schedule, not two.
-	const resolvePart1Line = buildResolveLine(computed);
+	const resolvePart1Line = buildResolveLine(computed, returnInput, writeInput);
 	const part1Fields = AT1_SCHEDULE_21_FIELDS.filter(
 		(f) => f.section === "current-year",
 	);
@@ -273,7 +381,7 @@ export function Schedule21FormView({
 		<div className="space-y-4">
 			<PaperSection
 				title="Calculation of current year non-capital loss"
-				description="Starts from Alberta net income on Schedule 12 line 054 and works down through the Division C deductions to the loss for the year. Not collected as separate entries in this app — read-only, from the last computed return."
+				description="Starts from Alberta net income on Schedule 12 line 054 and works down through the Division C deductions to the loss for the year. The T2 figures (violet) are kept once for the whole return — unlock one with its pencil to type it in when the T2 was not prepared here. Everything else is computed; 013 and 015 are print-only subtotals. Line 021 is a negative amount, carried to line 037 as a positive."
 				formId="AT1SCH21"
 			>
 				{part1Fields.map((f) => (

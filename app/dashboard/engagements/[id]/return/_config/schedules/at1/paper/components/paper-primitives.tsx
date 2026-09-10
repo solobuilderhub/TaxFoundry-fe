@@ -3,11 +3,13 @@
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { type Control, Controller, type Path } from "react-hook-form";
+import { Check, Link2, Pencil, X } from "lucide-react";
+import { type Control, Controller, type Path, useWatch } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { at1Money, parseAt1LineItemId } from "../at1-lines";
 import type {
 	LineValue,
+	LinkedSlot,
 	NavigateToLine,
 	PaperFieldKind,
 	PaperFieldRole,
@@ -436,6 +438,278 @@ export function useLineHighlight<E extends HTMLElement>(
 	return { ref, active };
 }
 
+/** `""` → cleared (`undefined`); otherwise a whole-dollar number. */
+const parseLinkedDraft = (raw: string): number | undefined => {
+	const t = raw.trim();
+	if (t === "") return undefined;
+	const n = Number(t);
+	return Number.isFinite(n) ? Math.round(n) : undefined;
+};
+
+const LINKED_INPUT_CLASS = cn(
+	"h-8 w-28 shrink-0 rounded-md border border-l-2 border-input border-l-violet-500/70 bg-transparent px-1.5 text-right text-sm tabular-nums outline-none dark:border-l-violet-400/70",
+	"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
+);
+
+const ICON_BUTTON_CLASS =
+	"inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+
+/**
+ * The locked box, shared by both backings: the figure, a link glyph naming
+ * where it lives, and an amber mark when what is stored has not been computed
+ * through the return yet.
+ */
+function LinkedDisplay({
+	kind,
+	shown,
+	computedValue,
+	label,
+	entered,
+}: {
+	kind: PaperFieldKind;
+	shown: string | number | undefined;
+	computedValue: string | number | undefined;
+	label: string;
+	/** Whether the preparer has typed a value in (vs. the T2's own figure showing through). */
+	entered: boolean;
+}) {
+	const text = formatReadOnly(kind, shown);
+	// Stale only when something was ENTERED and the last compute has not caught
+	// up — a derived figure showing through is, by definition, the computed one.
+	// A line missing from the payload counts as zero: optional lines are not
+	// filed at zero, so "absent" is how a computed nil arrives. Comparing
+	// against `undefined` instead missed the commonest case — the first figure
+	// typed into a line that has never been filed — and would have left an
+	// entered 0 marked stale for ever.
+	const stale = entered && Number(shown) !== Number(computedValue ?? 0);
+	return (
+		<TooltipWrapper
+			content={
+				<span className="block max-w-64 text-xs">
+					Kept once as <b>{label}</b> for the whole return — every schedule that
+					uses it, and the engine, read this one figure.{" "}
+					{entered
+						? "Entered directly here."
+						: "Unlock to type it in if the T2 was not prepared in this app."}
+					{stale && " Recompute the return to carry the new amount through."}
+				</span>
+			}
+			side="top"
+		>
+			<span
+				className={cn(
+					"relative flex h-8 w-28 shrink-0 items-center justify-end gap-1 overflow-hidden rounded-md border border-l-2 border-l-violet-500/70 bg-violet-50/40 px-1.5 text-sm tabular-nums dark:border-l-violet-400/70 dark:bg-violet-950/20",
+					kind === "money" && typeof shown === "number" && shown < 0
+						? "text-red-600 dark:text-red-400"
+						: "text-foreground",
+				)}
+			>
+				<Link2 className="size-3 shrink-0 text-violet-600/70 dark:text-violet-400/70" aria-hidden />
+				<span className="truncate">{text || "—"}</span>
+				{stale && (
+					<span
+						role="img"
+						className="absolute top-1 left-1 size-1.5 rounded-full bg-amber-500"
+						aria-label="Not yet computed"
+					/>
+				)}
+			</span>
+		</TooltipWrapper>
+	);
+}
+
+/**
+ * A T2 figure kept in the working return, locked by default — see `LinkedSlot`.
+ * Locked, it shows what the return holds; unlocked, it writes that slot.
+ */
+export function GlobalLinkedValue({
+	kind,
+	caption,
+	slot,
+	computedValue,
+	disabled,
+}: {
+	kind: PaperFieldKind;
+	caption: string;
+	slot: Extract<LinkedSlot, { backing: "global" }>;
+	computedValue: string | number | undefined;
+	disabled?: boolean;
+}) {
+	const [editing, setEditing] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [draft, setDraft] = useState("");
+	const shown = slot.stored ?? computedValue;
+
+	const open = () => {
+		setDraft(shown === undefined ? "" : String(shown));
+		setEditing(true);
+	};
+	const commit = async () => {
+		const next = parseLinkedDraft(draft);
+		if (next === slot.stored) return setEditing(false);
+		setSaving(true);
+		try {
+			await slot.write(next);
+			setEditing(false);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	if (!editing) {
+		return (
+			<span className="flex w-36 shrink-0 items-center justify-end gap-1">
+				<LinkedDisplay
+					kind={kind}
+					shown={shown}
+					computedValue={computedValue}
+					label={slot.label}
+					entered={slot.stored !== undefined}
+				/>
+				<button
+					type="button"
+					className={ICON_BUTTON_CLASS}
+					onClick={open}
+					disabled={disabled}
+					aria-label={`Edit ${caption}`}
+					title={`Enter ${slot.label} directly`}
+				>
+					<Pencil className="size-3.5" />
+				</button>
+			</span>
+		);
+	}
+
+	return (
+		<span className="flex w-36 shrink-0 items-center justify-end gap-1">
+			<input
+				// biome-ignore lint/a11y/noAutofocus: the preparer just asked to type here
+				autoFocus
+				type="number"
+				inputMode="decimal"
+				step="1"
+				aria-label={`${caption} — ${slot.label}`}
+				placeholder="T2 figure"
+				className={LINKED_INPUT_CLASS}
+				value={draft}
+				disabled={saving}
+				onChange={(e) => setDraft(e.target.value)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") {
+						e.preventDefault(); // never submit the schedule's own form
+						void commit();
+					}
+					if (e.key === "Escape") setEditing(false);
+				}}
+			/>
+			<span className="flex flex-col">
+				<button
+					type="button"
+					className={cn(ICON_BUTTON_CLASS, "size-4")}
+					onClick={() => void commit()}
+					disabled={saving}
+					aria-label="Save"
+					title="Save — blank uses the T2's own figure"
+				>
+					<Check className="size-3" />
+				</button>
+				<button
+					type="button"
+					className={cn(ICON_BUTTON_CLASS, "size-4")}
+					onClick={() => setEditing(false)}
+					disabled={saving}
+					aria-label="Cancel"
+				>
+					<X className="size-3" />
+				</button>
+			</span>
+		</span>
+	);
+}
+
+/**
+ * Same toggle, for a slot on THIS schedule's own form: unlocked, it is an
+ * ordinary bound box, saved with the schedule — writing it anywhere else would
+ * be overwritten by that save.
+ */
+export function OwnLinkedValue<T extends Record<string, unknown>>({
+	kind,
+	caption,
+	slot,
+	computedValue,
+	control,
+	disabled,
+}: {
+	kind: PaperFieldKind;
+	caption: string;
+	slot: Extract<LinkedSlot, { backing: "own" }>;
+	computedValue: string | number | undefined;
+	control: Control<T>;
+	disabled?: boolean;
+}) {
+	const [editing, setEditing] = useState(false);
+	const own = useWatch({ control, name: slot.name as Path<T> }) as
+		| number
+		| undefined;
+	const entered = own !== undefined && own !== null && (own as unknown) !== "";
+	const shown = entered ? own : computedValue;
+
+	return (
+		<span className="flex w-36 shrink-0 items-center justify-end gap-1">
+			{editing ? (
+				<Controller
+					control={control}
+					name={slot.name as Path<T>}
+					render={({ field }) => (
+						<input
+							// biome-ignore lint/a11y/noAutofocus: the preparer just asked to type here
+							autoFocus
+							type="number"
+							inputMode="decimal"
+							step="1"
+							aria-label={`${caption} — ${slot.label}`}
+							placeholder="Federal"
+							className={LINKED_INPUT_CLASS}
+							value={(field.value as number | undefined) ?? ""}
+							disabled={disabled}
+							onChange={(e) => field.onChange(parseLinkedDraft(e.target.value))}
+							onBlur={field.onBlur}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === "Escape") {
+									e.preventDefault();
+									setEditing(false);
+								}
+							}}
+						/>
+					)}
+				/>
+			) : (
+				<LinkedDisplay
+					kind={kind}
+					shown={shown}
+					computedValue={computedValue}
+					label={slot.label}
+					entered={entered}
+				/>
+			)}
+			<button
+				type="button"
+				className={ICON_BUTTON_CLASS}
+				onClick={() => setEditing((v) => !v)}
+				disabled={disabled}
+				aria-label={editing ? "Done" : `Edit ${caption}`}
+				title={
+					editing
+						? "Done — saved with this schedule; blank uses the federal figure"
+						: `Enter the Alberta amount if it differs from ${slot.label}`
+				}
+			>
+				{editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+			</button>
+		</span>
+	);
+}
+
 /**
  * One line: the number, the caption exactly as the form prints it, and a
  * boxed value — editable when `resolveLine` says this schedule owns it,
@@ -601,6 +875,23 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 						)}
 					/>
 				)
+			) : resolved.linked?.backing === "global" ? (
+				<GlobalLinkedValue
+					kind={kind}
+					caption={caption}
+					slot={resolved.linked}
+					computedValue={resolved.value}
+					disabled={disabled}
+				/>
+			) : resolved.linked?.backing === "own" ? (
+				<OwnLinkedValue
+					kind={kind}
+					caption={caption}
+					slot={resolved.linked}
+					computedValue={resolved.value}
+					control={control}
+					disabled={disabled}
+				/>
 			) : (
 				<span className="flex w-36 shrink-0 items-center justify-end gap-1.5">
 					<TooltipWrapper

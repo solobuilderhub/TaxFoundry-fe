@@ -67,6 +67,56 @@ export type LineValue =
 			value: string | number | undefined;
 			/** e.g. "Schedule 5" or "client profile" — shown as a small tag on the row. */
 			sourceLabel?: string;
+			/**
+			 * Set when this read-only figure is really a T2 amount the app keeps in
+			 * the working return — shown locked, with a toggle that lets the
+			 * preparer type it directly. See {@link LinkedSlot}.
+			 */
+			linked?: LinkedSlot;
+	  };
+
+/**
+ * A T2 figure this return keeps in ONE place, that a schedule displays but may
+ * not have computed.
+ *
+ * The AT1 reads several federal amounts — taxable dividends deductible (T2 line
+ * 320), the Part VI.1 deduction (325), prospector's shares (350) — that the app
+ * would ordinarily get from a T2 prepared in it. A preparer whose T2 was
+ * prepared elsewhere has no T2 here to derive them from, so the line would sit
+ * blank. Unlocking it lets them type the figure straight in.
+ *
+ * The edit writes the SAME slot the figure always lives in — not a copy local
+ * to this schedule — so every schedule that reads it, and the engine, sees one
+ * number. That is the whole point: an override that only this view knew about
+ * would let the Schedule 21 box and the Schedule 12 box state two different
+ * amounts for one line of the T2.
+ *
+ * Two backings, because a slot lives in one of two places:
+ *
+ *   own     a field on THIS schedule's form. Bound through `control`, so it is
+ *           saved with "Save schedule" like any other box here. Writing it
+ *           anywhere else would be overwritten by that save.
+ *   global  a field in ANOTHER schedule's slice. Written immediately through
+ *           `write`, because this schedule's save does not carry that slice.
+ */
+export type LinkedSlot =
+	| {
+			backing: "own";
+			/** The field on this schedule's own `control`. */
+			name: string;
+			/** Where the figure belongs — "federal Schedule 4 line 310". */
+			label: string;
+	  }
+	| {
+			backing: "global";
+			/** Dotted path into the working return — "albertaSchedule12.prospectorsShares". */
+			path: string;
+			/** What is stored there now; `undefined` = never entered. */
+			stored: number | undefined;
+			/** Where the figure belongs — "T2 line 350". */
+			label: string;
+			/** Persist a value at `path` (or clear it with `undefined`). */
+			write: (value: number | undefined) => Promise<void>;
 	  };
 
 export type ResolveLine = (line: string) => LineValue;
