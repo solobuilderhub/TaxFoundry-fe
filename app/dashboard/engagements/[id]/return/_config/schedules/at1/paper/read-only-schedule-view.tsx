@@ -1,6 +1,7 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
+import type { ReactNode } from "react";
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { ReturnInput } from "../../../../_lib/return-input";
@@ -12,6 +13,7 @@ import {
 	GlobalLinkedValue,
 	OfficialPdfLink,
 	OwnLinkedValue,
+	PaperFootnotes,
 	ProvenanceBadge,
 	useLineHighlight,
 } from "./components/paper-primitives";
@@ -25,6 +27,40 @@ import type {
 /** A line on a read-only schedule whose figure is really a T2 amount kept in the working return — see `LinkedSlot`. */
 export type LinkedLines = Record<string, { path: string; label: string }>;
 
+/** The three-digit number the form prints, from the nine-digit line item id. */
+const printedLine = (f: PaperField): string =>
+	parseAt1LineItemId(f.line)?.field ?? f.line;
+
+/**
+ * Reorder a section's fields into the order the page prints them.
+ *
+ * Fields arrive sorted by line number. Where `printedAfter` says a line is
+ * printed somewhere else, it is lifted out and reinserted directly after its
+ * anchor. Applied repeatedly until nothing moves, so a chain of moves settles;
+ * a key naming a line this section does not have is simply left alone, which is
+ * why the definition side asserts both ends exist.
+ */
+function inPrintedOrder(
+	fields: readonly PaperField[],
+	printedAfter?: Readonly<Record<string, string>>,
+): readonly PaperField[] {
+	if (!printedAfter || Object.keys(printedAfter).length === 0) return fields;
+	const out = [...fields];
+	for (const [line, after] of Object.entries(printedAfter)) {
+		const from = out.findIndex((f) => printedLine(f) === line);
+		if (from === -1) continue;
+		const [moved] = out.splice(from, 1);
+		const to = out.findIndex((f) => printedLine(f) === after);
+		if (to === -1 || !moved) {
+			// Anchor not in this section — put it back rather than drop it.
+			if (moved) out.splice(from, 0, moved);
+			continue;
+		}
+		out.splice(to + 1, 0, moved);
+	}
+	return out;
+}
+
 function ReadOnlyRow({
 	field,
 	filedByField,
@@ -32,6 +68,7 @@ function ReadOnlyRow({
 	onNavigate,
 	linked,
 	control,
+	displayCaption,
 }: {
 	field: PaperField;
 	filedByField: Map<string, string | number>;
@@ -39,8 +76,11 @@ function ReadOnlyRow({
 	onNavigate?: NavigateToLine;
 	linked?: LinkedSlot;
 	control?: Control<Record<string, unknown>>;
+	/** See `ReadOnlyScheduleView`'s `captionFor` — undefined leaves the caption exactly as the form prints it. */
+	displayCaption?: string;
 }) {
 	const lineNumber = parseAt1LineItemId(field.line)?.field ?? field.line;
+	const shownCaption = displayCaption ?? field.caption;
 	const value = filedByField.get(lineNumber);
 	const isNegative = typeof value === "number" && value < 0;
 	/*
@@ -80,7 +120,7 @@ function ReadOnlyRow({
 				{lineNumber}
 			</span>
 			<span className="min-w-0 flex-1 truncate" title={field.caption}>
-				{field.caption}
+				{shownCaption}
 			</span>
 			{/*
 			 * The absent-figure state is the same dashed empty box `PaperLeaderRow`
@@ -133,6 +173,67 @@ function ReadOnlyRow({
 }
 
 /**
+ * The result cell a section ends on, where the page prints one without a line
+ * number — see `ReadOnlyScheduleView`'s `sectionResult`.
+ *
+ * Deliberately shaped unlike a `ReadOnlyRow`: no line-number chip, because it
+ * has no line, and the arithmetic set in mono where a field would show its
+ * caption. A preparer reading "A" through "D" above it needs to see what the
+ * four of them produce.
+ */
+function SectionResultRow({
+	result,
+}: {
+	result?: {
+		label: string;
+		formula: string;
+		formulaAsPrinted?: string;
+		note?: string;
+		to?: { form: string; line: string; note?: string };
+	};
+}) {
+	if (!result) return null;
+	const toLine = result.to
+		? (parseAt1LineItemId(result.to.line)?.field ?? result.to.line)
+		: undefined;
+	return (
+		<div className="flex items-center gap-3 bg-muted/30 px-4 py-2 text-sm">
+			<span className="w-16 shrink-0 text-center font-mono text-[11px] text-muted-foreground">
+				—
+			</span>
+			<span className="min-w-0 flex-1">
+				<span className="text-muted-foreground">{result.label}</span>
+				<TooltipWrapper
+					content={
+						result.formulaAsPrinted
+							? `The form prints this as ${result.formulaAsPrinted}, using its column letters.`
+							: undefined
+					}
+					side="top"
+					disabled={!result.formulaAsPrinted}
+				>
+					<span className="ml-2 cursor-help rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
+						{result.formula}
+					</span>
+				</TooltipWrapper>
+				{result.note && (
+					<span className="ml-2 text-xs text-muted-foreground">
+						{result.note}
+					</span>
+				)}
+			</span>
+			{result.to && (
+				<TooltipWrapper content={result.to.note} side="top" disabled={!result.to.note}>
+					<span className="shrink-0 cursor-help rounded-md border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+						{`→ ${result.to.form} line ${toLine}`}
+					</span>
+				</TooltipWrapper>
+			)}
+		</div>
+	);
+}
+
+/**
  * Shared shell for schedules with no editable side at all — Schedule 12
  * (fully computed from other schedules' overrides), and Schedule 2/10 (no
  * dedicated `ReturnInput` slice; whatever this product does compute for
@@ -152,6 +253,12 @@ export function ReadOnlyScheduleView({
 	formId,
 	sections,
 	fields,
+	footnotes,
+	sectionResult,
+	captionFor,
+	grids,
+	printedAfter,
+	blockHeadings,
 	computed,
 	stale,
 	notComputedMessage,
@@ -169,6 +276,92 @@ export function ReadOnlyScheduleView({
 	formId?: string;
 	sections: readonly PaperSectionDef[];
 	fields: readonly PaperField[];
+	/**
+	 * The schedule's own `FormDefinition.footnotes` — the instructions the page
+	 * prints in its margins, which belong to the whole form rather than any one
+	 * line. Rendered beneath the last section, as the page prints them.
+	 *
+	 * Every read-only schedule had them in its data and none of them reached the
+	 * screen, because this shell never accepted them. Schedule 2 is where that
+	 * shows worst: the rule deciding WHICH Area B formula a multi-industry
+	 * corporation completes is a printed instruction, not a line.
+	 */
+	footnotes?: readonly string[];
+	/**
+	 * A per-section result cell the page prints WITHOUT a line number — AT1
+	 * Schedule 2's column I, the Alberta Allocation Factor, which every one of
+	 * its eleven formulas has and none of them numbers.
+	 *
+	 * It cannot be a `PaperField` (there is no line to hang it on) and it
+	 * cannot be dropped either: A, B, C and D are inputs to arithmetic a
+	 * preparer otherwise cannot see. Rendered as the section's last row, which
+	 * is where the page puts it.
+	 */
+	/**
+	 * Rewrite a caption for display, where the page's own wording refers to
+	 * something this view does not show. AT1 Schedule 2's lines 102 and 104 are
+	 * the case: their captions ARE arithmetic — "(E/F) x (AT1 lines 062)" — in
+	 * the column letters the page heads its grid with, and this view labels
+	 * every row by its printed line number instead. The letters name nothing
+	 * the reader can see.
+	 *
+	 * The stored caption stays verbatim and remains the hover title, so the
+	 * form's own words are never lost — this only changes what is set in the
+	 * row. Undefined leaves the caption exactly as printed.
+	 */
+	captionFor?: (field: PaperField) => string | undefined;
+	/**
+	 * Replace a run of rows with a grid, for the schedules the page lays out as
+	 * a TABLE rather than a list of lines.
+	 *
+	 * The flat list is ordered by line number, which on a grid-shaped schedule
+	 * is not the reading order at all: AT1 Schedule 18 numbers its four columns
+	 * in four separate bands, so the flat view shows all six column-A lines,
+	 * then all six column-B lines, and a preparer holding the paper cannot find
+	 * a single row of it. Which cells share a row is exactly the structure a
+	 * list of `PaperField`s cannot carry.
+	 *
+	 * Each block names the printed line it stands in for (`anchor`) and every
+	 * printed line it renders (`lines`); those are dropped from the flat list,
+	 * so nothing appears twice and anything the block does NOT claim still
+	 * renders as an ordinary row. Given the filed values so the block and the
+	 * rows read from one source.
+	 */
+	grids?: (
+		filedByField: ReadonlyMap<string, string | number>,
+	) => readonly {
+		anchor: string;
+		lines: readonly string[];
+		node: ReactNode;
+	}[];
+	/**
+	 * Where the page prints a line somewhere other than its number would put it.
+	 * Keyed printed line → the printed line it follows on the page.
+	 *
+	 * Fields arrive sorted by line number, which is the right default and is
+	 * correct nearly everywhere. AT1 Schedule 18's line 076 is not: it is the
+	 * last figure on the schedule, struck from 099, but numbers below 077-099 —
+	 * so by number the answer prints six rows above the arithmetic that produces
+	 * it, captioned "Line 099 X 50%" while 099 is still further down.
+	 */
+	printedAfter?: Readonly<Record<string, string>>;
+	/**
+	 * Headings the page sets INSIDE a section, above the lines they govern.
+	 * A `PaperSectionDef` cannot hold these — the block has one heading of its
+	 * own and the page runs on beneath it — but the text is load-bearing where
+	 * the captions below it do not stand alone.
+	 */
+	blockHeadings?: readonly { aboveLine: string; text: string }[];
+	sectionResult?: (sectionId: string) =>
+		| {
+				label: string;
+				formula: string;
+				/** The same arithmetic in the page's own column letters, for the tooltip. */
+				formulaAsPrinted?: string;
+				note?: string;
+				to?: { form: string; line: string; note?: string };
+			}
+		| undefined;
 	computed?: ComputedReturn;
 	stale?: boolean;
 	/** Shown above the form when the return has never been computed at all — no figure on it reflects a real filing yet. */
@@ -239,6 +432,8 @@ export function ReadOnlyScheduleView({
 			? nothingToReportMessage
 			: undefined;
 
+	const gridBlocks = grids?.(filedByField) ?? [];
+
 	return (
 		<div className="space-y-4">
 			{formId && (
@@ -257,8 +452,15 @@ export function ReadOnlyScheduleView({
 				</p>
 			)}
 			{sections.map((section) => {
-				const sectionFields = fields.filter((f) => f.section === section.id);
+				const sectionFields = inPrintedOrder(
+					fields.filter((f) => f.section === section.id),
+					printedAfter,
+				);
 				if (sectionFields.length === 0) return null;
+				const blocks = gridBlocks.filter((b) =>
+					sectionFields.some((f) => printedLine(f) === b.anchor),
+				);
+				const claimed = new Set(blocks.flatMap((b) => b.lines));
 				return (
 					<div key={section.id} className="rounded-lg border bg-card">
 						<div className="border-b bg-muted/40 px-4 py-2">
@@ -270,21 +472,45 @@ export function ReadOnlyScheduleView({
 							)}
 						</div>
 						<div className="divide-y">
-							{sectionFields.map((f) => (
-								<ReadOnlyRow
-									key={f.line}
-									field={f}
-									filedByField={filedByField}
-									highlightLine={highlightLine}
-									onNavigate={onNavigate}
-									linked={linkFor(f)}
-									control={control}
-								/>
-							))}
+							{sectionFields.map((f) => {
+								const line = printedLine(f);
+								const block = blocks.find((b) => b.anchor === line);
+								// The grid stands where its first line stood; the rest
+								// of its lines drop out of the list entirely.
+								if (block)
+									return <div key={f.line}>{block.node}</div>;
+								if (claimed.has(line)) return null;
+								const heading = blockHeadings?.find(
+									(h) => h.aboveLine === line,
+								);
+								const row = (
+									<ReadOnlyRow
+										key={f.line}
+										field={f}
+										filedByField={filedByField}
+										highlightLine={highlightLine}
+										onNavigate={onNavigate}
+										linked={linkFor(f)}
+										control={control}
+										displayCaption={captionFor?.(f)}
+									/>
+								);
+								if (!heading) return row;
+								return (
+									<div key={f.line}>
+										<p className="px-4 pb-1 pt-3 text-sm font-semibold">
+											{heading.text}
+										</p>
+										{row}
+									</div>
+								);
+							})}
+							<SectionResultRow result={sectionResult?.(section.id)} />
 						</div>
 					</div>
 				);
 			})}
+			<PaperFootnotes notes={footnotes} />
 		</div>
 	);
 }

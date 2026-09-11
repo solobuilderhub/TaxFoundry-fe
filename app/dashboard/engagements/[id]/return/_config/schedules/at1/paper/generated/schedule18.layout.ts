@@ -45,29 +45,29 @@ export const AT1_SCHEDULE_18_FIELDS: readonly PaperField[] = [
   { line: "018004001", caption: "Total of all real estate", kind: "money", role: "input", section: "dispositions" },
   { line: "018006001", caption: "Total of all bonds", kind: "money", role: "input", section: "dispositions" },
   { line: "018008001", caption: "Total of all other properties", kind: "money", role: "input", section: "dispositions" },
-  { line: "018010001", caption: "Total of all personal-use property", kind: "money", role: "input", section: "dispositions" },
-  { line: "018012001", caption: "Total of all listed personal property", kind: "money", role: "input", section: "dispositions" },
+  { line: "018010001", caption: "Total of all personal-use property", kind: "money", role: "input", section: "dispositions", note: "Printed on the form, under the row label: \"(Note: losses are not deductible)\", and against column D: \"Report gain only\". The loss is denied outright — 018058 floors at zero and the amount is dropped from line 062, not netted against ordinary capital gains." },
+  { line: "018012001", caption: "Total of all listed personal property", kind: "money", role: "input", section: "dispositions", note: "NOT denied, unlike personal-use property — deductible, but only against listed personal property gains. That restriction is the whole reason line 060 exists: it is where an unapplied loss from another year is brought against this year’s gains, capped at this line.", footnoteMarks: [2] },
   { line: "018022001", caption: "Adjusted cost base: Total of all shares", kind: "money", role: "input", section: "dispositions" },
   { line: "018024001", caption: "Adjusted cost base: Total of all real estate", kind: "money", role: "input", section: "dispositions" },
   { line: "018026001", caption: "Adjusted cost base: Total of all bonds", kind: "money", role: "input", section: "dispositions" },
   { line: "018028001", caption: "Adjusted cost base: Total of all other properties", kind: "money", role: "input", section: "dispositions" },
-  { line: "018030001", caption: "Adjusted cost base: Total of all personal-use property", kind: "money", role: "input", section: "dispositions" },
-  { line: "018032001", caption: "Adjusted cost base: Total of all listed personal property", kind: "money", role: "input", section: "dispositions" },
+  { line: "018030001", caption: "Adjusted cost base: Total of all personal-use property", kind: "money", role: "input", section: "dispositions", note: "Printed on the form, under the row label: \"(Note: losses are not deductible)\", and against column D: \"Report gain only\". The loss is denied outright — 018058 floors at zero and the amount is dropped from line 062, not netted against ordinary capital gains." },
+  { line: "018032001", caption: "Adjusted cost base: Total of all listed personal property", kind: "money", role: "input", section: "dispositions", note: "NOT denied, unlike personal-use property — deductible, but only against listed personal property gains. That restriction is the whole reason line 060 exists: it is where an unapplied loss from another year is brought against this year’s gains, capped at this line.", footnoteMarks: [2] },
   { line: "018042001", caption: "Outlays and expenses: Total of all shares", kind: "money", role: "input", section: "dispositions" },
   { line: "018044001", caption: "Outlays and expenses: Total of all real estate", kind: "money", role: "input", section: "dispositions" },
   { line: "018046001", caption: "Outlays and expenses: Total of all bonds", kind: "money", role: "input", section: "dispositions" },
   { line: "018048001", caption: "Outlays and expenses: Total of all other properties", kind: "money", role: "input", section: "dispositions" },
-  { line: "018050001", caption: "Outlays and expenses: Total of all personal-use property", kind: "money", role: "input", section: "dispositions" },
-  { line: "018052001", caption: "Outlays and expenses: Total of all listed personal property", kind: "money", role: "input", section: "dispositions" },
-  { line: "018053001", caption: "Add: Line 160 of federal Schedule 6", kind: "money", role: "carried-in", section: "dispositions", from: { form: "T2SCH6", line: "160", note: "§3.2.3.19: \"Must equal fed 006160.\" The page prints only the reference, not a description." } },
-  { line: "018054001", caption: "Gain or (loss): Total of all shares", kind: "money", role: "computed", section: "dispositions" },
-  { line: "018055001", caption: "Gain or (loss): Total of all real estate", kind: "money", role: "computed", section: "dispositions" },
-  { line: "018056001", caption: "Gain or (loss): Total of all bonds", kind: "money", role: "computed", section: "dispositions" },
-  { line: "018057001", caption: "Gain or (loss): Total of all other properties", kind: "money", role: "computed", section: "dispositions" },
-  { line: "018058001", caption: "Gain: Total of all personal-use property", kind: "money", role: "computed", section: "dispositions", note: "A LOSS here is excluded from line 062 — it is not deductible against ordinary capital gains." },
-  { line: "018059001", caption: "Gain: Total of all listed personal property", kind: "money", role: "computed", section: "dispositions", note: "A LOSS here is excluded from line 062 — it is not deductible against ordinary capital gains." },
+  { line: "018050001", caption: "Outlays and expenses: Total of all personal-use property", kind: "money", role: "input", section: "dispositions", note: "Printed on the form, under the row label: \"(Note: losses are not deductible)\", and against column D: \"Report gain only\". The loss is denied outright — 018058 floors at zero and the amount is dropped from line 062, not netted against ordinary capital gains." },
+  { line: "018052001", caption: "Outlays and expenses: Total of all listed personal property", kind: "money", role: "input", section: "dispositions", note: "NOT denied, unlike personal-use property — deductible, but only against listed personal property gains. That restriction is the whole reason line 060 exists: it is where an unapplied loss from another year is brought against this year’s gains, capped at this line.", footnoteMarks: [2] },
+  { line: "018053001", caption: "Add: Line 160 of federal schedule 6", kind: "money", role: "carried-in", section: "dispositions", note: "Added to the shares grid’s column D to give line 054. It sits BETWEEN the two grids, not inside either of them.", from: { form: "T2SCH6", line: "160", note: "§3.2.3.19: \"Must equal fed 006160.\" The page prints only the reference, not a description." } },
+  { line: "018054001", caption: "Gain or (loss): Total of all shares", kind: "money", role: "computed", section: "dispositions", note: "The shares grid’s column D — line 002 minus (line 022 + line 042) — PLUS line 053. The grid leaves that column D unnumbered; this is where the shares gain is filed, and it includes the federal Schedule 6 line 160 amount." },
+  { line: "018055001", caption: "Gain or (loss): Total of all real estate", kind: "money", role: "computed", section: "dispositions", note: "Line 004 minus (line 024 + line 044)." },
+  { line: "018056001", caption: "Gain or (loss): Total of all bonds", kind: "money", role: "computed", section: "dispositions", note: "Line 006 minus (line 026 + line 046)." },
+  { line: "018057001", caption: "Gain or (loss): Total of all other properties", kind: "money", role: "computed", section: "dispositions", note: "Line 008 minus (line 028 + line 048)." },
+  { line: "018058001", caption: "Gain: Total of all personal-use property", kind: "money", role: "computed", section: "dispositions", note: "Line 010 minus (line 030 + line 050). Printed on the form, under the row label: \"(Note: losses are not deductible)\", and against column D: \"Report gain only\". The loss is denied outright — 018058 floors at zero and the amount is dropped from line 062, not netted against ordinary capital gains." },
+  { line: "018059001", caption: "Gain: Total of all listed personal property", kind: "money", role: "computed", section: "dispositions", note: "Line 012 minus (line 032 + line 052). NOT denied, unlike personal-use property — deductible, but only against listed personal property gains. That restriction is the whole reason line 060 exists: it is where an unapplied loss from another year is brought against this year’s gains, capped at this line.", footnoteMarks: [2] },
   { line: "018060001", caption: "Subtract: Unapplied listed personal property losses from other years up to the total listed personal property gains", kind: "money", role: "input", section: "dispositions", note: "Net listed personal property losses may only be applied against listed personal property gains. Capped at line 059; where Schedule 21 exists, capped at the lesser of that and Schedule 21 line 115.", to: { form: "AT1SCH21", line: "021119001", note: "Printed on the form: \"carry this amount forward to schedule 21, line 119, if applicable\"." } },
-  { line: "018062001", caption: "Total of Column D", kind: "money", role: "computed", section: "dispositions", note: "EXCLUDES lines 059 and 060 where the difference is a net loss — restricted losses are dropped, not netted. Summing column D over-deducts." },
+  { line: "018062001", caption: "Total of Column D (Do not include the amounts at lines 059 and 060 if the difference is a net loss)", kind: "money", role: "computed", section: "dispositions", note: "EXCLUDES lines 059 and 060 where the difference is a net loss — restricted losses are dropped, not netted. Summing column D over-deducts." },
   { line: "018064001", caption: "Capital gains dividends", kind: "money", role: "input", section: "dispositions" },
   { line: "018066001", caption: "Add: capital gain reserve opening balance, if any", kind: "money", role: "input", section: "dispositions" },
   { line: "018068001", caption: "Deduct: capital gain reserve closing balance, if any", kind: "money", role: "input", section: "dispositions" },
@@ -86,9 +86,9 @@ export const AT1_SCHEDULE_18_FIELDS: readonly PaperField[] = [
   { line: "018090001", caption: "B - Adjusted cost base", kind: "money", role: "input", section: "abil" },
   { line: "018092001", caption: "C - Outlays and expenses (re dispositions)", kind: "money", role: "input", section: "abil" },
   { line: "018094001", caption: "Allowable Business Investment Loss: total of column D X Inclusion Rate", kind: "money", role: "computed", section: "abil", note: "Column D at the inclusion rate (see the note at line 076). Unlike an ordinary capital loss this is deductible against ANY income, which is why it has its own part. Printed on the form: carry this amount forward to Schedule 12, and include it in line 040.", to: { form: "AT1SCH12", line: "012040001", note: "Included IN line 040, alongside the taxable capital gain at line 076 — not instead of it." } },
-  { line: "018096001", caption: "Taxable capital gains under section 34.2 of the federal Act (line 275 of federal Schedule 73, Income Inclusion Summary for Corporations that are members of Partnerships) X 2 =", kind: "money", role: "carried-in", section: "dispositions", note: "Federal Schedule 73 line 275, MULTIPLIED BY TWO. That form reports the taxable half; this schedule works in whole gains until line 076.", from: { form: "T2SCH73", line: "270" } },
+  { line: "018096001", caption: "Taxable capital gains under section 34.2 of the federal Act (line 275 of federal Schedule 73, Income Inclusion Summary for Corporations that are members of Partnerships) X 2 =", kind: "money", role: "carried-in", section: "dispositions", note: "Federal Schedule 73 line 275, MULTIPLIED BY TWO. That form reports the taxable half; this schedule works in whole gains until line 076.", sourceText: "line 275 of federal Schedule 73, Income Inclusion Summary for Corporations that are members of Partnerships", from: { form: "T2SCH73", line: "275" } },
   { line: "018097001", caption: "Subtotal: Line 075 + line 079 + line 096", kind: "money", role: "computed", section: "dispositions", note: "Lines 075 plus 079 plus 096." },
-  { line: "018098001", caption: "Deduct: Allowable capital losses under section 34.2 of the federal Act (line 285 of federal Schedule 73, Income Inclusion Summary for Corporations that are Members of Partnerships) X 2 =", kind: "money", role: "carried-in", section: "dispositions", note: "Federal Schedule 73 line 285, MULTIPLIED BY TWO — see line 096.", from: { form: "T2SCH73", line: "285" } },
+  { line: "018098001", caption: "Deduct: Allowable capital losses under section 34.2 of the federal Act (line 285 of federal Schedule 73, Income Inclusion Summary for Corporations that are Members of Partnerships) X 2 =", kind: "money", role: "carried-in", section: "dispositions", note: "Federal Schedule 73 line 285, MULTIPLIED BY TWO — see line 096.", sourceText: "line 285 of federal Schedule 73, Income Inclusion Summary for Corporations that are Members of Partnerships", from: { form: "T2SCH73", line: "285" } },
   { line: "018099001", caption: "Total capital gains or losses: Line 097 - line 098", kind: "money", role: "computed", section: "dispositions", note: "If line 099 is NEGATIVE, carry the capital loss forward to Schedule 21, line 057, and no taxable capital gain arises at line 076.", to: { form: "AT1SCH21", line: "021057001", note: "Only when negative — the capital loss, not the gain." } },
 ];
 
@@ -99,3 +99,87 @@ export const AT1_SCHEDULE_18_FOOTNOTES: readonly string[] = [
   "If the corporation is electing to transfer property under ACTA section 14.1(3), 14.2(3) or 16.1(3), the applicable Alberta election form (AT107, AT108 or AT109) must be completed and submitted by the corporation acquiring the property (\"transferee\"). See the election form for filing instructions.",
   "If dispositions in a taxation year straddle one or more inclusion rate periods, supporting documentation MUST be submitted with the AT1 RSI to detail how the inclusion rate was calculated.",
 ];
+
+
+export interface Schedule18Column {
+  column: "A" | "B" | "C" | "D";
+  heading: string;
+  key: "proceeds" | "adjustedCostBase" | "outlays" | "gainOrLoss";
+}
+
+export interface Schedule18Category {
+  label: string;
+  grid: "shares" | "properties";
+  proceeds: string;
+  adjustedCostBase: string;
+  outlays: string;
+  /** Absent on shares — that grid leaves column D unnumbered. */
+  gainOrLoss?: string;
+  lossRestricted?: boolean;
+  restrictionNote?: string;
+  footnoteMarks?: readonly number[];
+}
+
+export interface Schedule18Grid {
+  id: "shares" | "properties";
+  /** Column D's heading on this grid — the two differ. */
+  gainHeading: string;
+}
+
+export const AT1_SCHEDULE_18_COLUMNS: readonly Schedule18Column[] = [
+  { column: "A", heading: "Proceeds of disposition", key: "proceeds" },
+  { column: "B", heading: "Adjusted cost base", key: "adjustedCostBase" },
+  { column: "C", heading: "Outlays and Expenses (re dispositions)", key: "outlays" },
+  { column: "D", heading: "Gain or (loss) Col. A - (Cols. B + C)", key: "gainOrLoss" },
+];
+
+export const AT1_SCHEDULE_18_GRIDS: readonly Schedule18Grid[] = [
+  { id: "shares", gainHeading: "Col. A - (Cols. B + C)" },
+  { id: "properties", gainHeading: "Gain or (loss) Col. A - (Cols. B + C)" },
+];
+
+export const AT1_SCHEDULE_18_CATEGORIES: readonly Schedule18Category[] = [
+  { label: "Total of all shares", grid: "shares", proceeds: "002", adjustedCostBase: "022", outlays: "042" },
+  { label: "Total of all real estate", grid: "properties", proceeds: "004", adjustedCostBase: "024", outlays: "044", gainOrLoss: "055" },
+  { label: "Total of all bonds", grid: "properties", proceeds: "006", adjustedCostBase: "026", outlays: "046", gainOrLoss: "056" },
+  { label: "Total of all other properties", grid: "properties", proceeds: "008", adjustedCostBase: "028", outlays: "048", gainOrLoss: "057" },
+  { label: "Total of all personal-use property", grid: "properties", proceeds: "010", adjustedCostBase: "030", outlays: "050", gainOrLoss: "058", lossRestricted: true, restrictionNote: "Printed on the form, under the row label: \"(Note: losses are not deductible)\", and against column D: \"Report gain only\". The loss is denied outright — 018058 floors at zero and the amount is dropped from line 062, not netted against ordinary capital gains." },
+  { label: "Total of all listed personal property", grid: "properties", proceeds: "012", adjustedCostBase: "032", outlays: "052", gainOrLoss: "059", lossRestricted: true, restrictionNote: "NOT denied, unlike personal-use property — deductible, but only against listed personal property gains. That restriction is the whole reason line 060 exists: it is where an unapplied loss from another year is brought against this year’s gains, capped at this line.", footnoteMarks: [2] },
+];
+
+export const AT1_SCHEDULE_18_GAIN_FORMULA = "Col. A - (Cols. B + C)";
+
+export interface Schedule18BlockHeading {
+  /** The printed line the heading stands immediately above. */
+  aboveLine: string;
+  text: string;
+}
+
+export const AT1_SCHEDULE_18_BLOCK_HEADINGS: readonly Schedule18BlockHeading[] = [
+  { aboveLine: "077", text: "Deemed capital gain from the donation of property included in a flow-through share class of property to a qualified donee under subsection 40(12) of the federal Act:" },
+];
+
+export interface Schedule18AbilColumn {
+  /** The letter the page heads this column with, where it heads one. */
+  column?: "A" | "B" | "C" | "D";
+  heading: string;
+  /** Absent on column D, which the page does not number. */
+  line?: string;
+}
+
+export const AT1_SCHEDULE_18_ABIL_COLUMNS: readonly Schedule18AbilColumn[] = [
+  { heading: "Name of small business corporation", line: "082" },
+  { heading: "Specify: 1 = shares or 2 = debt", line: "084" },
+  { heading: "Date of Acquisition YYYYMMDD", line: "086" },
+  { column: "A", heading: "Proceeds of disposition", line: "088" },
+  { column: "B", heading: "Adjusted cost base", line: "090" },
+  { column: "C", heading: "Outlays and expenses (re dispositions)", line: "092" },
+  { column: "D", heading: "(Loss) Cols. A - (B + C)" },
+];
+
+export const AT1_SCHEDULE_18_ABIL_TOTALS_LABEL = "Totals:";
+
+/** Printed line → the line the page prints it AFTER, where that is not line order. */
+export const AT1_SCHEDULE_18_PRINTED_AFTER: Readonly<Record<string, string>> = {
+  "076": "099",
+};

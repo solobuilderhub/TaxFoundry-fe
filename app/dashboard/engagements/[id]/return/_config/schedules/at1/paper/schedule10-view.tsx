@@ -3,6 +3,7 @@
 import type { ComputedReturn } from "@/api/computed-returns";
 import {
 	AT1_SCHEDULE_10_FIELDS,
+	AT1_SCHEDULE_10_FOOTNOTES,
 	AT1_SCHEDULE_10_SECTIONS,
 } from "./generated/schedule10.layout";
 import { ReadOnlyScheduleView } from "./read-only-schedule-view";
@@ -32,6 +33,7 @@ export function Schedule10View({
 			scheduleId="010"
 			formId="AT1SCH10"
 			sections={AT1_SCHEDULE_10_SECTIONS}
+			footnotes={AT1_SCHEDULE_10_FOOTNOTES}
 			fields={AT1_SCHEDULE_10_FIELDS}
 			computed={computed}
 			stale={stale}
