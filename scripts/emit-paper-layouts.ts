@@ -32,6 +32,8 @@ import {
 	AT1_JACKET,
 	AT1_SCHEDULE_1,
 	AT1_SCHEDULE_2,
+	AT1_SCHEDULE_2_FACTOR_DESTINATION,
+	AT1_SCHEDULE_2_FORMULAS,
 	AT1_SCHEDULE_3,
 	AT1_SCHEDULE_4,
 	AT1_SCHEDULE_10,
@@ -42,6 +44,14 @@ import {
 	AT1_SCHEDULE_17,
 	AT1_SCHEDULE_17_RESERVES,
 	AT1_SCHEDULE_18,
+	AT1_SCHEDULE_18_ABIL_COLUMNS,
+	AT1_SCHEDULE_18_ABIL_TOTALS_LABEL,
+	AT1_SCHEDULE_18_BLOCK_HEADINGS,
+	AT1_SCHEDULE_18_CATEGORIES,
+	AT1_SCHEDULE_18_COLUMNS,
+	AT1_SCHEDULE_18_GAIN_FORMULA,
+	AT1_SCHEDULE_18_GRIDS,
+	AT1_SCHEDULE_18_PRINTED_AFTER,
 	AT1_SCHEDULE_20,
 	AT1_SCHEDULE_21,
 	AT1_SCHEDULE_21_CONTINUITY_CAPTIONS,
@@ -406,8 +416,137 @@ export function schedule29PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_29, "AT1_SCHEDULE_29");
 }
 
+/**
+ * Schedule 18 is flat PLUS the grid shape the flat list cannot hold.
+ *
+ * The page prints its six categories as TWO tables of four columns — shares on
+ * their own, then the other five — with lines 053 and 054 struck between them.
+ * A flat list of fields loses every part of that: which cells share a row,
+ * which letter heads each column, and the fact that the shares table numbers
+ * no column D at all. The renderer gets the tables as data and lays them out;
+ * the field list stays the single source for captions and notes.
+ */
 export function schedule18PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_18, "AT1_SCHEDULE_18");
+	const out: string[] = [];
+	out.push(emitFlatSchedule(AT1_SCHEDULE_18, "AT1_SCHEDULE_18"));
+	out.push("");
+	out.push("export interface Schedule18Column {");
+	out.push('  column: "A" | "B" | "C" | "D";');
+	out.push("  heading: string;");
+	out.push(
+		'  key: "proceeds" | "adjustedCostBase" | "outlays" | "gainOrLoss";',
+	);
+	out.push("}");
+	out.push("");
+	out.push("export interface Schedule18Category {");
+	out.push("  label: string;");
+	out.push('  grid: "shares" | "properties";');
+	out.push("  proceeds: string;");
+	out.push("  adjustedCostBase: string;");
+	out.push("  outlays: string;");
+	out.push("  /** Absent on shares — that grid leaves column D unnumbered. */");
+	out.push("  gainOrLoss?: string;");
+	out.push("  lossRestricted?: boolean;");
+	out.push("  restrictionNote?: string;");
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push("export interface Schedule18Grid {");
+	out.push('  id: "shares" | "properties";');
+	out.push("  /** Column D's heading on this grid — the two differ. */");
+	out.push("  gainHeading: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_18_COLUMNS: readonly Schedule18Column[] = [",
+	);
+	for (const c of AT1_SCHEDULE_18_COLUMNS) {
+		out.push(
+			`  { column: ${q(c.column)}, heading: ${q(c.heading)}, key: ${q(c.key)} },`,
+		);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export const AT1_SCHEDULE_18_GRIDS: readonly Schedule18Grid[] = [");
+	for (const g of AT1_SCHEDULE_18_GRIDS) {
+		out.push(`  { id: ${q(g.id)}, gainHeading: ${q(g.gainHeading)} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_18_CATEGORIES: readonly Schedule18Category[] = [",
+	);
+	for (const c of AT1_SCHEDULE_18_CATEGORIES) {
+		const parts = [
+			`label: ${q(c.label)}`,
+			`grid: ${q(c.grid)}`,
+			`proceeds: ${q(c.proceeds)}`,
+			`adjustedCostBase: ${q(c.adjustedCostBase)}`,
+			`outlays: ${q(c.outlays)}`,
+		];
+		if (c.gainOrLoss) parts.push(`gainOrLoss: ${q(c.gainOrLoss)}`);
+		if (c.lossRestricted) parts.push("lossRestricted: true");
+		if (c.restrictionNote) parts.push(`restrictionNote: ${q(c.restrictionNote)}`);
+		if (c.footnoteMarks?.length) {
+			parts.push(`footnoteMarks: [${c.footnoteMarks.join(", ")}]`);
+		}
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		`export const AT1_SCHEDULE_18_GAIN_FORMULA = ${q(AT1_SCHEDULE_18_GAIN_FORMULA)};`,
+	);
+	out.push("");
+	out.push("export interface Schedule18BlockHeading {");
+	out.push("  /** The printed line the heading stands immediately above. */");
+	out.push("  aboveLine: string;");
+	out.push("  text: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_18_BLOCK_HEADINGS: readonly Schedule18BlockHeading[] = [",
+	);
+	for (const h of AT1_SCHEDULE_18_BLOCK_HEADINGS) {
+		out.push(`  { aboveLine: ${q(h.aboveLine)}, text: ${q(h.text)} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export interface Schedule18AbilColumn {");
+	out.push("  /** The letter the page heads this column with, where it heads one. */");
+	out.push('  column?: "A" | "B" | "C" | "D";');
+	out.push("  heading: string;");
+	out.push("  /** Absent on column D, which the page does not number. */");
+	out.push("  line?: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_18_ABIL_COLUMNS: readonly Schedule18AbilColumn[] = [",
+	);
+	for (const c of AT1_SCHEDULE_18_ABIL_COLUMNS) {
+		const parts: string[] = [];
+		if (c.column) parts.push(`column: ${q(c.column)}`);
+		parts.push(`heading: ${q(c.heading)}`);
+		if (c.line) parts.push(`line: ${q(c.line)}`);
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		`export const AT1_SCHEDULE_18_ABIL_TOTALS_LABEL = ${q(AT1_SCHEDULE_18_ABIL_TOTALS_LABEL)};`,
+	);
+	out.push("");
+	out.push(
+		"/** Printed line → the line the page prints it AFTER, where that is not line order. */",
+	);
+	out.push(
+		"export const AT1_SCHEDULE_18_PRINTED_AFTER: Readonly<Record<string, string>> = {",
+	);
+	for (const [line, after] of Object.entries(AT1_SCHEDULE_18_PRINTED_AFTER)) {
+		out.push(`  ${q(line)}: ${q(after)},`);
+	}
+	out.push("};");
+	return out.join("\n");
 }
 
 export function schedule12PaperLayout(): string {
@@ -419,7 +558,54 @@ export function schedule1PaperLayout(): string {
 }
 
 export function schedule2PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_2, "AT1_SCHEDULE_2");
+	const out = [emitFlatSchedule(AT1_SCHEDULE_2, "AT1_SCHEDULE_2")];
+	/*
+	 * Column I — the allocation factor — has no line number on any row, so it
+	 * is not a `FormField` and `emitFlatSchedule` cannot carry it. It is still
+	 * printed on the page for every formula, and the grid is unreadable without
+	 * it: A, B, C and D are inputs to arithmetic the preparer cannot otherwise
+	 * see. Emitted from ca-tax's own companion export.
+	 */
+	out.push(
+		"/** Column I per formula — the arithmetic the page prints, with no line number on any row. See `AT1_SCHEDULE_2_FACTOR_DESTINATION` for where every factor goes. */",
+	);
+	out.push("export interface Schedule2Formula {");
+	out.push("  section: string;");
+	out.push("  regulation: string;");
+	out.push("  factor: string;");
+	out.push(
+		"  /** Which printed line each letter in `factor` stands for — the page heads its columns A-H and prints those letters nowhere else. */",
+	);
+	out.push("  columns: Readonly<Record<string, string>>;");
+	out.push("  note?: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_2_FORMULAS: readonly Schedule2Formula[] = [",
+	);
+	for (const f of AT1_SCHEDULE_2_FORMULAS) {
+		const cols = Object.entries(f.columns)
+			.map(([letter, line]) => `${letter}: ${q(line)}`)
+			.join(", ");
+		const parts = [
+			`section: ${q(f.section)}`,
+			`regulation: ${q(f.regulation)}`,
+			`factor: ${q(f.factor)}`,
+			`columns: { ${cols} }`,
+		];
+		if (f.note) parts.push(`note: ${q(f.note)}`);
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		"/** Where every factor is filed, whichever formula produced it — the AT1 jacket. */",
+	);
+	out.push(
+		`export const AT1_SCHEDULE_2_FACTOR_DESTINATION = { form: ${q(AT1_SCHEDULE_2_FACTOR_DESTINATION.form)}, line: ${q(AT1_SCHEDULE_2_FACTOR_DESTINATION.line)}${AT1_SCHEDULE_2_FACTOR_DESTINATION.note ? `, note: ${q(AT1_SCHEDULE_2_FACTOR_DESTINATION.note)}` : ""} };`,
+	);
+	out.push("");
+	return out.join("\n");
 }
 
 export function schedule10PaperLayout(): string {

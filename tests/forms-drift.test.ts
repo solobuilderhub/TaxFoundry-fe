@@ -18,6 +18,11 @@ import {
 	AT1_SCHEDULE_12_PAIRS,
 	AT1_SCHEDULE_13_COLUMNS,
 	AT1_SCHEDULE_17_RESERVES,
+	AT1_SCHEDULE_18_ABIL_COLUMNS,
+	AT1_SCHEDULE_18_BLOCK_HEADINGS,
+	AT1_SCHEDULE_18_CATEGORIES,
+	AT1_SCHEDULE_18_GRIDS,
+	AT1_SCHEDULE_18_PRINTED_AFTER,
 	AT1_SCHEDULE_20,
 	AT1_SCHEDULE_21_POOLS,
 	AT1_SCHEDULE_29,
@@ -39,6 +44,7 @@ import {
 	schedule1PaperLayout,
 	schedule2PaperLayout,
 	schedule10PaperLayout,
+	schedule18PaperLayout,
 	schedule12PaperLayout,
 	schedule13PaperLayout,
 	schedule17PaperLayout,
@@ -77,6 +83,7 @@ const SCHEDULE_12_CHECKED_IN = `${PAPER_DIR}/schedule12.layout.ts`;
 const SCHEDULE_1_CHECKED_IN = `${PAPER_DIR}/schedule1.layout.ts`;
 const SCHEDULE_2_CHECKED_IN = `${PAPER_DIR}/schedule2.layout.ts`;
 const SCHEDULE_10_CHECKED_IN = `${PAPER_DIR}/schedule10.layout.ts`;
+const SCHEDULE_18_CHECKED_IN = `${PAPER_DIR}/schedule18.layout.ts`;
 const SCHEDULE_20_CHECKED_IN = `${PAPER_DIR}/schedule20.layout.ts`;
 
 describe("the guided-editor T2SCH1 schema is in step with T2_SCHEDULE_1", () => {
@@ -339,8 +346,159 @@ describe("the Schedule 2 paper layout is in step with AT1_SCHEDULE_2", () => {
 		).toBe(schedule2PaperLayout());
 	});
 
-	it("carries only Area A's 4 lines", () => {
-		expect(AT1_SCHEDULE_2.fields).toHaveLength(4);
+	/**
+	 * This used to assert the schedule had exactly Area A's four lines, which
+	 * was true of the definition and not of the form. Area B's eight
+	 * industry-specific formulas are on the page whether or not the engine
+	 * computes them, and a paper view shows the page.
+	 *
+	 * Counting sections rather than fields, because the fields differ per
+	 * formula by design — insurance and trust & loan print only columns C and
+	 * D, ship operators run to eight — and a bare total would hide that while
+	 * still passing.
+	 */
+	it("carries Area A and all eight Area B formulas", () => {
+		const sections = AT1_SCHEDULE_2.sections.map((s) => s.id);
+		expect(sections).toContain("gate");
+		expect(sections).toContain("general");
+		for (const areaB of [
+			"bus-truck",
+			"grain-elevator",
+			"pipeline",
+			"insurance",
+			"chartered-banks",
+			"trust-loan",
+			"airline",
+			"railway",
+			"ship",
+			"divided-businesses",
+		]) {
+			expect(sections, `Area B: ${areaB}`).toContain(areaB);
+		}
+		// Area A itself is still exactly its four inputs.
+		expect(
+			AT1_SCHEDULE_2.fields.filter((f) => f.section === "general"),
+		).toHaveLength(4);
+	});
+});
+
+describe("the Schedule 18 paper layout is in step with AT1_SCHEDULE_18", () => {
+	it("matches a fresh emit exactly", () => {
+		const onDisk = readFileSync(SCHEDULE_18_CHECKED_IN, "utf8");
+		expect(
+			onDisk,
+			"schedule18.layout.ts is stale — run `npx tsx scripts/emit-paper-layouts.ts`",
+		).toBe(schedule18PaperLayout());
+	});
+
+	/**
+	 * The layout has to carry the GRID, not just the fields.
+	 *
+	 * A flat field list is ordered by line number, and this schedule numbers
+	 * its four columns in four separate bands — 002-012 down column A, 022-032
+	 * down column B. Rendered in that order a preparer sees six proceeds
+	 * figures, then six cost bases, and never one row of the table. Which cells
+	 * share a row is structure no list of fields can hold, so the emitter ships
+	 * the category table beside it; without these exports the view silently
+	 * falls back to a list that does not resemble the page.
+	 */
+	it("emits the category table the grid is drawn from", () => {
+		const onDisk = readFileSync(SCHEDULE_18_CHECKED_IN, "utf8");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_CATEGORIES");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_COLUMNS");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_GRIDS");
+		expect(AT1_SCHEDULE_18_CATEGORIES).toHaveLength(6);
+	});
+
+	/**
+	 * Two grids, and the shares one numbers no column D.
+	 *
+	 * The page prints shares in a table of their own, leaves that table's
+	 * column D blank of a line number, and strikes the shares gain BELOW it at
+	 * 054 — after line 053 has added federal Schedule 6 line 160 in. Modelling
+	 * 054 as the shares row's column D (which this did until the XFA template
+	 * was read) loses line 053 from the form: the gain then reads as
+	 * "002 - (022 + 042)" with the addition that is the entire reason 053 and
+	 * 054 are two lines gone.
+	 */
+	it("keeps shares in their own grid, with no column D line", () => {
+		const shares = AT1_SCHEDULE_18_CATEGORIES.filter(
+			(c) => c.grid === "shares",
+		);
+		expect(shares).toHaveLength(1);
+		expect(shares[0]?.label).toBe("Total of all shares");
+		expect(
+			shares[0]?.gainOrLoss,
+			"the shares grid numbers no column D — 054 sits below it, after 053",
+		).toBeUndefined();
+		// Every other category IS numbered, in the second grid.
+		for (const c of AT1_SCHEDULE_18_CATEGORIES.filter(
+			(x) => x.grid === "properties",
+		)) {
+			expect(c.gainOrLoss, c.label).toBeDefined();
+		}
+	});
+
+	/**
+	 * Only column D differs between the two grids — and it does differ, so a
+	 * single table drawn for all six categories prints one grid's heading over
+	 * the other grid's rows.
+	 */
+	/**
+	 * The tail of page 1 needs two things a sorted field list cannot give it.
+	 *
+	 * Line 076 is the schedule's LAST figure — the taxable capital gain struck
+	 * from 099 — but numbers below 077-099, so ordering by line number prints
+	 * "Taxable capital gain: Line 099 X 50%" six rows above line 099. And the
+	 * page sets a heading over 077-079 that those lines genuinely need: "Add:
+	 * Exemption threshold at time of disposal" and "Add: Total of all capital
+	 * gains from the disposition of the actual property" say neither which
+	 * property nor that the pair exists only for a donated flow-through share.
+	 */
+	it("carries the page's own order and its mid-block heading", () => {
+		const onDisk = readFileSync(SCHEDULE_18_CHECKED_IN, "utf8");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_PRINTED_AFTER");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_BLOCK_HEADINGS");
+		expect(AT1_SCHEDULE_18_PRINTED_AFTER["076"]).toBe("099");
+		expect(
+			AT1_SCHEDULE_18_BLOCK_HEADINGS.find((h) => h.aboveLine === "077")?.text,
+		).toContain("flow-through share class of property");
+	});
+
+	/**
+	 * The ABIL part is the form's one REPEATING table, and its column D is the
+	 * figure line 094 is built from — struck per row and numbered nowhere. A
+	 * layout that shipped only the fields leaves a view rendering 094 with
+	 * nothing behind it, and no way to lay the rows out as rows.
+	 */
+	it("emits the ABIL table's columns, including the unnumbered one", () => {
+		const onDisk = readFileSync(SCHEDULE_18_CHECKED_IN, "utf8");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_ABIL_COLUMNS");
+		expect(onDisk).toContain("AT1_SCHEDULE_18_ABIL_TOTALS_LABEL");
+		expect(AT1_SCHEDULE_18_ABIL_COLUMNS.map((c) => c.line)).toEqual([
+			"082",
+			"084",
+			"086",
+			"088",
+			"090",
+			"092",
+			undefined,
+		]);
+		// Column D: lettered, but no line — the page numbers it nowhere.
+		const d = AT1_SCHEDULE_18_ABIL_COLUMNS.at(-1);
+		expect(d?.column).toBe("D");
+		expect(d?.line).toBeUndefined();
+		// Its bracketing is this part's own, not the page-1 grid's.
+		expect(d?.heading).toBe("(Loss) Cols. A - (B + C)");
+	});
+
+	it("heads column D differently on each grid", () => {
+		const [shares, properties] = AT1_SCHEDULE_18_GRIDS;
+		expect(shares?.gainHeading).toBe("Col. A - (Cols. B + C)");
+		expect(properties?.gainHeading).toBe(
+			"Gain or (loss) Col. A - (Cols. B + C)",
+		);
+		expect(shares?.gainHeading).not.toBe(properties?.gainHeading);
 	});
 });
 
