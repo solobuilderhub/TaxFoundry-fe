@@ -62,6 +62,7 @@ export type ReturnInput = {
 	albertaSchedule12?: AlbertaSchedule12Values;
 	albertaSchedule18?: AlbertaSchedule18Values;
 	albertaResourceDeductions15?: AlbertaResourceDeductions15Values;
+	albertaSred16?: AlbertaSred16Values;
 };
 export type IdentificationValues = {
 	corpType?: string;
@@ -1912,6 +1913,44 @@ export type CfreCountrySuccessorRow = {
 	 * 015313 — capped at 30%-prorated pool OR the sum of every country’s foreign resource income.
 	 */
 	claimed?: number;
+};
+export type AlbertaSred16Values = {
+	/**
+	 * 016002 — allowable SR&ED expenditures. Transcribe federal T661 line 400; the spec requires this to equal it.
+	 */
+	currentYearExpenditures?: number;
+	/**
+	 * 016004 — government and non-government assistance for the expenditures above. Transcribe federal T661 line 430 (2007 and earlier) or the sum of lines 429, 431 and 432 (2008 onward).
+	 */
+	assistance?: number;
+	/**
+	 * 016006 — previous year's investment tax credit claimed for SR&ED. Transcribe federal T661 line 435.
+	 */
+	priorYearItcClaimed?: number;
+	/**
+	 * 016008 — sale of SR&ED capital assets and other deductions. Transcribe federal T661 line 440.
+	 */
+	saleOfCapitalAssetsAndOther?: number;
+	/**
+	 * 016010 — repayments of government and non-government assistance for SR&ED. Transcribe federal T661 line 445.
+	 */
+	assistanceRepayments?: number;
+	/**
+	 * 016015 — amount of ITC recaptured in the previous tax year. Transcribe federal T661 line 453.
+	 */
+	priorYearItcRecaptured?: number;
+	/**
+	 * 016012 — unclaimed SR&ED expenditure pool balance from the previous year. MAY DIFFER for Alberta, and is one of the two figures whose divergence makes this schedule required. Last year’s line 022.
+	 */
+	openingPoolBalance?: number;
+	/**
+	 * 016014 — pool transferred on the amalgamation or wind-up of a wholly-owned subsidiary. MAY DIFFER for Alberta.
+	 */
+	poolTransferredIn?: number;
+	/**
+	 * 016020 — SR&ED expenditure pool deduction claimed this year. Blank claims the WHOLE available pool; the claim is discretionary, so a corporation with no income to shelter would normally claim nil and carry the pool forward. Capped at line 018.
+	 */
+	amountClaimed?: number;
 };
 
 /** AT1 Schedule 17's reserve kinds — see `ReserveType`'s own field for the derivation. */

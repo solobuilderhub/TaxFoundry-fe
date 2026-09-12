@@ -23,6 +23,7 @@ import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
 import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
 import { albertaSchedule12 } from "./schedules/at1/alberta-schedule12";
 import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
+import { albertaSred16 } from "./schedules/at1/alberta-schedule16";
 import { albertaSchedule18Abil } from "./schedules/at1/alberta-schedule18";
 import { quebec } from "./schedules/co17/quebec";
 import type { ScheduleDef, ScheduleProgram } from "./schedules/shared/define";
@@ -80,6 +81,7 @@ export const SCHEDULES = [
 	albertaSchedule12,
 	albertaSchedule18Abil,
 	albertaResourceDeductions15,
+	albertaSred16,
 	payments,
 	internetBusiness,
 	firstReturn,

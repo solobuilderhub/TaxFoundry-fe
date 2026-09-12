@@ -42,6 +42,7 @@ import {
 	AT1_SCHEDULE_13,
 	AT1_SCHEDULE_13_COLUMNS,
 	AT1_SCHEDULE_15,
+	AT1_SCHEDULE_16,
 	AT1_SCHEDULE_17,
 	AT1_SCHEDULE_17_RESERVES,
 	AT1_SCHEDULE_18,
@@ -108,6 +109,7 @@ const SCHEDULE_10_PAPER_DEST = `${PAPER_DIR}/schedule10.layout.ts`;
 const SCHEDULE_20_PAPER_DEST = `${PAPER_DIR}/schedule20.layout.ts`;
 const SCHEDULE_3_PAPER_DEST = `${PAPER_DIR}/schedule3.layout.ts`;
 const SCHEDULE_15_PAPER_DEST = `${PAPER_DIR}/schedule15.layout.ts`;
+const SCHEDULE_16_PAPER_DEST = `${PAPER_DIR}/schedule16.layout.ts`;
 const SCHEDULE_4_PAPER_DEST = `${PAPER_DIR}/schedule4.layout.ts`;
 
 // Federal T2 gets its OWN directory — `at1/paper/` is Alberta-only despite
@@ -649,6 +651,11 @@ export function schedule15PaperLayout(): string {
  * two of them. A view built from the fields alone shows an "Allowable Credit"
  * with nothing behind it.
  */
+/** AT1 Schedule 16 — the SR&ED pool. Twelve lines, no grid. */
+export function schedule16PaperLayout(): string {
+	return emitFlatSchedule(AT1_SCHEDULE_16, "AT1_SCHEDULE_16");
+}
+
 export function schedule4PaperLayout(): string {
 	const out: string[] = [];
 	out.push(emitFlatSchedule(AT1_SCHEDULE_4, "AT1_SCHEDULE_4"));
@@ -1268,6 +1275,10 @@ if (process.argv[1]?.endsWith("emit-paper-layouts.ts")) {
 
 	console.log();
 
+	writeFileSync(SCHEDULE_16_PAPER_DEST, schedule16PaperLayout(), "utf8");
+	console.log(
+		`${AT1_SCHEDULE_16.id}: ${AT1_SCHEDULE_16.fields.length} fields written to the paper layout`,
+	);
 	writeFileSync(SCHEDULE_4_PAPER_DEST, schedule4PaperLayout(), "utf8");
 	console.log(
 		`${AT1_SCHEDULE_4.id}: ${AT1_SCHEDULE_4.fields.length} fields written to the paper layout`,
