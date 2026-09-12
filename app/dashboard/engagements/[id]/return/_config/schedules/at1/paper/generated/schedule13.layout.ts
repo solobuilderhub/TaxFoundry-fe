@@ -76,7 +76,8 @@ export const AT1_SCHEDULE_13_FOOTNOTES: readonly string[] = [
 
 export interface Schedule13GridColumn {
   column: number;
-  line: string;
+  /** Absent on columns 10, 13 and 15-17 — arithmetic the page shows and does not number. */
+  line?: string;
   caption: string;
   kind: PaperFieldKind;
   note?: string;
@@ -94,9 +95,14 @@ export const AT1_SCHEDULE_13_GRID_COLUMNS: readonly Schedule13GridColumn[] = [
   { column: 7, line: "013033001", caption: "Assistance repaid, subsequent to disposition", kind: "money", printedHeading: "Amount from column 5 that is assistance repaid during the year for a property, subsequent to its disposition" },
   { column: 8, line: "013009001", caption: "Proceeds of dispositions", kind: "money", note: "Not to exceed the capital cost.", printedHeading: "Proceeds of dispositions during the year (amount not to exceed the capital cost)" },
   { column: 9, line: "013041001", caption: "Proceeds of dispositions of the DIEP", kind: "money", printedHeading: "Proceeds of disposition of the DIEP (amount from column 8 that relate to DIEP reported in column 4)" },
+  { column: 10, caption: "UCC before CCA claim", kind: "money", printedHeading: "UCC for the year before CCA claim (column 2 plus column 3 plus or minus column 5 minus column 8)" },
   { column: 11, line: "013043001", caption: "UCC of the DIEP", kind: "money", printedHeading: "UCC of the DIEP (UCC amount that relates to DIEP reported in column 4)" },
   { column: 12, line: "013045001", caption: "Immediate expensing", kind: "money", printedHeading: "Immediate Expensing" },
+  { column: 13, caption: "Cost of acquisitions on remainder of class", kind: "money", printedHeading: "Cost of acquisitions on remainder of Class (column 3 minus column 4 plus column 11 minus column 12)" },
   { column: 14, line: "013029001", caption: "Of which AIIP or property in classes 54 to 56", kind: "money", printedHeading: "Cost of acquisitions from column 13 that are accelerated investment incentive properties (AIIP) or properties in Classes 54 to 56" },
+  { column: 15, caption: "Remaining UCC", kind: "money", printedHeading: "Remaining UCC (column 10 minus column 12) (if negative enter \"0\")" },
+  { column: 16, caption: "Proceeds available to reduce AIIP UCC", kind: "money", printedHeading: "Proceeds of disposition available to reduce the UCC of AIIP and property included in Classes 54 to 56 (column 8 minus column 9 plus column 6 minus column 13 plus column 14 minus column 7) (if negative enter \"0\")" },
+  { column: 17, caption: "Net capital cost additions of AIIP", kind: "money", printedHeading: "Net capital cost additions of AIIP and property included in Classes 54 to 56 acquired during the year (column 14 minus column 16) (if negative, enter \"0\")" },
   { column: 18, line: "013035001", caption: "UCC adjustment for AIIP", kind: "money", note: "The accelerated uplift — a different factor from the half-year rule below.", printedHeading: "UCC adjustment for AIIP and property included in Classes 54 to 56 acquired during the year (column 17 multiplied by the relevant factor)" },
   { column: 19, line: "013037001", caption: "UCC adjustment for property other than AIIP", kind: "money", note: "The half-year rule: half of net additions is held out of this year’s base.", printedHeading: "UCC adjustment for property acquired during the year other than AIIP and property included in Class 54 to 56 (0.5 multiplied by the result of column 13 minus column 14 minus column 6 plus column 7 minus column 8 plus column 9) (if negative enter \"0\")" },
   { column: 20, line: "013013001", caption: "CCA rate", kind: "rate", note: "Reported as NA for classes with no fixed rate, such as 13 and 14.", printedHeading: "CCA rate %" },

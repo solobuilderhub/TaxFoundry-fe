@@ -1423,6 +1423,9 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	resolveCell,
 	disabled,
 	lineFor,
+	onAppend,
+	onRemove,
+	addLabel = "+ Add a row",
 }: {
 	arrayName: string;
 	rows: readonly ClassGridRow[];
@@ -1446,8 +1449,29 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	 * cell shows its own instead.
 	 */
 	lineFor?: (row: ClassGridRow, column: ClassGridColumn) => string;
+	/**
+	 * Append a row, and remove one. Supply BOTH or neither.
+	 *
+	 * Without them this grid can only display the rows a `useFieldArray`
+	 * already holds, which is why Schedule 13's view told a preparer to "add
+	 * one in Guided view first" — right for a fixed pool you pick from (a
+	 * reserve KIND, a jurisdiction), wrong for a growable list the page prints
+	 * numbered. Three schedules had already been given their own bespoke table
+	 * for want of this (S18's ABIL rows, S20's carryforward years, S4's
+	 * countries); Schedule 13's CCA classes were the fourth, so it belongs
+	 * here instead of in a fourth copy.
+	 *
+	 * A grid whose rows are a fixed pool simply omits them and is unchanged —
+	 * no add button, no remove column.
+	 */
+	onAppend?: () => void;
+	onRemove?: (index: number) => void;
+	/** Defaults to "+ Add a row". */
+	addLabel?: string;
 }) {
+	const growable = !!onAppend && !!onRemove;
 	return (
+		<div className="space-y-2">
 		<div className="overflow-x-auto rounded-lg border bg-card">
 			<table className="w-full border-collapse text-xs">
 				<thead>
@@ -1481,6 +1505,7 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 								</TooltipWrapper>
 							</th>
 						))}
+						{growable && <th className="w-10 px-2 py-2">&nbsp;</th>}
 					</tr>
 				</thead>
 				<tbody>
@@ -1582,10 +1607,35 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 									</td>
 								);
 							})}
+							{growable && (
+								<td className="px-2 py-1.5 text-center">
+									<button
+										type="button"
+										onClick={() => onRemove?.(row.arrayIndex ?? -1)}
+										disabled={disabled || row.arrayIndex === undefined}
+										aria-label={`Remove ${row.label}`}
+										title={`Remove ${row.label}`}
+										className="rounded-md border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										✕
+									</button>
+								</td>
+							)}
 						</tr>
 					))}
 				</tbody>
 			</table>
+		</div>
+		{growable && (
+			<button
+				type="button"
+				onClick={onAppend}
+				disabled={disabled}
+				className="rounded-md border px-2.5 py-1 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				{addLabel}
+			</button>
+		)}
 		</div>
 	);
 }
