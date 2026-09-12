@@ -42,17 +42,39 @@ export const AT1_SCHEDULE_4_SECTIONS: readonly PaperSectionDef[] = [
 ];
 
 export const AT1_SCHEDULE_4_FIELDS: readonly PaperField[] = [
-  { line: "004002001", caption: "Country", kind: "code", role: "input", section: "countries", requirement: "mandatory", note: "Two-letter code. Must equal the matching occurrence of federal Schedule 21, line 100." },
-  { line: "004004001", caption: "Net Foreign Investment Income", kind: "money", role: "input", section: "countries", requirement: "mandatory", note: "Must equal federal Schedule 21, line 110." },
-  { line: "004006001", caption: "Foreign tax paid, net of the ITA 20(12)/ACTA 8(2.2) deduction", kind: "money", role: "computed", section: "countries", note: "Derived from the gross federal tax paid and the deduction — neither is itself an AT1 line." },
-  { line: "004008001", caption: "Federal non-business foreign tax credit", kind: "money", role: "input", section: "countries", requirement: "mandatory", note: "Must equal federal Schedule 21, line 180." },
-  { line: "004012001", caption: "Allowable Credit", kind: "money", role: "computed", section: "countries", note: "Lesser of D (income proration) and G (tax paid less federal credit), both allocation-factor-scaled — see module doc." },
-  { line: "004014001", caption: "Total Allowable Credits", kind: "money", role: "total", section: "total", note: "Sum of line 012 (column H) across every country occurrence — `computeSchedule4`'s own `totalAllowableCredit`." },
-  { line: "004018001", caption: "Room — AT1 page 2, line 068 minus (lines 070 + 071)", kind: "money", role: "computed", section: "total", note: "Not the same two jacket lines as Schedule 3's room at line 602 (070+072) — confirmed by reading both printed forms directly." },
-  { line: "004020001", caption: "Alberta Foreign Investment Income Tax Credit", kind: "money", role: "computed", section: "total", note: "Lesser of line 014 and line 018.", to: { form: "AT1", line: "000072001", note: "Printed on the form: \"Enter this amount on AT1 page 2, line 072.\"" } },
+  { line: "004002001", caption: "Country in which foreign non-business income was earned from federal sch 21 line 100", kind: "code", role: "input", section: "countries", requirement: "mandatory", note: "Two-letter code. Must equal the matching occurrence of federal Schedule 21, line 100.", sourceText: "federal sch 21 line 100" },
+  { line: "004004001", caption: "Net foreign investment income from federal schedule 21 line 110", kind: "money", role: "input", section: "countries", requirement: "mandatory", note: "Must equal federal Schedule 21, line 110.", sourceText: "federal schedule 21 line 110" },
+  { line: "004006001", caption: "Foreign investment income tax paid (federal sch 21 line 120) minus greater of amount deducted under ACTA 8(2.2) or ITA 20(12) (federal sch 21 line 130)", kind: "money", role: "computed", section: "countries", note: "Derived from the gross federal tax paid and the deduction — neither is itself an AT1 line. The GREATER of the two deductions is subtracted, not either one.", sourceText: "federal sch 21 line 120, minus the greater of the ACTA 8(2.2) or ITA 20(12) deduction (federal sch 21 line 130)", footnoteMarks: [1] },
+  { line: "004008001", caption: "Federal non-business foreign tax credit from federal schedule 21 line 180", kind: "money", role: "input", section: "countries", requirement: "mandatory", note: "Must equal federal Schedule 21, line 180.", sourceText: "federal schedule 21 line 180" },
+  { line: "004012001", caption: "Allowable Credit Lesser of D or G", kind: "money", role: "computed", section: "countries", note: "Lesser of D (income prorated by the allocation factor and the jacket 068/066 ratio) and G ((E - F) X C) — neither of which the page numbers. See AT1_SCHEDULE_4_COLUMNS." },
+  { line: "004014001", caption: "Total Allowable Credits: sum of amounts in column H", kind: "money", role: "total", section: "total", note: "Sum of line 012 (column H) across every country occurrence — `computeSchedule4`'s own `totalAllowableCredit`." },
+  { line: "004018001", caption: "From AT1, page 2: line 068 - (lines 070 + 071)", kind: "money", role: "computed", section: "total", note: "Line 068 minus the SUM of 070 and 071, as the page brackets it. Arithmetically that equals 068 - 070, because jacket line 071 (Alberta Manufacturing and Processing Profits Deduction, the old AT1 Schedule 11) is ALWAYS NIL — pre-2001-04-01 only, absent from the printed jacket, and retained solely because the specification still marks it mandatory. Other products print the shortened \"068 - 070\" for exactly that reason; this caption stays as TRA prints it, so the day 071 is ever non-nil the form does not silently drop it. And it is NOT the same pair as Schedule 3's room at line 602 (070 + 072) — the two schedules' rooms are genuinely different, confirmed by reading both printed forms directly." },
+  { line: "004020001", caption: "Alberta Foreign Investment Income Tax Credit: Lesser of amounts on lines 014 and 018", kind: "money", role: "computed", section: "total", note: "Lesser of line 014 and line 018.", to: { form: "AT1", line: "000072001", note: "Printed on the form: \"Enter this amount on AT1 page 2, line 072.\"" } },
 ];
 
 export const AT1_SCHEDULE_4_FOOTNOTES: readonly string[] = [
-  "If the corporation has permanent establishments in Alberta only, enter \"1\" in column C (the Alberta allocation factor).",
-  "If the corporation's deduction from income under Alberta Corporate Tax Act subsection 8(2.2) differs from the deduction under Income Tax Act subsection 20(12) for any country, Alberta Schedule 12 is required — the total of these amounts for each country is included in the amount at Schedule 12, line 040.",
+  "If the corporation has permanent establishments in Alberta only, enter \"1\" in column C.",
+  "If the corporation's deduction from income under subsection 8(2.2) of the Alberta Corporate Tax Act (ACTA) is different from the deduction under subsection 20(12) of the Income Tax Act (ITA) for any country, then Alberta Schedule 12 is required to be completed. The total of these amounts for each country for Alberta purposes is to be included in the amount at line 040 on Alberta Schedule 12.",
+  "For corporations which have included in income any foreign investment income and which are entitled to a Federal Non-Business Foreign Tax Credit.",
+  "Report all monetary values in dollars; DO NOT include cents.",
+];
+
+
+export interface Schedule4Column {
+  column: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
+  heading: string;
+  /** Absent on C, D and G, which the page does not number. */
+  line?: string;
+  footnoteMarks?: readonly number[];
+}
+
+export const AT1_SCHEDULE_4_COLUMNS: readonly Schedule4Column[] = [
+  { column: "A", heading: "Country in which foreign non-business income was earned from federal sch 21 line 100", line: "002" },
+  { column: "B", heading: "Net foreign investment income from federal schedule 21 line 110", line: "004" },
+  { column: "C", heading: "Alberta allocation factor from AT1 Schedule 2", footnoteMarks: [0] },
+  { column: "D", heading: "B X C X (AT1 line 068 / AT1 line 066)" },
+  { column: "E", heading: "Foreign investment income tax paid (federal sch 21 line 120) minus greater of amount deducted under ACTA 8(2.2) or ITA 20(12) (federal sch 21 line 130)", line: "006", footnoteMarks: [1] },
+  { column: "F", heading: "Federal non-business foreign tax credit from federal schedule 21 line 180", line: "008" },
+  { column: "G", heading: "(E - F) X C" },
+  { column: "H", heading: "Allowable Credit Lesser of D or G", line: "012" },
 ];
