@@ -18,6 +18,7 @@ import {
 	AT1_SCHEDULE_10,
 	AT1_SCHEDULE_12_PAIRS,
 	AT1_SCHEDULE_13_COLUMNS,
+	AT1_SCHEDULE_16,
 	AT1_SCHEDULE_17_RESERVES,
 	AT1_SCHEDULE_18_ABIL_COLUMNS,
 	AT1_SCHEDULE_18_BLOCK_HEADINGS,
@@ -46,6 +47,7 @@ import {
 	schedule2PaperLayout,
 	schedule4PaperLayout,
 	schedule10PaperLayout,
+	schedule16PaperLayout,
 	schedule18PaperLayout,
 	schedule12PaperLayout,
 	schedule13PaperLayout,
@@ -88,6 +90,7 @@ const SCHEDULE_2_CHECKED_IN = `${PAPER_DIR}/schedule2.layout.ts`;
 const SCHEDULE_10_CHECKED_IN = `${PAPER_DIR}/schedule10.layout.ts`;
 const SCHEDULE_18_CHECKED_IN = `${PAPER_DIR}/schedule18.layout.ts`;
 const SCHEDULE_20_CHECKED_IN = `${PAPER_DIR}/schedule20.layout.ts`;
+const SCHEDULE_16_CHECKED_IN = `${PAPER_DIR}/schedule16.layout.ts`;
 const AT1_SCHEDULE_4_CHECKED_IN = `${PAPER_DIR}/schedule4.layout.ts`;
 
 describe("the guided-editor T2SCH1 schema is in step with T2_SCHEDULE_1", () => {
@@ -599,6 +602,52 @@ describe("the Schedule 4 (AT1) paper layout is in step with AT1_SCHEDULE_4", () 
 		expect(
 			AT1_SCHEDULE_4_COLUMNS.find((c) => c.column === "D")?.heading,
 		).toBe("B X C X (AT1 line 068 / AT1 line 066)");
+	});
+});
+
+/**
+ * AT1 Schedule 16 — the SR&ED expenditure pool, which this app could not file.
+ *
+ * ca-tax had the form, `computeAlbertaSchedule16` and `schedule16Values`, and
+ * `alberta-return.ts` already pushed the payload whenever
+ * `schedules.scientificResearch` existed. Nothing built that input: no
+ * contract slice, no composer, no editor, no registry entry, and no emitted
+ * layout — so a corporation with an Alberta SR&ED pool had nowhere to enter it
+ * and nothing was transmitted. Every test called the builder directly, so none
+ * of them noticed.
+ */
+describe("the Schedule 16 paper layout is in step with AT1_SCHEDULE_16", () => {
+	it("matches a fresh emit exactly", () => {
+		const onDisk = readFileSync(SCHEDULE_16_CHECKED_IN, "utf8");
+		expect(
+			onDisk,
+			"schedule16.layout.ts is stale — run `npx tsx scripts/emit-paper-layouts.ts`",
+		).toBe(schedule16PaperLayout());
+	});
+
+	it("carries all twelve lines, computed ones included", () => {
+		const onDisk = readFileSync(SCHEDULE_16_CHECKED_IN, "utf8");
+		const lines = [...onDisk.matchAll(/ {2}\{ line: "(\d+)"/g)].map(
+			(m) => m[1] as string,
+		);
+		expect(lines.length).toBe(AT1_SCHEDULE_16.fields.length);
+		expect(lines.length).toBe(12);
+		// The three the preparer never types: subtotal, pool available, carry-forward.
+		for (const computed of ["016016001", "016018001", "016022001"]) {
+			expect(lines, computed).toContain(computed);
+		}
+	});
+
+	/**
+	 * Line 022 becomes NEXT year's line 012 — the pool's only continuity, and
+	 * the thing the whole schedule exists to preserve. `AT1_SCHEDULE_16` exports
+	 * the carry-forward line separately so a consumer cannot guess it.
+	 */
+	it("names the carry-forward line the pool continues through", async () => {
+		const { AT1_SCHEDULE_16_CARRYFORWARD_LINE } = await import(
+			"@classytic/ca-tax/t2"
+		);
+		expect(AT1_SCHEDULE_16_CARRYFORWARD_LINE).toContain("022");
 	});
 });
 
