@@ -1,7 +1,7 @@
 import { defineSchema, field, section } from "@classytic/formkit/server";
 import { createElement } from "react";
 import type { AlbertaDonationsValues } from "../../../_lib/return-input";
-import { fieldsFor } from "../../fields";
+import { fieldsFor, money } from "../../fields";
 import { defineSchedule } from "../shared/define";
 import { Schedule20FormView } from "./paper/schedule20-form-view";
 
@@ -28,7 +28,18 @@ const f = fieldsFor<AlbertaDonationsValues>();
 export const albertaDonations = defineSchedule({
 	key: "albertaDonations",
 	num: "020",
-	label: "Alberta Donations & Gifts (S20)",
+	/*
+	 * The form's own masthead, Title Cased — "ALBERTA CHARITABLE DONATIONS &
+	 * GIFTS DEDUCTION", the same treatment S18's label gives "ALBERTA
+	 * DISPOSITIONS OF CAPITAL PROPERTY".
+	 *
+	 * This read "Alberta Donations & Gifts (S20)", a shortening of our own. It
+	 * is the only place the form is named anywhere on the screen — the paper
+	 * view renders section headings and never `FormDefinition.title` — so a
+	 * preparer matching what is on the monitor against the page in their hand
+	 * had nothing to match it on.
+	 */
+	label: "Alberta Charitable Donations & Gifts Deduction (S20)",
 	hint: "Two continuities — charitable, and gifts to Canada/cultural/ecological",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule20FormView, props),
@@ -103,28 +114,50 @@ export const albertaDonations = defineSchedule({
 				"carryforward",
 				"Carryforward available, by category (line 090-100)",
 				[
-					field.date("carryforwardYearOfOrigin", "Year of origin (line 090)", {
-						description: "Mandatory whenever any category below is entered. Leave the whole section blank to omit it.",
-					}),
-					f.money("carryforwardCharitable", "Charitable donations available for carryforward (line 092)", {
-						description: "Blank = the charitable pool's own closing balance, above.",
-					}),
-					f.money(
-						"carryforwardToCanadaOrProvince",
-						"Gifts to Canada, a province or territory available for carryforward (line 094)",
-					),
-					f.money(
-						"carryforwardCulturalProperty",
-						"Gifts of certified cultural property available for carryforward (line 096)",
-					),
-					f.money(
-						"carryforwardEcologicalLand",
-						"Gifts of certified ecologically sensitive land available for carryforward (line 098)",
-					),
-					f.money(
-						"carryforwardMedicine",
-						"Additional deduction for gifts of medicine available for carryforward (line 100)",
-						{ description: "ITA s.110.1(1)(a.1) — not modelled anywhere else in this engine." },
+					/*
+					 * ONE ROW PER YEAR OF ORIGIN. These were six flat fields, so
+					 * the section could describe exactly one year — and the whole
+					 * point of the block is showing which year each balance came
+					 * from, and therefore what expires when. The page prints six
+					 * rows; each files as its own occurrence of 090-100.
+					 */
+					f.array(
+						"carryforwardRows",
+						"Years of origin",
+						[
+							field.date("yearOfOrigin", "Year of origin (line 090)", {
+								description:
+									"Mandatory for the row — a row without it is not filed at all.",
+							}),
+							money(
+								"charitable",
+								"Charitable donations available for carryforward (line 092)",
+								{
+									description:
+										"On the first row, blank = the charitable pool's own closing balance, above.",
+								},
+							),
+							money(
+								"toCanadaOrProvince",
+								"Gifts to Canada, a province or territory available for carryforward (line 094)",
+							),
+							money(
+								"culturalProperty",
+								"Gifts of certified cultural property available for carryforward (line 096)",
+							),
+							money(
+								"ecologicalLand",
+								"Gifts of certified ecologically sensitive land available for carryforward (line 098)",
+							),
+							money(
+								"medicine",
+								"Additional deduction for gifts of medicine available for carryforward (line 100)",
+								{
+									description:
+										"ITA s.110.1(1)(a.1) — not modelled anywhere else in this engine.",
+								},
+							),
+						],
 					),
 				],
 				{

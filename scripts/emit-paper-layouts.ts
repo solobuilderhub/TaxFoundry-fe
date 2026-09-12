@@ -316,7 +316,26 @@ function emitPaperTypes(out: string[]): void {
 	out.push("  id: string;");
 	out.push("  title: string;");
 	out.push("  description?: string;");
+	out.push(
+		"  /** Text the form prints immediately BEFORE this heading, verbatim. */",
+	);
+	out.push("  printedBefore?: string;");
 	out.push("}");
+}
+
+/**
+ * One `PaperSectionDef` literal.
+ *
+ * Was inlined at all seven call sites, which is how `printedBefore` would have
+ * been added to six of them and missed on the seventh — the emitted layouts are
+ * byte-compared, so the miss shows up as a drift failure on one schedule and
+ * reads like the engine moved.
+ */
+function emitSectionDef(s: FormDefinition["sections"][number]): string {
+	const parts = [`id: ${q(s.id)}`, `title: ${q(s.title)}`];
+	if (s.description) parts.push(`description: ${q(s.description)}`);
+	if (s.printedBefore) parts.push(`printedBefore: ${q(s.printedBefore)}`);
+	return `  { ${parts.join(", ")} },`;
 }
 
 function emitFootnotes(
@@ -372,7 +391,7 @@ export function jacketPaperLayout(): string {
 	out.push("export const AT1_JACKET_SECTIONS: readonly PaperSectionDef[] = [");
 	for (const s of AT1_JACKET.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
@@ -399,7 +418,7 @@ function emitFlatSchedule(
 	);
 	for (const s of form.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
@@ -773,7 +792,7 @@ export function t2Schedule8PaperLayout(): string {
 	);
 	for (const s of T2_SCHEDULE_8.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
@@ -815,7 +834,7 @@ export function schedule20PaperLayout(): string {
 	);
 	for (const s of AT1_SCHEDULE_20.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
@@ -852,7 +871,7 @@ export function schedule21PaperLayout(): string {
 	);
 	for (const s of AT1_SCHEDULE_21.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
@@ -959,7 +978,7 @@ export function schedule13PaperLayout(): string {
 	);
 	for (const s of AT1_SCHEDULE_13.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
@@ -1007,7 +1026,7 @@ export function schedule17PaperLayout(): string {
 	);
 	for (const s of AT1_SCHEDULE_17.sections) {
 		out.push(
-			`  { id: ${q(s.id)}, title: ${q(s.title)}${s.description ? `, description: ${q(s.description)}` : ""} },`,
+			emitSectionDef(s),
 		);
 	}
 	out.push("];");
