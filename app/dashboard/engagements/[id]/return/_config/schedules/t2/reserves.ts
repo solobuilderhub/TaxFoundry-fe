@@ -11,8 +11,11 @@ const f = fieldsFor<ReservesValues>();
 export const reserves = defineSchedule({
 	key: "reserves",
 	num: "013",
-	label: "Continuity of Reserves (S13)",
-	hint: "Tax reserves opening / closing",
+	// Both forms, same reasoning as `cca.ts` — the Alberta S17 override grid is
+	// only reachable through this entry's Form View, and "013" here is FEDERAL
+	// Schedule 13 (reserves), not Alberta's Schedule 13 (which is CCA, at S8).
+	label: "Continuity of Reserves (S13 / AT1 S17)",
+	hint: "Tax reserves opening / closing — Alberta S17 in Form View",
 	formView: (props) => createElement(ReservesFormView, props),
 	schema: defineSchema({
 		sections: [

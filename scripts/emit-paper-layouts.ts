@@ -1023,7 +1023,10 @@ export function schedule13PaperLayout(): string {
 	emitFootnotes(out, AT1_SCHEDULE_13, "AT1_SCHEDULE_13");
 	out.push("export interface Schedule13GridColumn {");
 	out.push("  column: number;");
-	out.push("  line: string;");
+	out.push(
+		"  /** Absent on columns 10, 13 and 15-17 — arithmetic the page shows and does not number. */",
+	);
+	out.push("  line?: string;");
 	out.push("  caption: string;");
 	out.push("  kind: PaperFieldKind;");
 	out.push("  note?: string;");
@@ -1036,12 +1039,28 @@ export function schedule13PaperLayout(): string {
 	out.push(
 		"export const AT1_SCHEDULE_13_GRID_COLUMNS: readonly Schedule13GridColumn[] = [",
 	);
+	/*
+	 * ALL 24 columns, numbered or not.
+	 *
+	 * This skipped `!c.line`, so the emitted grid had nineteen columns and the
+	 * view jumped 9 → 11, 12 → 14 and 14 → 18 while the headings that survived
+	 * went on citing the missing ones ("column 10 minus column 12"). The five
+	 * unnumbered columns are the whole path from the entered figures to the CCA
+	 * claim at column 23, and a renderer needs them to draw the form.
+	 *
+	 * They stay unfilable: no `line` means no field to bind and nothing to
+	 * transmit, which was the real concern behind dropping them.
+	 */
 	for (const c of AT1_SCHEDULE_13_COLUMNS) {
-		if (!c.line) continue;
 		const kind = c.column === 1 ? "code" : c.column === 20 ? "rate" : "money";
-		out.push(
-			`  { column: ${c.column}, line: ${q(id13(c.line))}, caption: ${q(c.caption)}, kind: ${q(kind)}${c.note ? `, note: ${q(c.note)}` : ""}${c.printedHeading && c.printedHeading !== c.caption ? `, printedHeading: ${q(c.printedHeading)}` : ""} },`,
-		);
+		const parts = [`column: ${c.column}`];
+		if (c.line) parts.push(`line: ${q(id13(c.line))}`);
+		parts.push(`caption: ${q(c.caption)}`, `kind: ${q(kind)}`);
+		if (c.note) parts.push(`note: ${q(c.note)}`);
+		if (c.printedHeading && c.printedHeading !== c.caption) {
+			parts.push(`printedHeading: ${q(c.printedHeading)}`);
+		}
+		out.push(`  { ${parts.join(", ")} },`);
 	}
 	out.push("];");
 	out.push("");

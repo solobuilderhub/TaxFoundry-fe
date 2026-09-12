@@ -1,6 +1,6 @@
 "use client";
 
-import { type Control, useWatch } from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { CcaClass, CcaValues } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
@@ -45,12 +45,20 @@ function buildTotalsResolveLine(
 }
 
 /**
- * AT1 Schedule 13 paper Form View — one row per CCA class the preparer
- * actually entered (dynamic, via `PaperClassGrid`), 19 numbered columns.
- * Only class number, Alberta opening UCC, and the Alberta claim override are
- * editable here; the rest is read from the last computed return, matching
- * the same "don't render a computed figure as a box" rule the card editor's
- * generator enforces.
+ * AT1 Schedule 13 paper Form View — one row per CCA class, added and removed
+ * here, across all TWENTY-FOUR printed columns (nineteen numbered, five the
+ * page shows as arithmetic and does not number).
+ *
+ * Only class number, Alberta opening UCC and the Alberta claim override are
+ * editable; the rest is read from the last computed return, matching the same
+ * "don't render a computed figure as a box" rule the card editor's generator
+ * enforces.
+ *
+ * Reached through the CCA (S8) nav entry's Form View, not an entry of its own
+ * — `t2/cca.ts` holds the `classes` array both schedules share, so its
+ * `formView` renders `CcaFormView`, which stacks the federal Schedule 8 grid
+ * and this one. Wired to `Schedule8FormView` alone, as it was, this component
+ * was reachable from nowhere at all.
  */
 export function Schedule13FormView({
 	control,
@@ -67,6 +75,12 @@ export function Schedule13FormView({
 }) {
 	const ccaControl = control as unknown as Control<CcaValues>;
 	const classes = useWatch({ control: ccaControl, name: "classes" }) ?? [];
+	// Watched above for the row LABELS (which follow the class number as it is
+	// typed); the field array is what adds and removes them.
+	const { append, remove } = useFieldArray({
+		control: ccaControl,
+		name: "classes",
+	});
 
 	const filed = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === SCHEDULE_ID,
@@ -90,16 +104,29 @@ export function Schedule13FormView({
 		arrayIndex: i,
 	}));
 
-	const columns: ClassGridColumn[] = AT1_SCHEDULE_13_GRID_COLUMNS.map((c) => {
-		const field = c.line.slice(3, 6);
-		return {
-			line: field,
-			caption: c.caption,
-			kind: c.kind,
-			fieldName: FIELD_NAME[c.line],
-			printedHeading: c.printedHeading,
-		};
-	});
+	/*
+	 * All 24 printed columns, including the five the page does not number.
+	 *
+	 * Those five (10, 13, 15-17) are the whole path from the entered figures to
+	 * the CCA claim at column 23, and until the emitter stopped skipping them
+	 * this grid drew nineteen — jumping 9 → 11, 12 → 14 and 14 → 18 while the
+	 * headings that survived went on citing the ones that were missing.
+	 *
+	 * They get no `line` and no `fieldName`, so `PaperClassGrid` renders them
+	 * read-only and `resolveCell` has nothing to look up: the engine derives
+	 * each inside `computeSchedule13` and none is an AT1 line, so none reaches
+	 * `schedulePayloads`. The column number, heading and arithmetic are what
+	 * this view can honestly show, and they are what was absent.
+	 */
+	const columns: ClassGridColumn[] = AT1_SCHEDULE_13_GRID_COLUMNS.map((c) => ({
+		// The printed three-digit number, or the column number in parentheses
+		// where the page gives none — never a blank header cell.
+		line: c.line ? c.line.slice(3, 6) : `(${c.column})`,
+		caption: c.caption,
+		kind: c.kind,
+		fieldName: c.line ? FIELD_NAME[c.line] : undefined,
+		printedHeading: c.printedHeading,
+	}));
 
 	return (
 		<div className="space-y-4">
@@ -115,6 +142,21 @@ export function Schedule13FormView({
 						columns={columns}
 						control={ccaControl}
 						disabled={disabled}
+						/*
+						 * Rows are added and removed here. This grid used to be
+						 * display-only, so the view told a preparer to "add one in
+						 * Guided view first" — the same instruction three other
+						 * schedules had already been given a bespoke table to avoid.
+						 * `PaperClassGrid` grew the two callbacks instead.
+						 *
+						 * The array is the FEDERAL `classes` list: one row per CCA
+						 * class, shared with Schedule 8. Adding a class here adds it
+						 * to both returns, which is correct — a class only exists on
+						 * the Alberta schedule because it exists federally.
+						 */
+						onAppend={() => append({})}
+						onRemove={(i) => remove(i)}
+						addLabel="+ Add a CCA class"
 						resolveCell={(row, col) => {
 							// column.line was rewritten to the bare field above; re-derive the
 							// full occurrence-scoped lookup key (CCA classes file with
@@ -130,7 +172,7 @@ export function Schedule13FormView({
 			</PaperSection>
 			{rows.length === 0 && (
 				<p className="px-1 text-sm text-muted-foreground">
-					No CCA classes entered yet — add one in Guided view first.
+					No CCA classes yet — add one above, or in Guided view.
 				</p>
 			)}
 			<PaperSection title="Totals carried to Schedule 12">

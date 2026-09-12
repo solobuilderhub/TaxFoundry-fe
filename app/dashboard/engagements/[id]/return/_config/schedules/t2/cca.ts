@@ -4,16 +4,36 @@ import type { CcaValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { CCA_CLASS_OPTIONS } from "../../options";
 import { defineSchedule } from "../shared/define";
-import { Schedule8FormView } from "./paper/schedule8-form-view";
+import { CcaFormView } from "./paper/cca-form-view";
 
 const f = fieldsFor<CcaValues>();
 
 export const cca = defineSchedule({
   key: "cca",
   num: "008",
-  label: "Capital Cost Allowance (S8)",
-  hint: "Depreciable property, by class",
-  formView: (props) => createElement(Schedule8FormView, props),
+  /*
+   * Names BOTH forms, because this one entry is where both get filled in and
+   * the numbers collide confusingly across jurisdictions: federal Schedule 8
+   * is CCA, and so is ALBERTA Schedule 13 — while federal Schedule 13 is
+   * Continuity of Reserves, which has its own nav entry at num "013". A
+   * preparer looking for "Schedule 13 — CCA" finds a 013 in the nav that is a
+   * different form entirely, and nothing at all pointing here.
+   *
+   * There is no separate AT1 S13 entry by design: its editable Alberta fields
+   * (`albertaOpeningUCC`, `albertaClaim`) live in THIS schedule's own `classes`
+   * array, so a second entry would be two nav rows writing one slice. It is
+   * also why "AT1 only" hides this row — that filter means "schedules the AT1
+   * program OWNS", and CCA is a federal schedule the AT1 return consumes.
+   */
+  label: "Capital Cost Allowance (S8 / AT1 S13)",
+  hint: "Depreciable property, by class — Alberta S13 in Form View",
+  /*
+   * Both grids — federal Schedule 8, and Alberta Schedule 13 for an AT1
+   * engagement. This pointed at `Schedule8FormView` alone, so the S13 view was
+   * reachable from nowhere even though this very schema collects the Alberta
+   * overrides it renders. See `CcaFormView`.
+   */
+  formView: (props) => createElement(CcaFormView, props),
   schema: defineSchema({
     sections: [
       section(

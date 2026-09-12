@@ -63,7 +63,8 @@ import {
 	t2Schedule141PaperLayout,
 } from "../scripts/emit-paper-layouts";
 
-const SCHEDULES_DIR = "app/dashboard/engagements/[id]/return/_config/schedules";
+const RETURN_DIR = "app/dashboard/engagements/[id]/return";
+const SCHEDULES_DIR = `${RETURN_DIR}/_config/schedules`;
 const PAPER_DIR = `${SCHEDULES_DIR}/at1/paper/generated`;
 const T2_PAPER_DIR = `${SCHEDULES_DIR}/t2/paper/generated`;
 const CO17_PAPER_DIR = `${SCHEDULES_DIR}/co17/paper/generated`;
@@ -218,14 +219,38 @@ describe("the Schedule 13 paper layout is in step with AT1_SCHEDULE_13", () => {
 		).toBe(schedule13PaperLayout());
 	});
 
-	it("omits the 5 unnumbered arithmetic columns the form shows but does not ask for", () => {
+	/**
+	 * All 24 columns are emitted, and the 5 unnumbered ones carry no `line`.
+	 *
+	 * This asserted the opposite — that the emitter OMITTED them, on the
+	 * reasoning that the form "does not ask for" those figures. It does show
+	 * them, though: columns 10, 13 and 15-17 are the whole path from the
+	 * entered figures to the CCA claim at column 23. Skipping them gave a grid
+	 * that jumped 9 → 11, 12 → 14 and 14 → 18 while the headings that survived
+	 * went on citing the ones that were gone ("column 10 minus column 12").
+	 *
+	 * What the old test was protecting is still protected, and more precisely:
+	 * no `line` means no field to bind and nothing that can be transmitted.
+	 */
+	it("emits all 24 columns, with no line on the 5 the page does not number", () => {
 		const onDisk = readFileSync(SCHEDULE_13_CHECKED_IN, "utf8");
-		const columns = [...onDisk.matchAll(/column: (\d+),/g)].map((m) =>
+		const columns = [...onDisk.matchAll(/\{ column: (\d+)/g)].map((m) =>
 			Number(m[1]),
 		);
-		const numbered = AT1_SCHEDULE_13_COLUMNS.filter((c) => c.line).length;
-		expect(columns.length).toBe(numbered);
-		expect(columns).not.toContain(10);
+		expect(columns).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
+		expect(columns.length).toBe(AT1_SCHEDULE_13_COLUMNS.length);
+
+		// The five unnumbered ones are emitted WITHOUT a line, so nothing can
+		// bind or file them — which is what "does not ask for" should have meant.
+		for (const c of [10, 13, 15, 16, 17]) {
+			const entry = onDisk
+				.split("\n")
+				.find((l) => l.includes(`{ column: ${c},`));
+			expect(entry, `column ${c}`).toBeDefined();
+			expect(entry, `column ${c} must carry no line`).not.toMatch(/line: "/);
+			// …and it still states itself in the page's words.
+			expect(entry, `column ${c}`).toMatch(/printedHeading: "/);
+		}
 	});
 });
 
@@ -681,6 +706,56 @@ describe("no generated paper layout is orphaned", () => {
 		expect(
 			orphans,
 			"emitted but never imported — wire the view to it or stop emitting it",
+		).toEqual([]);
+	});
+
+	/**
+	 * …and every hand-written VIEW is rendered by something.
+	 *
+	 * The check above asks whether a view imports each emitted layout, which is
+	 * one link short. `at1/paper/schedule13-form-view.tsx` — the Alberta CCA
+	 * grid — imported its layout quite happily and was itself rendered by
+	 * nothing: the guided editor collected `albertaOpeningUCC` and
+	 * `albertaClaim`, the engine computed Schedule 13 from them, and the only
+	 * screen showing that schedule as TRA prints it was never mounted. `t2/cca.ts`
+	 * pointed `formView` at the federal `Schedule8FormView` alone.
+	 *
+	 * That is the SECOND time this exact defect appeared on this exact shape of
+	 * schedule — one guided slice shared by T2 and AT1, two single-purpose
+	 * views, `formView` wired to the federal one. `ReservesFormView` was written
+	 * to fix the first (federal S13 reserves + Alberta S17). Nothing noticed the
+	 * second for as long as it existed, so the check now covers the whole chain.
+	 */
+	it("every hand-written paper view is rendered by some schedule or wrapper", () => {
+		/*
+		 * Searched over the whole `return/` tree, not just `_config/schedules`.
+		 * Schedules 2 and 10 have no registry entry at all — they are read-only
+		 * forms with no editable slice, special-cased straight into
+		 * `components/return-editor.tsx` alongside the jacket. A check scoped to
+		 * the schedules directory calls both of them dead, which is how a test
+		 * meant to catch unreachable views ends up pointing at the wrong two.
+		 */
+		const files: string[] = [];
+		const walk = (dir: string) => {
+			for (const e of readdirSync(dir, { withFileTypes: true })) {
+				if (e.name === "generated" || e.name === "node_modules") continue;
+				const p = `${dir}/${e.name}`;
+				if (e.isDirectory()) walk(p);
+				else if (p.endsWith(".ts") || p.endsWith(".tsx")) files.push(p);
+			}
+		};
+		walk(RETURN_DIR);
+
+		const views = files.filter((p) => /-(form-)?view\.tsx$/.test(p));
+		const unrendered = views.filter((view) => {
+			const stem = view.split("/").pop()?.replace(/\.tsx$/, "") ?? "";
+			// A view importing ITSELF proves nothing, so its own file is excluded.
+			return !files.some((p) => p !== view && readFileSync(p, "utf8").includes(stem));
+		});
+
+		expect(
+			unrendered,
+			"written but rendered by nothing — wire it into a schedule's formView (or a wrapper, as CcaFormView/ReservesFormView do) or delete it",
 		).toEqual([]);
 	});
 });
