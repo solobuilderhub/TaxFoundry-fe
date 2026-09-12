@@ -14,6 +14,7 @@ import {
 	AT1_JACKET,
 	AT1_SCHEDULE_1,
 	AT1_SCHEDULE_2,
+	AT1_SCHEDULE_4_COLUMNS,
 	AT1_SCHEDULE_10,
 	AT1_SCHEDULE_12_PAIRS,
 	AT1_SCHEDULE_13_COLUMNS,
@@ -43,6 +44,7 @@ import {
 	netIncomeSchedule,
 	schedule1PaperLayout,
 	schedule2PaperLayout,
+	schedule4PaperLayout,
 	schedule10PaperLayout,
 	schedule18PaperLayout,
 	schedule12PaperLayout,
@@ -85,6 +87,7 @@ const SCHEDULE_2_CHECKED_IN = `${PAPER_DIR}/schedule2.layout.ts`;
 const SCHEDULE_10_CHECKED_IN = `${PAPER_DIR}/schedule10.layout.ts`;
 const SCHEDULE_18_CHECKED_IN = `${PAPER_DIR}/schedule18.layout.ts`;
 const SCHEDULE_20_CHECKED_IN = `${PAPER_DIR}/schedule20.layout.ts`;
+const AT1_SCHEDULE_4_CHECKED_IN = `${PAPER_DIR}/schedule4.layout.ts`;
 
 describe("the guided-editor T2SCH1 schema is in step with T2_SCHEDULE_1", () => {
 	it("matches a fresh emit exactly", () => {
@@ -529,6 +532,48 @@ describe("the Schedule 10 paper layout is in step with AT1_SCHEDULE_10", () => {
 		]) {
 			expect(lines).toContain(modelled);
 		}
+	});
+});
+
+/**
+ * AT1 Schedule 4 had no byte-for-byte guard at all — only federal T2SCH4 did,
+ * and the two stringify to similar names.
+ */
+describe("the Schedule 4 (AT1) paper layout is in step with AT1_SCHEDULE_4", () => {
+	it("matches a fresh emit exactly", () => {
+		const onDisk = readFileSync(AT1_SCHEDULE_4_CHECKED_IN, "utf8");
+		expect(
+			onDisk,
+			"at1/paper/generated/schedule4.layout.ts is stale — run `npx tsx scripts/emit-paper-layouts.ts`",
+		).toBe(schedule4PaperLayout());
+	});
+
+	/**
+	 * Eight columns, three of them unnumbered — and those three are the whole
+	 * derivation. The view built its columns from the FIELDS alone, so it
+	 * showed five: an "Allowable Credit" at H with none of C, D or G behind it.
+	 */
+	it("emits all eight columns, including the three with no line", () => {
+		const onDisk = readFileSync(AT1_SCHEDULE_4_CHECKED_IN, "utf8");
+		expect(onDisk).toContain("AT1_SCHEDULE_4_COLUMNS");
+		expect(AT1_SCHEDULE_4_COLUMNS.map((c) => c.column)).toEqual([
+			"A",
+			"B",
+			"C",
+			"D",
+			"E",
+			"F",
+			"G",
+			"H",
+		]);
+		expect(
+			AT1_SCHEDULE_4_COLUMNS.filter((c) => !c.line).map((c) => c.column),
+			"C, D and G are the derivation behind H and the page numbers none of them",
+		).toEqual(["C", "D", "G"]);
+		// The page's own capital X for multiplication, not a lower-case x.
+		expect(
+			AT1_SCHEDULE_4_COLUMNS.find((c) => c.column === "D")?.heading,
+		).toBe("B X C X (AT1 line 068 / AT1 line 066)");
 	});
 });
 

@@ -36,6 +36,7 @@ import {
 	AT1_SCHEDULE_2_FORMULAS,
 	AT1_SCHEDULE_3,
 	AT1_SCHEDULE_4,
+	AT1_SCHEDULE_4_COLUMNS,
 	AT1_SCHEDULE_10,
 	AT1_SCHEDULE_12,
 	AT1_SCHEDULE_13,
@@ -639,8 +640,40 @@ export function schedule15PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_15, "AT1_SCHEDULE_15");
 }
 
+/**
+ * Schedule 4 is flat PLUS its eight printed columns.
+ *
+ * Three of those columns — C, D and G — have no line number and so no
+ * `PaperField`, and they are the whole derivation: the allocation factor, the
+ * prorated income, and the tax net of the federal credit. H is the lesser of
+ * two of them. A view built from the fields alone shows an "Allowable Credit"
+ * with nothing behind it.
+ */
 export function schedule4PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_4, "AT1_SCHEDULE_4");
+	const out: string[] = [];
+	out.push(emitFlatSchedule(AT1_SCHEDULE_4, "AT1_SCHEDULE_4"));
+	out.push("");
+	out.push("export interface Schedule4Column {");
+	out.push('  column: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";');
+	out.push("  heading: string;");
+	out.push("  /** Absent on C, D and G, which the page does not number. */");
+	out.push("  line?: string;");
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_4_COLUMNS: readonly Schedule4Column[] = [",
+	);
+	for (const c of AT1_SCHEDULE_4_COLUMNS) {
+		const parts = [`column: ${q(c.column)}`, `heading: ${q(c.heading)}`];
+		if (c.line) parts.push(`line: ${q(c.line)}`);
+		if (c.footnoteMarks?.length) {
+			parts.push(`footnoteMarks: [${c.footnoteMarks.join(", ")}]`);
+		}
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	return out.join("\n");
 }
 
 /** Federal T2 Schedule 1 — its own directory (see `T2_PAPER_DIR` above). */
