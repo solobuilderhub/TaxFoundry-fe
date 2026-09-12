@@ -32,6 +32,8 @@ export interface PaperSectionDef {
   id: string;
   title: string;
   description?: string;
+  /** Text the form prints immediately BEFORE this heading, verbatim. */
+  printedBefore?: string;
 }
 
 export const CO17_RETURN_SECTIONS: readonly PaperSectionDef[] = [

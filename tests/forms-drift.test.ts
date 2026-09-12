@@ -548,6 +548,31 @@ describe("the Schedule 20 paper layout is in step with AT1_SCHEDULE_20", () => {
 				.map((f) => f.line.slice(3, 6)),
 		).toEqual(["090", "092", "094", "096", "098", "100"]);
 	});
+
+	/**
+	 * The paragraph the page sets BETWEEN the gifts continuity and the
+	 * carryforward table has to survive the emit, and has to stay out of
+	 * `description`.
+	 *
+	 * `description` is our own guidance and renders inside the section card;
+	 * this is the form's own words about something that is NOT in that card —
+	 * the medicine-gift claim goes on Schedule 12, not here. Emitted into
+	 * `printedBefore` so the view can set it outside both cards, which is where
+	 * the page puts it.
+	 */
+	it("emits the printed instruction between the gifts and carryforward blocks", () => {
+		const onDisk = readFileSync(SCHEDULE_20_CHECKED_IN, "utf8");
+		expect(onDisk).toContain("printedBefore");
+		expect(onDisk).toContain("additional deduction for gifts of medicine");
+
+		const carryforward = AT1_SCHEDULE_20.sections.find(
+			(s) => s.id === "carryforward",
+		);
+		expect(carryforward?.printedBefore).toMatch(/gifts of medicine/);
+		// Not folded into the description, which would render it as our advice
+		// about the table beneath it rather than the page's about Schedule 12.
+		expect(carryforward?.description).not.toMatch(/line 660/);
+	});
 });
 
 describe("the federal T2SCH130 paper layout is in step with T2_SCHEDULE_130", () => {

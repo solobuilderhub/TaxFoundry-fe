@@ -1037,29 +1037,35 @@ export type AlbertaDonationsValues = {
 	 */
 	capitalCost?: number;
 	/**
-	 * 020090-100 — carryforward available, broken out by category. Charitable (092) and the gifts pool (062-078) are each ONE combined continuity on this schedule; these four report how much of the gifts pool’s closing balance belongs to each of the three federal source categories, plus the medicine-gift deduction (ITA s.110.1(1)(a.1)), which nothing else models. Filed only when 090 (year of origin) is present — leave all five blank to omit the whole block. Charitable (092) defaults to the charitable pool’s own closing balance when 090 is present but 092 is left blank; the other four have no default at all, since the engine tracks them as one combined figure.
+	 * 020090-100 — carryforward available by year of origin, ONE ROW PER YEAR. Charitable (092) and the gifts pool (062-078) are each ONE combined continuity on this schedule; the other four columns report how much of the gifts pool’s closing balance belongs to each of the three federal source categories, plus the medicine-gift deduction (ITA s.110.1(1)(a.1)), which nothing else models. Each row is filed as its own occurrence of 090-100, and only when that row’s year of origin is present — omit the array, or leave every row yearless, to omit the whole block.
 	 */
-	carryforwardYearOfOrigin?: string;
+	carryforwardRows?: AlbertaDonationCarryforwardRow[];
+};
+export type AlbertaDonationCarryforwardRow = {
 	/**
-	 * 020092 — blank = the charitable pool’s own closing balance.
+	 * 020090 — year of origin. MANDATORY for the row: 090 is required whenever any of 092-100 has a value, so a row without it is not filed at all and does not consume an occurrence number.
 	 */
-	carryforwardCharitable?: number;
+	yearOfOrigin?: string;
+	/**
+	 * 020092 — charitable donations available for carryforward. On the FIRST row only, blank defaults to the charitable pool’s own closing balance.
+	 */
+	charitable?: number;
 	/**
 	 * 020094 — gifts to Canada, a province or territory. No default.
 	 */
-	carryforwardToCanadaOrProvince?: number;
+	toCanadaOrProvince?: number;
 	/**
 	 * 020096 — certified cultural property. No default.
 	 */
-	carryforwardCulturalProperty?: number;
+	culturalProperty?: number;
 	/**
 	 * 020098 — ecologically sensitive land. No default.
 	 */
-	carryforwardEcologicalLand?: number;
+	ecologicalLand?: number;
 	/**
 	 * 020100 — additional deduction for gifts of medicine. No default.
 	 */
-	carryforwardMedicine?: number;
+	medicine?: number;
 };
 export type AlbertaContinuityValues = {
 	nonCapitalOpening?: number;
