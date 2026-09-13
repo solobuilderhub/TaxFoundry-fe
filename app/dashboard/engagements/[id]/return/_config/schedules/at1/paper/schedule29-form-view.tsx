@@ -11,12 +11,14 @@ import {
 	PaperFootnotes,
 	PaperLeaderRow,
 	PaperSection,
+	readFootnotePlacement,
 } from "./components/paper-primitives";
 import {
 	AT1_SCHEDULE_29_ALLOCATION_COLUMNS,
 	AT1_SCHEDULE_29_ALLOCATION_TOTALS_LABEL,
 	AT1_SCHEDULE_29_BLOCK_HEADINGS,
 	AT1_SCHEDULE_29_FIELDS,
+	AT1_SCHEDULE_29_FOOTNOTE_PLACEMENT,
 	AT1_SCHEDULE_29_FOOTNOTES,
 	AT1_SCHEDULE_29_SECTIONS,
 	type PaperField,
@@ -70,31 +72,6 @@ const MEMBER_FIELD: Partial<Record<string, keyof IegAgreementMember>> = {
 	"265": "taxableCapitalPriorYear",
 };
 
-/**
- * The glyph the PAGE prints for each footnote, by index.
- *
- * Not derivable from the footnote list, and this is the reason: the asterisk
- * runs RESTART at every printed box. Page 2's expenditure-limit box runs "*"
- * then "**"; the grant-calculation box below it starts over at "*" and runs to
- * "****"; page 3 starts over again with its own "**". So index 0 and index 2
- * are both "*" on the same page, meaning two different things — a leap-year
- * rule and a Base Amount rule. Numbering them 1-13 instead would be legible but
- * would not be the page.
- *
- * Indices 7-12 are page 3's "Notes" block, which the page anchors by NAMING the
- * line ("Line 270: total must not exceed line 208") rather than with a glyph.
- * They are absent here deliberately and render as a "Note" marker instead; a
- * made-up asterisk would send a reader looking for one on the page.
- */
-const PRINTED_MARK: Record<number, string> = {
-	0: "*",
-	1: "**",
-	2: "*",
-	3: "**",
-	4: "***",
-	5: "****",
-	6: "**",
-};
 
 const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
 
@@ -169,6 +146,19 @@ export function Schedule29FormView({
 }) {
 	const iegControl = control as unknown as Control<AlbertaIegValues>;
 	const resolveLine = buildResolveLine(computed);
+	/*
+	 * Where the page prints each footnote, and with what glyph — read from the
+	 * form definition, not restated here.
+	 *
+	 * This view carried its own `PRINTED_MARK` map of the page's asterisks. Wrong
+	 * home: the glyph is printed on the page, so it is transcription and belongs
+	 * with the transcription. AT1 Schedule 1 needing the same thing is what moved
+	 * it to `FormFootnotePlacement` in ca-tax.
+	 */
+	const footnotes = readFootnotePlacement(
+		AT1_SCHEDULE_29_FOOTNOTES,
+		AT1_SCHEDULE_29_FOOTNOTE_PLACEMENT,
+	);
 
 	const sectionMeta = (id: string) =>
 		AT1_SCHEDULE_29_SECTIONS.find((s) => s.id === id);
@@ -195,7 +185,7 @@ export function Schedule29FormView({
 			to={f.to}
 			footnoteMarks={f.footnoteMarks}
 			footnotes={AT1_SCHEDULE_29_FOOTNOTES}
-			footnoteSymbol={(mark) => PRINTED_MARK[mark]}
+			footnoteSymbol={(mark) => footnotes.marks[mark]}
 			onNavigate={onNavigate}
 			highlightLine={highlightLine}
 			control={iegControl}
@@ -275,6 +265,17 @@ export function Schedule29FormView({
 						description={meta.description}
 					>
 						{sectionFields(id).map(rowWithHeadings)}
+						{/*
+						 * The page prints this box's own notes at ITS foot, with the
+						 * glyphs that box uses — and the runs restart per box, so
+						 * "*" here is not "*" in the box above. That is precisely
+						 * what a single list at the end of the form cannot express.
+						 */}
+						<PaperFootnotes
+							notes={AT1_SCHEDULE_29_FOOTNOTES}
+							only={footnotes.forSection(id)}
+							marks={footnotes.marks}
+						/>
 					</PaperSection>
 				);
 			})}
@@ -287,6 +288,7 @@ export function Schedule29FormView({
 					control={iegControl}
 					disabled={disabled}
 					computed={computed}
+					printedNotes={footnotes.forSection("allocation")}
 				/>
 				{/*
 				 * 325 is printed BELOW the grid, outside it — the claiming
@@ -298,7 +300,17 @@ export function Schedule29FormView({
 					.map(row)}
 			</PaperSection>
 
-			<PaperFootnotes notes={AT1_SCHEDULE_29_FOOTNOTES} />
+			{/*
+			 * Only what belongs to no box: this form's three unmarked instruction
+			 * blocks (the 15-month filing deadline, the dollars-not-cents rule, the
+			 * agreement's own preamble). Everything else is now printed at the foot
+			 * of the box it qualifies, which is where the page puts it.
+			 */}
+			<PaperFootnotes
+				notes={AT1_SCHEDULE_29_FOOTNOTES}
+				only={footnotes.unplaced}
+				marks={footnotes.marks}
+			/>
 		</div>
 	);
 }
@@ -322,10 +334,13 @@ function AllocationGrid({
 	control,
 	disabled,
 	computed,
+	printedNotes,
 }: {
 	control: Control<AlbertaIegValues>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
+	/** Footnote indices the page prints at the foot of THIS box, in page order. */
+	printedNotes: readonly number[];
 }) {
 	const members = useWatch({ control, name: "agreementMembers" }) ?? [];
 	const { append, remove } = useFieldArray({
@@ -511,42 +526,33 @@ function AllocationGrid({
 				)}
 			</div>
 			{/*
-			 * The page's own "Notes" block, printed at the foot of this grid. It
-			 * anchors each entry by NAMING a line rather than with an asterisk,
-			 * which is why these are not rendered as marks on the column headings
-			 * — see `PRINTED_MARK`. Indices 7-12 of the footnote list; sliced from
-			 * the marks the grid's own fields carry rather than hard-coded, so
-			 * inserting a footnote upstream cannot silently drop one here.
+			 * The page's own "Notes" block, printed at the foot of this grid.
+			 *
+			 * It anchors each entry by NAMING the line it governs ("Line 270: total
+			 * must not exceed line 208") rather than with an asterisk, which is why
+			 * these carry no glyph — `footnotePlacement` leaves `mark` unset for
+			 * them, and inventing one would send a reader hunting the page for it.
+			 * Headed "Notes", as the page heads it.
+			 *
+			 * The indices come from the form definition rather than being derived
+			 * from the grid's own fields, which is what this used to do: that
+			 * version could only find a note some FIELD marked, so a note attached
+			 * to the box rather than to a line silently vanished.
 			 */}
-			<PrintedNotes />
+			{printedNotes.length > 0 && (
+				<div className="border-t px-2 pt-2">
+					<p className="mb-1 text-xs font-semibold text-muted-foreground">
+						Notes
+					</p>
+					<ul className="space-y-0.5 text-xs text-muted-foreground">
+						{printedNotes.map((i) => (
+							<li key={i}>{AT1_SCHEDULE_29_FOOTNOTES[i]}</li>
+						))}
+					</ul>
+				</div>
+			)}
 		</div>
 	);
 }
 
-/** Page 3's "Notes" block — the entries the page anchors by naming a line. */
-function PrintedNotes() {
-	const gridFieldLines = new Set(
-		AT1_SCHEDULE_29_ALLOCATION_COLUMNS.flatMap((c) =>
-			c.totalsLine ? [c.line, c.totalsLine] : [c.line],
-		),
-	);
-	const marks = [
-		...new Set(
-			AT1_SCHEDULE_29_FIELDS.filter((f) =>
-				gridFieldLines.has(printed(f.line)),
-			).flatMap((f) => [...(f.footnoteMarks ?? [])]),
-		),
-	].sort((a, b) => a - b);
-	if (marks.length === 0) return null;
-	return (
-		<div className="border-t px-2 pt-2">
-			<p className="mb-1 text-xs font-semibold text-muted-foreground">Notes</p>
-			<ul className="space-y-0.5 text-xs text-muted-foreground">
-				{marks.map((mark) => (
-					<li key={mark}>{AT1_SCHEDULE_29_FOOTNOTES[mark]}</li>
-				))}
-			</ul>
-		</div>
-	);
-}
 

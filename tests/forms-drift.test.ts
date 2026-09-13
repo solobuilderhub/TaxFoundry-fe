@@ -407,18 +407,116 @@ describe("the Schedule 1 (AT1) paper layout is in step with AT1_SCHEDULE_1", () 
 		).toBe(schedule1PaperLayout());
 	});
 
-	it("carries lines 003-013 plus Area A's agreement table (041/043/045) — nothing past that, and no line 001 (that's the AT1 jacket's own, see jacket.ts's LINE_001)", () => {
+	/**
+	 * This asserted lines 003-013 plus 041/043/045 and "nothing past that" —
+	 * true of the definition and not of the page, the same mistake the Schedule
+	 * 2 test below has its own comment about. SEVEN printed, numbered boxes were
+	 * missing: 001, the association question the whole schedule turns on, and
+	 * 015/019/020/021/031/044 — including 031, the schedule's ANSWER, which the
+	 * page says to enter on AT1 page 2 line 070.
+	 *
+	 * They are on the page whether or not this engine computes them, and a
+	 * paper view shows the page. Each one carries a note saying what is not
+	 * computed or not collected, so nothing here claims a figure it does not
+	 * have.
+	 *
+	 * 001 was the last to go in, and this test's own title used to assert its
+	 * absence — "still no 001, which is the jacket's own". That justification
+	 * answered a different question. The ANSWER files at jacket 000001001 and
+	 * never at 001001001 (four accepted certification samples; still pinned by
+	 * `at1-netfile-schedules.test.ts` in ca-tax). Where a value transmits and
+	 * whether a box is printed are not the same thing, and the other six lines
+	 * here were already being treated that way.
+	 */
+	it("carries every printed line, 001 included", () => {
 		expect(AT1_SCHEDULE_1.fields.map((f) => f.line.slice(3, 6))).toEqual([
+			"001",
 			"003",
 			"005",
 			"007",
 			"009",
 			"011",
 			"013",
+			"015",
+			"019",
+			"020",
+			"021",
+			"031",
 			"041",
 			"043",
+			"044",
 			"045",
 		]);
+	});
+
+	/**
+	 * The three shapes a flat field list cannot hold, and the view cannot
+	 * invent: the calculation table (seven lettered columns, six pre-printed
+	 * rate periods), Area A's four columns with their pre-printed totals row,
+	 * and the six headings the page sets inside a box.
+	 */
+	it("emits the two tables and the in-box headings", () => {
+		const onDisk = readFileSync(SCHEDULE_1_CHECKED_IN, "utf8");
+		for (const symbol of [
+			"AT1_SCHEDULE_1_COLUMNS",
+			"AT1_SCHEDULE_1_RATE_PERIODS",
+			"AT1_SCHEDULE_1_AGREEMENT_COLUMNS",
+			"AT1_SCHEDULE_1_BLOCK_HEADINGS",
+			"AT1_SCHEDULE_1_FOOTNOTE_PLACEMENT",
+			// Area B: eleven lettered amounts, no line numbers, omitted from
+			// the definition entirely until 2026-09-13 on the reasoning that
+			// nothing files against them. Line 015 comes from here.
+			"AT1_SCHEDULE_1_AREA_B_STEPS",
+			"AT1_SCHEDULE_1_AREA_B_PREAMBLE",
+			"AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS",
+		]) {
+			expect(onDisk).toContain(symbol);
+		}
+		// The routing instruction — the difference between three boxes a
+		// preparer fills and three they skip, which no caption states.
+		expect(onDisk).toContain(
+			"ignore lines 019, 020 and 021 and go directly to the table below",
+		);
+		// Column B's 250%, which is what makes the $200,000 base amount and the
+		// $500,000 threshold the same quantity. Nobody had transcribed it.
+		expect(onDisk).toContain('percentage: "250%"');
+		// Area B's three exit points — where the cascade stops and line 015 is
+		// taken from. Choosing the wrong one claims the wrong threshold, so
+		// these are the three most consequential sentences in the box.
+		expect(
+			[...onDisk.matchAll(/exitTo015: /g)],
+			"Area B must keep all three of the page's stop-here instructions",
+		).toHaveLength(3);
+		// Both (c) amounts, which differ only by divisor and by the date they
+		// apply from. Collapsing them loses one of the two.
+		expect(onDisk).toContain('formula: "A X B / $11,250"');
+		expect(onDisk).toContain('formula: "A X B / $90,000"');
+	});
+
+	/**
+	 * Every footnote is printed at the foot of the box it qualifies — mid-page,
+	 * two of them a full page apart. Collected into one list at the bottom, the
+	 * asterisk on line 003 leads nowhere.
+	 */
+	it("places each footnote at its own box, with the page's glyph", () => {
+		const placement = AT1_SCHEDULE_1.footnotePlacement ?? [];
+		expect(placement).toHaveLength(5);
+		expect(new Set(placement.map((p) => p.section))).toEqual(
+			new Set(["deduction", "calculation", "agreement"]),
+		);
+		// The association box has no footnote of its own — what it prints below
+		// line 001 is an instruction, carried as `printedAfter` on the section
+		// because 001 is the last line in the box and a block heading needs a
+		// line beneath it.
+		const association = AT1_SCHEDULE_1.sections.find(
+			(sec) => sec.id === "association",
+		);
+		expect(association?.printedAfter).toBe(
+			'If "Yes", complete AREA A on page 2.',
+		);
+		// "*" three times, in three different boxes, meaning three different
+		// rules. That is why the glyph is data rather than the array index.
+		expect(placement.filter((p) => p.mark === "*")).toHaveLength(3);
 	});
 });
 

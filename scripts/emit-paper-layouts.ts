@@ -31,6 +31,16 @@ import { writeFileSync } from "node:fs";
 import {
 	AT1_JACKET,
 	AT1_SCHEDULE_1,
+	AT1_SCHEDULE_1_AGREEMENT_COLUMNS,
+	AT1_SCHEDULE_1_AGREEMENT_TOTALS_LABEL,
+	AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS,
+	AT1_SCHEDULE_1_AREA_B_PREAMBLE,
+	AT1_SCHEDULE_1_AREA_B_STEPS,
+	AT1_SCHEDULE_1_AREA_B_TITLE,
+	AT1_SCHEDULE_1_BLOCK_HEADINGS,
+	AT1_SCHEDULE_1_COLUMNS,
+	AT1_SCHEDULE_1_RATE_PERIODS,
+	AT1_SCHEDULE_1_TOTAL_DAYS_LABEL,
 	AT1_SCHEDULE_2,
 	AT1_SCHEDULE_2_FACTOR_DESTINATION,
 	AT1_SCHEDULE_2_FORMULAS,
@@ -326,6 +336,10 @@ function emitPaperTypes(out: string[]): void {
 		"  /** Text the form prints immediately BEFORE this heading, verbatim. */",
 	);
 	out.push("  printedBefore?: string;");
+	out.push(
+		"  /** Text the form prints inside this box AFTER its last numbered line, verbatim. */",
+	);
+	out.push("  printedAfter?: string;");
 	out.push("}");
 }
 
@@ -341,9 +355,24 @@ function emitSectionDef(s: FormDefinition["sections"][number]): string {
 	const parts = [`id: ${q(s.id)}`, `title: ${q(s.title)}`];
 	if (s.description) parts.push(`description: ${q(s.description)}`);
 	if (s.printedBefore) parts.push(`printedBefore: ${q(s.printedBefore)}`);
+	if (s.printedAfter) parts.push(`printedAfter: ${q(s.printedAfter)}`);
 	return `  { ${parts.join(", ")} },`;
 }
 
+/**
+ * The footnote list, and where the page prints each one.
+ *
+ * Emitted together, and from the ONE function every schedule's emitter already
+ * calls, so a form that gains `footnotePlacement` upstream gets it here without
+ * anyone remembering to wire it. That is the `emitSectionDef` lesson: the
+ * `printedBefore` field was nearly added to six inlined call sites and missed on
+ * the seventh, which surfaces as a byte-compare failure on one schedule and
+ * reads like the engine moved.
+ *
+ * Without the placement array a renderer can do exactly one thing with a flat
+ * footnote list — print all of it at the bottom — and most forms print their
+ * notes at the foot of the box they qualify, mid-page.
+ */
 function emitFootnotes(
 	out: string[],
 	form: FormDefinition,
@@ -352,6 +381,28 @@ function emitFootnotes(
 	if (!form.footnotes || form.footnotes.length === 0) return;
 	out.push(`export const ${constPrefix}_FOOTNOTES: readonly string[] = [`);
 	for (const note of form.footnotes) out.push(`  ${q(note)},`);
+	out.push("];");
+	out.push("");
+	if (!form.footnotePlacement || form.footnotePlacement.length === 0) return;
+	out.push("export interface PaperFootnotePlacement {");
+	out.push("  /** Index into the footnote list above. */");
+	out.push("  footnote: number;");
+	out.push("  /** The section id at whose foot the page prints it. */");
+	out.push("  section: string;");
+	out.push(
+		"  /** The glyph the page prints. Absent where the page anchors the note by naming a line instead. */",
+	);
+	out.push("  mark?: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		`export const ${constPrefix}_FOOTNOTE_PLACEMENT: readonly PaperFootnotePlacement[] = [`,
+	);
+	for (const p of form.footnotePlacement) {
+		const parts = [`footnote: ${p.footnote}`, `section: ${q(p.section)}`];
+		if (p.mark) parts.push(`mark: ${q(p.mark)}`);
+		out.push(`  { ${parts.join(", ")} },`);
+	}
 	out.push("];");
 	out.push("");
 }
@@ -646,8 +697,173 @@ export function schedule12PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_12, "AT1_SCHEDULE_12");
 }
 
+/**
+ * Schedule 1 is flat PLUS three shapes a flat list cannot hold.
+ *
+ * The calculation table (seven lettered columns across six pre-printed rate
+ * periods, none of them numbered), Area A's four columns and its totals row,
+ * and the six headings and instructions the page sets inside a box. One of
+ * those headings does real routing — "Corporations with permanent
+ * establishments only in Alberta, ignore lines 019, 020 and 021 and go directly
+ * to the table below" is the difference between three boxes a preparer fills
+ * and three they skip, and no caption says it.
+ */
 export function schedule1PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_1, "AT1_SCHEDULE_1");
+	const out: string[] = [];
+	out.push(emitFlatSchedule(AT1_SCHEDULE_1, "AT1_SCHEDULE_1"));
+	out.push("");
+	out.push("export interface Schedule1BlockHeading {");
+	out.push("  /** The printed line the heading stands immediately above. */");
+	out.push("  aboveLine: string;");
+	out.push("  text: string;");
+	out.push(
+		"  /** Which footnote the page marks INSIDE this text — Area A's asterisk sits in its opening paragraph, not on a numbered box. */",
+	);
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push(
+		"/** Two may share an `aboveLine` — the page stacks two over line 041. Print every match, in order. */",
+	);
+	out.push(
+		"export const AT1_SCHEDULE_1_BLOCK_HEADINGS: readonly Schedule1BlockHeading[] = [",
+	);
+	for (const h of AT1_SCHEDULE_1_BLOCK_HEADINGS) {
+		const parts = [`aboveLine: ${q(h.aboveLine)}`, `text: ${q(h.text)}`];
+		if (h.footnoteMarks?.length) {
+			parts.push(`footnoteMarks: [${h.footnoteMarks.join(", ")}]`);
+		}
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export interface Schedule1Column {");
+	out.push('  column: "A" | "B" | "C" | "D" | "E" | "F" | "G";');
+	out.push("  /** Verbatim, arithmetic included. The page numbers none of them. */");
+	out.push("  heading: string;");
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push("export const AT1_SCHEDULE_1_COLUMNS: readonly Schedule1Column[] = [");
+	for (const c of AT1_SCHEDULE_1_COLUMNS) {
+		const parts = [`column: ${q(c.column)}`, `heading: ${q(c.heading)}`];
+		if (c.footnoteMarks?.length) {
+			parts.push(`footnoteMarks: [${c.footnoteMarks.join(", ")}]`);
+		}
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export interface Schedule1RatePeriod {");
+	out.push("  /** Column A's row label, verbatim. */");
+	out.push("  label: string;");
+	out.push("  /** Column B, verbatim. */");
+	out.push("  percentage: string;");
+	out.push("  /** Column F, as printed. */");
+	out.push("  sbdRate: number;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"/** Pre-printed cell content, not preparer input — a view without these draws six blank rows. */",
+	);
+	out.push(
+		"export const AT1_SCHEDULE_1_RATE_PERIODS: readonly Schedule1RatePeriod[] = [",
+	);
+	for (const p of AT1_SCHEDULE_1_RATE_PERIODS) {
+		out.push(
+			`  { label: ${q(p.label)}, percentage: ${q(p.percentage)}, sbdRate: ${p.sbdRate} },`,
+		);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		`export const AT1_SCHEDULE_1_TOTAL_DAYS_LABEL = ${q(AT1_SCHEDULE_1_TOTAL_DAYS_LABEL)};`,
+	);
+	out.push("");
+	out.push("export interface Schedule1AgreementColumn {");
+	out.push("  line: string;");
+	out.push("  heading: string;");
+	out.push('  kind: "text" | "code" | "rate" | "money";');
+	out.push(
+		"  /** What the page PRE-PRINTS in this column's cell of the totals row — a constant, not a sum of the rows. */",
+	);
+	out.push("  total?: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_1_AGREEMENT_COLUMNS: readonly Schedule1AgreementColumn[] = [",
+	);
+	for (const c of AT1_SCHEDULE_1_AGREEMENT_COLUMNS) {
+		const parts = [
+			`line: ${q(c.line)}`,
+			`heading: ${q(c.heading)}`,
+			`kind: ${q(c.kind)}`,
+		];
+		if (c.total) parts.push(`total: ${q(c.total)}`);
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		`export const AT1_SCHEDULE_1_AGREEMENT_TOTALS_LABEL = ${q(AT1_SCHEDULE_1_AGREEMENT_TOTALS_LABEL)};`,
+	);
+	out.push("");
+	/*
+	 * AREA B. Eleven lettered amounts, (a)-(k), and no line number anywhere — so
+	 * it cannot be a section (one with no fields fails validation) and its amounts
+	 * cannot be `PaperField`s (the scheme requires nine digits).
+	 *
+	 * It was omitted from the definition altogether on exactly that reasoning,
+	 * which confused "not computed" with "not on the page". Line 015 feeds column
+	 * C, which feeds the deduction, and for a short taxation year or a large
+	 * associated group this cascade is the only route to it.
+	 */
+	out.push("export interface Schedule1AreaBStep {");
+	out.push("  /** The letter the page labels this amount with, parentheses included. */");
+	out.push("  letter: string;");
+	out.push("  label: string;");
+	out.push("  /** The arithmetic printed beside the label, where the page prints any. */");
+	out.push("  formula?: string;");
+	out.push("  /** A sub-heading printed immediately above this step. */");
+	out.push("  heading?: string;");
+	out.push(
+		"  /** The bold instruction naming this amount as a place the cascade may STOP and line 015 be taken from. */",
+	);
+	out.push("  exitTo015?: string;");
+	out.push("}");
+	out.push("");
+	out.push(`export const AT1_SCHEDULE_1_AREA_B_TITLE = ${q(AT1_SCHEDULE_1_AREA_B_TITLE)};`);
+	out.push("");
+	out.push(
+		"/** The rule, then the two adjustments by name — both conditions a preparer has to test against their own year. */",
+	);
+	out.push("export const AT1_SCHEDULE_1_AREA_B_PREAMBLE: readonly string[] = [");
+	for (const line of AT1_SCHEDULE_1_AREA_B_PREAMBLE) out.push(`  ${q(line)},`);
+	out.push("];");
+	out.push("");
+	out.push(
+		"/** Twelve steps for eleven letters — the page labels TWO amounts (c), one per side of 2022-04-07. */",
+	);
+	out.push("export const AT1_SCHEDULE_1_AREA_B_STEPS: readonly Schedule1AreaBStep[] = [");
+	for (const step of AT1_SCHEDULE_1_AREA_B_STEPS) {
+		const parts = [`letter: ${q(step.letter)}`, `label: ${q(step.label)}`];
+		if (step.formula) parts.push(`formula: ${q(step.formula)}`);
+		if (step.heading) parts.push(`heading: ${q(step.heading)}`);
+		if (step.exitTo015) parts.push(`exitTo015: ${q(step.exitTo015)}`);
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		"/** What A and B mean in the two (c) formulas. Without it those rows name two letters defined nowhere. */",
+	);
+	out.push("export const AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS: readonly string[] = [");
+	for (const line of AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS) {
+		out.push(`  ${q(line)},`);
+	}
+	out.push("];");
+	out.push("");
+	return out.join("\n");
 }
 
 export function schedule2PaperLayout(): string {
