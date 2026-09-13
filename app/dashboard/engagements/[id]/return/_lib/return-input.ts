@@ -1340,6 +1340,10 @@ export type IegGroupMember = {
 export type IegAgreementMember = {
 	name?: string;
 	/**
+	 * Line 220 — this member’s federal Business Number. The identifier the page itself uses for a member; `name` above is ours and is not filed.
+	 */
+	fbn?: string;
+	/**
 	 * Alberta Corporate Account Number.
 	 */
 	albertaCan?: string;

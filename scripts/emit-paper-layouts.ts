@@ -60,6 +60,9 @@ import {
 	AT1_SCHEDULE_21_CONTINUITY_ORDER,
 	AT1_SCHEDULE_21_POOLS,
 	AT1_SCHEDULE_29,
+	AT1_SCHEDULE_29_ALLOCATION_COLUMNS,
+	AT1_SCHEDULE_29_ALLOCATION_TOTALS_LABEL,
+	AT1_SCHEDULE_29_BLOCK_HEADINGS,
 	CO17_RETURN,
 	type FormDefinition,
 	type FormField,
@@ -434,8 +437,76 @@ function emitFlatSchedule(
 	return out.join("\n");
 }
 
+/**
+ * Schedule 29 is flat PLUS two shapes a flat list cannot hold.
+ *
+ * The headings first. Page 2 heads its grant calculation "Part I calculation …
+ * at 8%", then "Part II calculation … at 12%" with "(a) Non-Associated" and
+ * "(b) Associated" beneath it, and the expenditure-limit box above sets
+ * 'If "Yes", complete page 3.' between lines 100 and 102. Lines 112 and 125 are
+ * two mutually exclusive formulas for the same credit, and those headings are
+ * the ONLY thing on the page that says so — without them the form reads as
+ * three rates that all apply.
+ *
+ * Then the allocation grid on page 3: ten columns per associated member, and a
+ * "Totals" row whose seven cells each carry their own printed line. The page
+ * captions every one of those totals only "Totals", so the column heading is
+ * what identifies them — emitting the field list alone gives a renderer seven
+ * identical rows and no way to place them.
+ */
 export function schedule29PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_29, "AT1_SCHEDULE_29");
+	const out: string[] = [];
+	out.push(emitFlatSchedule(AT1_SCHEDULE_29, "AT1_SCHEDULE_29"));
+	out.push("");
+	out.push("export interface Schedule29BlockHeading {");
+	out.push("  /** The printed line the heading stands immediately above. */");
+	out.push("  aboveLine: string;");
+	out.push("  text: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"/** Two may share an `aboveLine` — the page stacks two over line 112. Print every match, in order. */",
+	);
+	out.push(
+		"export const AT1_SCHEDULE_29_BLOCK_HEADINGS: readonly Schedule29BlockHeading[] = [",
+	);
+	for (const h of AT1_SCHEDULE_29_BLOCK_HEADINGS) {
+		out.push(`  { aboveLine: ${q(h.aboveLine)}, text: ${q(h.text)} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export interface Schedule29AllocationColumn {");
+	out.push("  /** The printed line for each MEMBER's own cell in this column. */");
+	out.push("  line: string;");
+	out.push("  heading: string;");
+	out.push('  kind: "text" | "date" | "money";');
+	out.push('  role: "input" | "computed";');
+	out.push(
+		"  /** The line the page prints in this column's cell of the Totals row — absent on the three it leaves untotalled. */",
+	);
+	out.push("  totalsLine?: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_29_ALLOCATION_COLUMNS: readonly Schedule29AllocationColumn[] = [",
+	);
+	for (const c of AT1_SCHEDULE_29_ALLOCATION_COLUMNS) {
+		const parts = [
+			`line: ${q(c.line)}`,
+			`heading: ${q(c.heading)}`,
+			`kind: ${q(c.kind)}`,
+			`role: ${q(c.role)}`,
+		];
+		if (c.totalsLine) parts.push(`totalsLine: ${q(c.totalsLine)}`);
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		`export const AT1_SCHEDULE_29_ALLOCATION_TOTALS_LABEL = ${q(AT1_SCHEDULE_29_ALLOCATION_TOTALS_LABEL)};`,
+	);
+	out.push("");
+	return out.join("\n");
 }
 
 /**

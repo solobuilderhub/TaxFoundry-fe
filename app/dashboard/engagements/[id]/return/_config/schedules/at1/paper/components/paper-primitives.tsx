@@ -743,6 +743,9 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	to,
 	onNavigate,
 	highlightLine,
+	footnoteMarks,
+	footnotes,
+	footnoteSymbol,
 }: {
 	line: string;
 	caption: string;
@@ -758,6 +761,31 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 	to?: { form: string; line: string; note?: string };
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	/**
+	 * Which of the schedule's `footnotes` the page marks against THIS line.
+	 *
+	 * `PaperClassGrid`, `PaperContinuityGrid` and two bespoke tables have shown
+	 * these since they were built; a leader row could not, so on a flat schedule
+	 * the marked footnotes sat in the list at the foot of the page with nothing
+	 * saying which line each belonged to. On AT1 Schedule 29 that is thirteen of
+	 * them, several being conditions that decide whether a line applies at all
+	 * ("If the corporation is NOT associated…"), so an unattributed list is not a
+	 * cosmetic loss.
+	 */
+	footnoteMarks?: readonly number[];
+	/** The schedule's own footnote text — what a `footnoteMarks` index points into. */
+	footnotes?: readonly string[];
+	/**
+	 * The glyph the PAGE prints for a given footnote index, where the caller
+	 * knows it.
+	 *
+	 * Needed because the glyph is not a property of the footnote: a form's
+	 * asterisk runs restart per printed box, so one index can be "*" and a later
+	 * one "*" again. `FormDefinition.footnotes` is a flat `string[]` and cannot
+	 * carry it. Returning `undefined` falls back to a single "*" — right for a
+	 * schedule with one marked footnote per line, which is most of them.
+	 */
+	footnoteSymbol?: (mark: number) => string | undefined;
 }) {
 	const resolved: LineValue = resolveLine(line);
 	const { ref, active } = useLineHighlight<HTMLDivElement>(line, highlightLine);
@@ -779,6 +807,17 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 			</span>
 			<span className="min-w-0 flex-1 truncate" title={caption}>
 				{caption}
+				{footnoteMarks?.map((mark) => {
+					const text = footnotes?.[mark];
+					if (!text) return null;
+					return (
+						<TooltipWrapper key={mark} content={text} side="top">
+							<sup className="ml-0.5 cursor-help font-mono text-muted-foreground">
+								{footnoteSymbol?.(mark) ?? "*"}
+							</sup>
+						</TooltipWrapper>
+					);
+				})}
 			</span>
 			{resolved.editable ? (
 				kind === "flag" || kind === "bool-flag" ? (

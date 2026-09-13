@@ -28,6 +28,8 @@ import {
 	AT1_SCHEDULE_20,
 	AT1_SCHEDULE_21_POOLS,
 	AT1_SCHEDULE_29,
+	AT1_SCHEDULE_29_ALLOCATION_COLUMNS,
+	AT1_SCHEDULE_29_BLOCK_HEADINGS,
 	CO17_RETURN,
 	T2_JACKET,
 	T2_SCHEDULE_1,
@@ -284,9 +286,24 @@ describe("the Schedule 29 paper layout is in step with AT1_SCHEDULE_29", () => {
 		).toBe(schedule29PaperLayout());
 	});
 
-	it("carries all 4 sections — eligible, limit, grant, agreement", () => {
+	/**
+	 * Five, not four — page 3 is TWO printed boxes.
+	 *
+	 * This asserted four and the fourth was `agreement`, holding all of page 3.
+	 * The page draws a rule mid-page and heads the lower half "Allocation of the
+	 * Maximum Expenditure Limit"; modelled as one section, the paper Form View
+	 * had to split it by a hard-coded list of line numbers to render either half,
+	 * which is a layout fact living in a view instead of in the form definition.
+	 */
+	it("carries all 5 sections — page 3 is two printed boxes, not one", () => {
 		const onDisk = readFileSync(SCHEDULE_29_CHECKED_IN, "utf8");
-		for (const id of ["eligible", "limit", "grant", "agreement"]) {
+		for (const id of [
+			"eligible",
+			"limit",
+			"grant",
+			"agreement",
+			"allocation",
+		]) {
 			expect(onDisk).toContain(`id: "${id}"`);
 		}
 		expect(AT1_SCHEDULE_29.sections.map((s) => s.id)).toEqual([
@@ -294,7 +311,44 @@ describe("the Schedule 29 paper layout is in step with AT1_SCHEDULE_29", () => {
 			"limit",
 			"grant",
 			"agreement",
+			"allocation",
 		]);
+	});
+
+	/**
+	 * The two shapes the flat field list cannot hold, and the view cannot invent.
+	 *
+	 * Emitting only `_FIELDS` left the renderer no way to know that lines 112 and
+	 * 125 are ALTERNATIVES (the "(a) Non-Associated" / "(b) Associated" headings
+	 * are the page's only statement of it), nor which of page 3's ten columns each
+	 * of the seven "Totals" cells sits under — every one of those fields is
+	 * captioned just "Totals", so the column heading is the only thing that tells
+	 * them apart.
+	 */
+	it("emits the printed block headings and the allocation grid", () => {
+		const onDisk = readFileSync(SCHEDULE_29_CHECKED_IN, "utf8");
+		expect(onDisk).toContain("AT1_SCHEDULE_29_BLOCK_HEADINGS");
+		expect(onDisk).toContain("AT1_SCHEDULE_29_ALLOCATION_COLUMNS");
+		// Two headings stack over line 112 — a renderer must print both.
+		expect(
+			AT1_SCHEDULE_29_BLOCK_HEADINGS.filter((h) => h.aboveLine === "112"),
+		).toHaveLength(2);
+		// Ten columns; the page totals seven of them. No sum of a business number.
+		expect(AT1_SCHEDULE_29_ALLOCATION_COLUMNS).toHaveLength(10);
+		expect(
+			AT1_SCHEDULE_29_ALLOCATION_COLUMNS.filter((c) => c.totalsLine).length,
+		).toBe(7);
+		// Every column, and every total, has to be a real field on the form or the
+		// grid draws a cell that can never be filed.
+		const lines = new Set(
+			AT1_SCHEDULE_29.fields.map((f) => f.line.slice(3, 6)),
+		);
+		for (const col of AT1_SCHEDULE_29_ALLOCATION_COLUMNS) {
+			expect(lines.has(col.line), `column ${col.line}`).toBe(true);
+			if (col.totalsLine) {
+				expect(lines.has(col.totalsLine), `total ${col.totalsLine}`).toBe(true);
+			}
+		}
 	});
 });
 

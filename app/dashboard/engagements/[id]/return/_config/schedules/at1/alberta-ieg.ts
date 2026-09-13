@@ -215,7 +215,14 @@ export const albertaIeg = defineSchedule({
 						"agreementMembers",
 						"Agreement members — put the claiming corporation FIRST",
 						[
-							field.text("name", "Corporation name"),
+							field.text("name", "Corporation name", {
+								description:
+									"For your own reference. Schedule 29 page 3 has no line for a member’s name — line 220 below is how the form identifies one, and this is never filed.",
+							}),
+							field.text("fbn", "Federal Business Number (line 220)", {
+								description:
+									"The page’s FIRST numbered column. The engine has always supported this line; until now nothing in this app collected it, so page 3 filed with it empty.",
+							}),
 							field.text("albertaCan", "Alberta CAN"),
 							field.date(
 								"currentTaxationYearEnd",
