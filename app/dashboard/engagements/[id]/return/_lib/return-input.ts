@@ -65,6 +65,7 @@ export type ReturnInput = {
 	albertaSred16?: AlbertaSred16Values;
 	albertaReserves17?: AlbertaReserves17Values;
 	albertaCca13?: AlbertaCca13Values;
+	edi?: EdiValues;
 };
 export type IdentificationValues = {
 	corpType?: string;
@@ -1977,6 +1978,80 @@ export type AlbertaCca13Row = {
 	 * 013019 — the Alberta discretionary claim. Blank = the same as federal; an explicit 0 claims nothing for Alberta, which is a real answer.
 	 */
 	claim?: number;
+};
+export type EdiValues = {
+	/**
+	 * EDI001 — the Software Certification Code TRA issued at certification. Validated against TRA’s own registry: a wrong one is error 20010 and the return is rejected before anything else is read. Also filed on the jacket at 000005001, from this same value.
+	 */
+	softwareCertCode?: string;
+	/**
+	 * EDI011 — the Net File web service version this payload is built for.
+	 */
+	webServiceVersion?: string;
+	/**
+	 * EDI013 — this product’s own version.
+	 */
+	softwareVersion?: string;
+	/**
+	 * EDI015 — the software serial number. TRA checks presence only (error 20013), not the value.
+	 */
+	serialNumber?: string;
+	/**
+	 * EDI017 — is the return being filed by a third party on the corporation’s behalf? "1" = yes, "2" = no. There is no "0" and no absent answer: a filer who is not a third party files "2". Setting "1" makes lines 023, 051, 055, 057, 059 and 061 mandatory (error 10025 otherwise).
+	 */
+	thirdPartyIndicator?: "1" | "2";
+	/**
+	 * EDI019 — the transmitting organization’s legal name.
+	 */
+	legalName?: string;
+	/**
+	 * EDI023 — type of organization. Mandatory when line 017 is "1".
+	 */
+	organizationType?: "CORPORATION" | "PARTNERSHIP" | "INDIVIDUAL";
+	/**
+	 * EDI031 — contact first name.
+	 */
+	contactFirstName?: string;
+	/**
+	 * EDI033 — contact last name.
+	 */
+	contactLastName?: string;
+	/**
+	 * EDI035 — the contact’s position.
+	 */
+	contactPosition?: string;
+	/**
+	 * EDI037 — the contact’s telephone number, 10 to 15 digits, numeric only. TRA rejects punctuation and placeholders with error 20100.
+	 */
+	contactPhone?: string;
+	/**
+	 * EDI041 — the contact’s e-mail address.
+	 */
+	contactEmail?: string;
+	/**
+	 * EDI051 — address line 1. Mandatory when line 017 is "1".
+	 */
+	addressStreet?: string;
+	/**
+	 * EDI053 — address line 2. Always optional.
+	 */
+	addressLine2?: string;
+	/**
+	 * EDI055 — city or town. Mandatory when line 017 is "1".
+	 */
+	addressCity?: string;
+	/**
+	 * EDI057 — province or state. Mandatory when line 017 is "1"; validated against TRA’s province table when the country is CA or US.
+	 */
+	addressProvince?: string;
+	/**
+	 * EDI059 — postal or ZIP code. Mandatory when line 017 is "1"; A9A 9A9 for CA, five or nine digits for US.
+	 */
+	addressPostalCode?: string;
+	/**
+	 * EDI061 — country. Mandatory when line 017 is "1".
+	 */
+	addressCountry?: string;
 };
 
 /** AT1 Schedule 17's reserve kinds — see `ReserveType`'s own field for the derivation. */

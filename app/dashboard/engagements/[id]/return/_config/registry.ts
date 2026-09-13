@@ -15,6 +15,7 @@
  */
 import type { ReturnInput } from "../_lib/return-input";
 import { alberta } from "./schedules/at1/alberta";
+import { albertaEdi } from "./schedules/at1/alberta-edi";
 import { albertaContinuity } from "./schedules/at1/alberta-continuity";
 import { albertaDonations } from "./schedules/at1/alberta-donations";
 import { albertaIeg } from "./schedules/at1/alberta-ieg";
@@ -74,6 +75,7 @@ export const SCHEDULES = [
 	provincialAllocation,
 	quebec,
 	alberta,
+	albertaEdi,
 	albertaSbd,
 	albertaDonations,
 	albertaContinuity,
