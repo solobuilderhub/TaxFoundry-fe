@@ -2,7 +2,7 @@
 
 import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import type { CcaClass, CcaValues } from "../../../../_lib/return-input";
+import type { AlbertaCca13Row, AlbertaCca13Values } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	type ClassGridColumn,
@@ -19,11 +19,18 @@ import {
 } from "./generated/schedule13.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
-/** The two Alberta-specific override fields Schedule 13 collects — everything else is assumed equal to federal (or computed by the engine) and shown read-only. */
-const FIELD_NAME: Partial<Record<string, keyof CcaClass>> = {
+/**
+ * The three fields THIS schedule collects, on its own `albertaCca13` slice.
+ *
+ * They were `cca.classes[].albertaOpeningUCC` / `.albertaClaim` on the federal
+ * slice, which is what kept this form from having a nav entry of its own.
+ * Everything else on the page is federal or engine-computed and shown
+ * read-only.
+ */
+const FIELD_NAME: Partial<Record<string, keyof AlbertaCca13Row>> = {
 	"013001001": "ccaClass",
-	"013003001": "albertaOpeningUCC",
-	"013019001": "albertaClaim",
+	"013003001": "openingUCC",
+	"013019001": "claim",
 };
 
 const SCHEDULE_ID = "013";
@@ -54,11 +61,12 @@ function buildTotalsResolveLine(
  * "don't render a computed figure as a box" rule the card editor's generator
  * enforces.
  *
- * Reached through the CCA (S8) nav entry's Form View, not an entry of its own
- * — `t2/cca.ts` holds the `classes` array both schedules share, so its
- * `formView` renders `CcaFormView`, which stacks the federal Schedule 8 grid
- * and this one. Wired to `Schedule8FormView` alone, as it was, this component
- * was reachable from nowhere at all.
+ * Its own nav entry now, at num "013" (`at1/alberta-cca13.ts`). The Alberta
+ * columns used to live on the FEDERAL `cca.classes` slice, and the registry
+ * pins one nav entry per `ReturnInput` key — so this form could only ever be a
+ * second grid inside federal Schedule 8's row, invisible under "AT1 only". A
+ * row here pairs to the federal class by class NUMBER, so the two lists can
+ * differ in length and order.
  */
 export function Schedule13FormView({
 	control,
@@ -73,7 +81,7 @@ export function Schedule13FormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
-	const ccaControl = control as unknown as Control<CcaValues>;
+	const ccaControl = control as unknown as Control<AlbertaCca13Values>;
 	const classes = useWatch({ control: ccaControl, name: "classes" }) ?? [];
 	// Watched above for the row LABELS (which follow the class number as it is
 	// typed); the field array is what adds and removes them.
@@ -149,10 +157,11 @@ export function Schedule13FormView({
 						 * schedules had already been given a bespoke table to avoid.
 						 * `PaperClassGrid` grew the two callbacks instead.
 						 *
-						 * The array is the FEDERAL `classes` list: one row per CCA
-						 * class, shared with Schedule 8. Adding a class here adds it
-						 * to both returns, which is correct — a class only exists on
-						 * the Alberta schedule because it exists federally.
+						 * The array is THIS schedule's own `classes` list — Alberta
+						 * overrides only. Adding a row here does not add a class to
+						 * the federal return; it records that an existing class's
+						 * Alberta UCC or claim differs, which is the only thing this
+						 * form exists to say.
 						 */
 						onAppend={() => append({})}
 						onRemove={(i) => remove(i)}

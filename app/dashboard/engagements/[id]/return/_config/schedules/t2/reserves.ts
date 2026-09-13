@@ -4,7 +4,7 @@ import type { ReservesValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { RESERVE_TYPE_OPTIONS } from "../../options";
 import { defineSchedule } from "../shared/define";
-import { ReservesFormView } from "./paper/reserves-form-view";
+import { Schedule13FormView } from "./paper/schedule13-form-view";
 
 const f = fieldsFor<ReservesValues>();
 
@@ -14,9 +14,9 @@ export const reserves = defineSchedule({
 	// Both forms, same reasoning as `cca.ts` — the Alberta S17 override grid is
 	// only reachable through this entry's Form View, and "013" here is FEDERAL
 	// Schedule 13 (reserves), not Alberta's Schedule 13 (which is CCA, at S8).
-	label: "Continuity of Reserves (S13 / AT1 S17)",
-	hint: "Tax reserves opening / closing — Alberta S17 in Form View",
-	formView: (props) => createElement(ReservesFormView, props),
+	label: "Continuity of Reserves (S13)",
+	hint: "Tax reserves opening / closing",
+	formView: (props) => createElement(Schedule13FormView, props),
 	schema: defineSchema({
 		sections: [
 			section(
@@ -32,16 +32,6 @@ export const reserves = defineSchedule({
 						money("opening", "Balance at beginning of year (line 002)"),
 						money("transfer", "Transfer on amalgamation / wind-up (line 003)"),
 						money("closing", "Balance at end of year (line 004)"),
-						money("albertaOpening", "Alberta opening balance (S17)", {
-							description:
-								"Blank = same as federal. Insurance policy / bank reserves have no federal line, so federal always reads 0 here.",
-						}),
-						money("albertaTransfer", "Alberta transfer on wind-up (S17)", {
-							description: "Blank = same as federal",
-						}),
-						money("albertaClosing", "Alberta closing balance (S17)", {
-							description: "Blank = same as federal; 0 = no Alberta reserve",
-						}),
 					]),
 				],
 				{
