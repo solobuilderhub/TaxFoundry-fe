@@ -144,3 +144,22 @@ export const RESOURCE_IFE_POOL_OPTIONS = [
 	{ value: "cfre-regular", label: "CFRE — regular" },
 	{ value: "cfre-successor", label: "CFRE — successor" },
 ];
+
+/**
+ * AT1 EDI schedule, line 017 — third party service provider indicator.
+ *
+ * Spec §3.3.6.1: "Must be 1 (yes) or 2 (no)." There is no "0" and no absent
+ * answer — a filer who is not transmitting on the corporation's behalf answers
+ * "2", which is why this is a two-option select and not a nullable checkbox.
+ */
+export const EDI_THIRD_PARTY_OPTIONS = [
+	{ value: "1", label: "Yes — filed by a third party" },
+	{ value: "2", label: "No" },
+];
+
+/** AT1 EDI schedule, line 023 — type of organization. Mandatory when line 017 is Yes. */
+export const EDI_ORGANIZATION_TYPE_OPTIONS = [
+	{ value: "CORPORATION", label: "Corporation" },
+	{ value: "PARTNERSHIP", label: "Partnership" },
+	{ value: "INDIVIDUAL", label: "Individual" },
+];

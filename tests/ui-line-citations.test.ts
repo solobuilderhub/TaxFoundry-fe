@@ -19,6 +19,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FORMS } from "@classytic/ca-tax/forms";
+import { AT1_EDI_LINES } from "@classytic/ca-tax/t2";
 
 const SCHEDULE_DIR = join(
 	import.meta.dirname,
@@ -44,11 +45,24 @@ const SCHEDULE_SUBDIRS = ["t2", "at1", "co17"];
  * both lines is more honest than picking one, so the check validates every
  * number inside the citation rather than refusing the form.
  */
-const CITATION = /\(lines? ([\d\s/,]+)\)/g;
+/*
+ * `(line 410)`, `(line 000047)`, the plural `(lines 230 / 240)` — and
+ * `(line EDI001)`.
+ *
+ * The `EDI` prefix is not decoration. TRA's Line-Item-ID scheme is nine
+ * CHARACTERS, not nine digits, and the EDI schedule proves the leading
+ * schedule field is not always numeric: its ids are `EDI` + field + occurrence.
+ * The pattern required `[\d\s/,]+`, so every `(line EDI001)` in the editor was
+ * silently UNCHECKED — this file's whole purpose, skipped for nineteen boxes,
+ * on the one schedule with no `FormDefinition` to fall back on.
+ */
+const CITATION = /\(lines? ((?:EDI)?[\d\s/,]+)\)/g;
 
 /** Every number inside one citation — `230 / 240` → ['230','240']. */
 const numbersIn = (citation: string): string[] =>
-	citation.split(/[\s/,]+/).filter((n) => /^\d{3,9}$/.test(n));
+	citation
+		.split(/[\s/,]+/)
+		.filter((n) => /^(?:EDI)?\d{3,9}$/.test(n));
 
 /** Every line number any registered form defines, in either scheme. */
 const known = new Set<string>();
@@ -58,6 +72,22 @@ for (const form of FORMS) {
 		// TRA ids are `SSSFFFOOO`; the editor cites the FIELD half a preparer sees.
 		if (/^\d{9}$/.test(field.line)) known.add(field.line.slice(3, 6));
 	}
+}
+
+/*
+ * The EDI schedule has no `FormDefinition` — it exists only in the Net File
+ * XML, and TRA's §3.3.6.1 is not vendored into `@classytic/ca-tax`, so there is
+ * no page to extract captions from. `AT1_EDI_LINES` is the renderer's own
+ * line-item table, which IS the authority on which ids can be filed, and it is
+ * what makes the editor's `(line EDI001)` claims checkable at all.
+ *
+ * Both spellings are accepted: `EDI001` as the editor writes it, and the bare
+ * `001` field half, for consistency with how every other TRA schedule is cited.
+ */
+for (const id of AT1_EDI_LINES) {
+	known.add(id);
+	known.add(id.slice(0, 6)); // `EDI001001` → `EDI001`
+	known.add(id.slice(3, 6)); // `EDI001001` → `001`
 }
 
 const files = SCHEDULE_SUBDIRS.flatMap((dir) =>
