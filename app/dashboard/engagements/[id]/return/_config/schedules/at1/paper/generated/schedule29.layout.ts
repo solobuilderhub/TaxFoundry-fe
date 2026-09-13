@@ -34,6 +34,8 @@ export interface PaperSectionDef {
   description?: string;
   /** Text the form prints immediately BEFORE this heading, verbatim. */
   printedBefore?: string;
+  /** Text the form prints inside this box AFTER its last numbered line, verbatim. */
+  printedAfter?: string;
 }
 
 export const AT1_SCHEDULE_29_SECTIONS: readonly PaperSectionDef[] = [
@@ -110,6 +112,31 @@ export const AT1_SCHEDULE_29_FOOTNOTES: readonly string[] = [
   "For use by a corporation for a taxation year in which the corporation is claiming the Innovation Employment Grant (IEG). Schedule 29 must be received by Alberta Treasury Board and Finance, Tax and Revenue Administration within 15 months after the day on or before which the corporation is required to file its AT1 for the year. For additional information on completing Schedule 29, see the Guide to Claiming the Innovation Employment Grant (the Guide).",
   "Report all monetary values in dollars; DO NOT include cents.",
   "A qualified corporation is required to share the maximum expenditure limit with one or more associated corporations that claim an IEG in taxation years within the same calendar year. One copy of this completed agreement is to be filed by each corporation of the group with its AT1 for the taxation year. A new agreement must be filed in respect of each taxation year. Use additional pages if space is insufficient.",
+];
+
+export interface PaperFootnotePlacement {
+  /** Index into the footnote list above. */
+  footnote: number;
+  /** The section id at whose foot the page prints it. */
+  section: string;
+  /** The glyph the page prints. Absent where the page anchors the note by naming a line instead. */
+  mark?: string;
+}
+
+export const AT1_SCHEDULE_29_FOOTNOTE_PLACEMENT: readonly PaperFootnotePlacement[] = [
+  { footnote: 0, section: "limit", mark: "*" },
+  { footnote: 1, section: "limit", mark: "**" },
+  { footnote: 2, section: "grant", mark: "*" },
+  { footnote: 3, section: "grant", mark: "**" },
+  { footnote: 4, section: "grant", mark: "***" },
+  { footnote: 5, section: "grant", mark: "****" },
+  { footnote: 6, section: "agreement", mark: "**" },
+  { footnote: 7, section: "allocation" },
+  { footnote: 8, section: "allocation" },
+  { footnote: 9, section: "allocation" },
+  { footnote: 10, section: "allocation" },
+  { footnote: 11, section: "allocation" },
+  { footnote: 12, section: "allocation" },
 ];
 
 

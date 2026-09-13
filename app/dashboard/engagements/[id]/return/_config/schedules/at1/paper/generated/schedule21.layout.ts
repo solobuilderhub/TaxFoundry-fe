@@ -39,6 +39,8 @@ export interface PaperSectionDef {
   description?: string;
   /** Text the form prints immediately BEFORE this heading, verbatim. */
   printedBefore?: string;
+  /** Text the form prints inside this box AFTER its last numbered line, verbatim. */
+  printedAfter?: string;
 }
 
 export const AT1_SCHEDULE_21_SECTIONS: readonly PaperSectionDef[] = [

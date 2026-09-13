@@ -1685,19 +1685,86 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
  * Form-wide guidance, not tied to one line, so a plain numbered list at the
  * foot of the section rather than a per-field tooltip.
  */
+/**
+ * Read a schedule's footnote placement into the three lookups a view needs.
+ *
+ * Every paper view wants the same three things out of that array and none of
+ * them is a one-liner, so this is shared rather than repeated: which notes
+ * belong to a given box, what glyph each carries, and which notes belong to no
+ * box at all (a form's unmarked header instructions, which still have to be
+ * shown somewhere — dropping them silently is worse than misplacing them).
+ *
+ * Pass the emitted `*_FOOTNOTE_PLACEMENT`; a schedule without one gets empty
+ * lookups and `unplaced` listing every note, which is the old whole-list
+ * behaviour.
+ */
+export function readFootnotePlacement(
+	notes: readonly string[] | undefined,
+	placement:
+		| readonly { footnote: number; section: string; mark?: string }[]
+		| undefined,
+) {
+	const marks: Record<number, string | undefined> = {};
+	const bySection = new Map<string, number[]>();
+	for (const p of placement ?? []) {
+		if (notes?.[p.footnote] === undefined) continue;
+		if (p.mark) marks[p.footnote] = p.mark;
+		const list = bySection.get(p.section) ?? [];
+		list.push(p.footnote);
+		bySection.set(p.section, list);
+	}
+	const placed = new Set((placement ?? []).map((p) => p.footnote));
+	return {
+		marks,
+		/** The notes printed at the foot of one box, in page order. */
+		forSection: (section: string) => bySection.get(section) ?? [],
+		/** Notes belonging to no box — a form's header instructions. */
+		unplaced: (notes ?? []).map((_, i) => i).filter((i) => !placed.has(i)),
+	};
+}
+
+/**
+ * The printed notes at the foot of a box — or of the whole form.
+ *
+ * ── Why `only` and `marks` exist ────────────────────────────────────────────
+ *
+ * This used to take a bare `notes` array and print every one of them, each
+ * bulleted with a hard-coded `*`. Both halves of that are wrong for most forms:
+ *
+ *   - A form prints its notes at the foot of the BOX they qualify, not in one
+ *     list at the end. AT1 Schedule 1 sets its partnership note directly under
+ *     line 015 and its three Area A notes a full page later; collected at the
+ *     bottom, the asterisk on line 003 leads nowhere.
+ *   - The glyph is not always `*`. A box that carries four notes runs `*`,
+ *     `**`, `***`, `****`, and the run RESTARTS at the next box — so printing
+ *     `*` against all of them makes four distinct references look like one.
+ *
+ * `only` selects the subset belonging to one section (pass the placement rows
+ * for that section); `marks` supplies each one's printed glyph. Both optional,
+ * so the original whole-list call still behaves exactly as it did.
+ */
 export function PaperFootnotes({
 	notes,
+	only,
+	marks,
 }: {
 	notes: readonly string[] | undefined;
+	/** Indices to show, in order. Omit for all of them. */
+	only?: readonly number[];
+	/** Printed glyph per footnote index. A missing entry falls back to `*`. */
+	marks?: Readonly<Record<number, string | undefined>>;
 }) {
 	if (!notes || notes.length === 0) return null;
+	const shown = (only ?? notes.map((_, i) => i)).filter(
+		(i) => notes[i] !== undefined,
+	);
+	if (shown.length === 0) return null;
 	return (
 		<ol className="space-y-1 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-			{notes.map((note, i) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: static, generator-ordered content — never reordered at runtime
+			{shown.map((i) => (
 				<li key={i} className="flex gap-2">
-					<span className="shrink-0 font-mono">*</span>
-					<span>{note}</span>
+					<span className="shrink-0 font-mono">{marks?.[i] ?? "*"}</span>
+					<span>{notes[i]}</span>
 				</li>
 			))}
 		</ol>
