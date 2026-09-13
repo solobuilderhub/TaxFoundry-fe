@@ -63,6 +63,8 @@ export type ReturnInput = {
 	albertaSchedule18?: AlbertaSchedule18Values;
 	albertaResourceDeductions15?: AlbertaResourceDeductions15Values;
 	albertaSred16?: AlbertaSred16Values;
+	albertaReserves17?: AlbertaReserves17Values;
+	albertaCca13?: AlbertaCca13Values;
 };
 export type IdentificationValues = {
 	corpType?: string;
@@ -724,18 +726,6 @@ export type CcaClass = {
 	 * Amount to claim; blank = the maximum. An explicit 0 claims nothing.
 	 */
 	claim?: number;
-	/**
-	 * AT1 Schedule 13 — the Alberta figures for this class, when they diverge from federal. Both are OVERRIDES: blank takes the federal figure, so a class that matches federally needs nothing here. An explicit `0` is a real answer (claim nothing for Alberta), not an absent one.
-	 *
-	 * Alberta permits a different discretionary CCA claim from federal — a corporation may claim a class federally and not provincially, or the reverse. Filing these requires jacket line 000060 or 000061 to be "yes"; TRA forbids Schedule 13 outright when the return declares no divergence.
-	 *
-	 * 013003 — Alberta opening UCC, when it differs from federal.
-	 */
-	albertaOpeningUCC?: number;
-	/**
-	 * 013019 — the Alberta discretionary claim. Blank = the same as federal.
-	 */
-	albertaClaim?: number;
 };
 export type Class13LeaseholdLayer = {
 	description?: string;
@@ -856,12 +846,6 @@ export type ReserveRow = {
 	 * Balance at the end of the year (deducted this year).
 	 */
 	closing?: number;
-	/**
-	 * AT1 Schedule 17 — the Alberta figures for this reserve, when they diverge from federal. All three are OVERRIDES: blank takes the federal figure, so a reserve that matches federally needs nothing here. An explicit `0` is a real answer, not an absent one. For `insurancePolicyReserves` / `bankReserves` — Alberta-only kinds with no federal Part 2 equivalent — federal always reads as 0, so these three fields are effectively the only source of the figure.
-	 */
-	albertaOpening?: number;
-	albertaTransfer?: number;
-	albertaClosing?: number;
 };
 export type CapitalValues = {
 	reservesNotDeducted?: number;
@@ -1951,6 +1935,44 @@ export type AlbertaSred16Values = {
 	 * 016020 — SR&ED expenditure pool deduction claimed this year. Blank claims the WHOLE available pool; the claim is discretionary, so a corporation with no income to shelter would normally claim nil and carry the pool forward. Capped at line 018.
 	 */
 	amountClaimed?: number;
+};
+export type AlbertaReserves17Values = {
+	rows?: AlbertaReserve17Row[];
+};
+export type AlbertaReserve17Row = {
+	/**
+	 * Which of the eight reserve kinds. Pairs this row to the federal reserve of the same type — NOT by position.
+	 */
+	type?: ReserveType;
+	/**
+	 * 017001/003/005/009/011/013/015/017 — balance at the beginning of the year.
+	 */
+	opening?: number;
+	/**
+	 * 017031-047 — transfer on amalgamation or wind-up of subsidiary.
+	 */
+	transfer?: number;
+	/**
+	 * 017061-077 — balance at the end of the year.
+	 */
+	closing?: number;
+};
+export type AlbertaCca13Values = {
+	classes?: AlbertaCca13Row[];
+};
+export type AlbertaCca13Row = {
+	/**
+	 * The class number. Pairs this row to the federal CCA class of the same number — NOT by position.
+	 */
+	ccaClass?: string;
+	/**
+	 * 013003 — Alberta opening UCC, when it differs from federal. Blank = federal.
+	 */
+	openingUCC?: number;
+	/**
+	 * 013019 — the Alberta discretionary claim. Blank = the same as federal; an explicit 0 claims nothing for Alberta, which is a real answer.
+	 */
+	claim?: number;
 };
 
 /** AT1 Schedule 17's reserve kinds — see `ReserveType`'s own field for the derivation. */

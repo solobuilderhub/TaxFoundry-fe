@@ -1,62 +1,102 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, Controller, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import { RESERVE_TYPES, type ReservesValues } from "../../../../_lib/return-input";
-import { parseAt1LineItemId } from "./at1-lines";
+import { cn } from "@/lib/utils";
+import type {
+	AlbertaReserve17Row,
+	AlbertaReserves17Values,
+	ReserveType,
+} from "../../../../_lib/return-input";
+import { at1Money, parseAt1LineItemId } from "./at1-lines";
+import { PaperFootnotes, PaperSection } from "./components/paper-primitives";
 import {
-	PaperClassGrid,
-	PaperFootnotes,
-	PaperLeaderRow,
-	PaperSection,
-	type ClassGridColumn,
-	type ClassGridRow,
-} from "./components/paper-primitives";
-import { AT1_SCHEDULE_17_FIELDS, AT1_SCHEDULE_17_FOOTNOTES, AT1_SCHEDULE_17_RESERVE_KINDS } from "./generated/schedule17.layout";
-import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
+	AT1_SCHEDULE_17_FIELDS,
+	AT1_SCHEDULE_17_FOOTNOTES,
+	AT1_SCHEDULE_17_RESERVE_KINDS,
+} from "./generated/schedule17.layout";
+import type { NavigateToLine } from "./resolve-line";
 
 const SCHEDULE_ID = "017";
 
-const COLUMNS: ClassGridColumn[] = [
-	{ line: "opening", caption: "Beginning of year", kind: "money", fieldName: "albertaOpening" },
-	{ line: "transfer", caption: "Wind-up / amalgamation transfer", kind: "money", fieldName: "albertaTransfer" },
-	{ line: "closing", caption: "End of year", kind: "money", fieldName: "albertaClosing" },
+/**
+ * Which `ReserveType` each printed row is, keyed by its OPENING line number.
+ *
+ * Keyed by line number rather than by label or by array position: the line
+ * number is the row's identity on the form and in the payload, whereas a
+ * caption can be reworded and two independent arrays can fall out of step.
+ * `AT1_SCHEDULE_17_RESERVE_KINDS` happens to be in the same order as the
+ * contract's `RESERVE_TYPES` today, and relying on that is the kind of
+ * coincidence that breaks silently.
+ */
+const TYPE_BY_OPENING_LINE: Record<string, ReserveType> = {
+	"001": "doubtfulDebts",
+	"003": "undeliveredGoodsAndServices",
+	"005": "prepaidRent",
+	"009": "returnableContainers",
+	"011": "unpaidAmounts",
+	"013": "insurancePolicyReserves",
+	"015": "bankReserves",
+	"017": "otherTaxReserves",
+};
+
+/** The three printed column headings, verbatim. */
+const COLUMNS: readonly {
+	field: "opening" | "transfer" | "closing";
+	heading: string;
+}[] = [
+	{ field: "opening", heading: "Balance at the beginning of the year" },
+	{
+		field: "transfer",
+		heading: "Transfer on amalgamation or wind-up of subsidiary",
+	},
+	{ field: "closing", heading: "Balance at the end of the year" },
 ];
 
+/** The TOTALS row the page prints inside the reserves box. */
+const TOTAL_LINES: Record<"opening" | "transfer" | "closing", string> = {
+	opening: "021",
+	transfer: "051",
+	closing: "081",
+};
+
+const CELL =
+	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
+
+/** The printed three-digit number from a nine-digit line item id. */
+const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
+
 /**
- * AT1 Schedule 17 paper Form View — 8 reserve KINDS, matched by `type`
- * against whatever the preparer has actually added to `reserves.rows` (a
- * dynamic array, not one field per kind — unlike Schedule 21's loss pools).
- * A kind with no matching row shows "not added" rather than a blank editable
- * box, since there's no array entry yet to bind to.
+ * AT1 Schedule 17 — Alberta Reserves, laid out as the page prints it.
  *
- * All three columns bind directly to the Alberta OVERRIDE fields
- * (`albertaOpening`/`albertaTransfer`/`albertaClosing`) — Schedule 17 as
- * printed IS the Alberta figure; blank still means "same as federal" at
- * compute time, same semantics as the guided editor's own description text.
+ * ── Why this is not `PaperClassGrid` ────────────────────────────────────────
  *
- * Every one of the 6 federally-mirrored kinds' opening/transfer/closing
- * fields genuinely defaults from the matching federal Schedule 13 figure
- * unless overridden (`computeAlbertaSchedule17`'s `pick(alberta, federal)`
- * on all three columns, not just opening — confirmed by reading that
- * function directly). `PaperClassGrid` doesn't carry a per-cell provenance
- * badge the way `PaperLeaderRow`/`ContinuityCell` do, so that federal-default
- * relationship is surfaced below the grid instead, built directly from
- * `AT1_SCHEDULE_17_FIELDS`' own `from` citations (not hand-typed, so it
- * can't drift from the FormDefinition).
+ * It was, and the result did not resemble the form at all: the column headers
+ * showed the FIELD NAMES ("opening", "transfer", "closing") where the page
+ * shows its three headings, the row captions were ours rather than the form's,
+ * and every cell read "not added" — because that primitive indexes rows by
+ * array position and the underlying array starts empty.
+ *
+ * The form prints EIGHT FIXED ROWS. There is nothing to add or remove: the
+ * eight reserve kinds are the form. So the grid is fixed, every cell is
+ * editable from the start, and each carries its own line-number chip — the
+ * numbers run down the rows (001, 003, 005…), not across the columns, which is
+ * why a per-column chip was the wrong shape for them.
+ *
+ * ── Binding a fixed grid to a sparse array ──────────────────────────────────
+ *
+ * `albertaReserves17.rows` holds only the kinds that diverge from federal, so
+ * a row's array index is not its position on the page. Each cell resolves its
+ * own index by `type`, and a first edit to a kind with no row yet APPENDS one
+ * — so the stored slice stays sparse (a return that overrides one reserve
+ * sends one row) while the page always shows all eight.
  */
-const FEDERAL_DEFAULT_LINES = new Map(
-	AT1_SCHEDULE_17_FIELDS.filter((f) => f.section === "reserves" && f.from).map((f) => [
-		parseAt1LineItemId(f.line)?.field ?? f.line,
-		f.from!.line,
-	]),
-);
 export function Schedule17FormView({
 	control,
 	disabled,
 	computed,
-	onNavigate,
-	highlightLine,
+	onNavigate: _onNavigate,
+	highlightLine: _highlightLine,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
@@ -64,101 +104,178 @@ export function Schedule17FormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
-	const reservesControl = control as unknown as Control<ReservesValues>;
-	const rows = useWatch({ control: reservesControl, name: "rows" }) ?? [];
+	const c = control as unknown as Control<AlbertaReserves17Values>;
+	const { append } = useFieldArray({ control: c, name: "rows" });
+	const rows = useWatch({ control: c, name: "rows" }) ?? [];
 
-	const gridRows: ClassGridRow[] = AT1_SCHEDULE_17_RESERVE_KINDS.map((kind, i) => {
-		const type = RESERVE_TYPES[i];
-		const arrayIndex = rows.findIndex((r) => r?.type === type);
-		return {
-			key: type ?? kind.label,
-			label: kind.label,
-			arrayIndex: arrayIndex === -1 ? undefined : arrayIndex,
-		};
-	});
-
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
+	const filed = computed?.schedulePayloads?.find(
+		(p) => p.scheduleId === SCHEDULE_ID,
+	);
 	const filedByField = new Map(
 		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
+			const p = parseAt1LineItemId(v.lineItemId);
+			return p ? [[p.field, v.value] as const] : [];
 		}),
 	);
-	const resolveTotalsLine: ResolveLine = (line): LineValue => {
-		const field = parseAt1LineItemId(line)?.field ?? line;
-		return { editable: false, value: filedByField.get(field) as string | number | undefined };
-	};
+
+	const indexOf = (type: ReserveType) =>
+		rows.findIndex((r: AlbertaReserve17Row) => r?.type === type);
+
+	const n = (v: unknown) => (typeof v === "number" ? v : 0);
+	const totalOf = (field: "opening" | "transfer" | "closing") =>
+		rows.reduce((sum, r) => sum + n(r?.[field]), 0);
 
 	return (
 		<div className="space-y-4">
 			<PaperSection
-				title="Continuity of reserves"
-				description="Eight reserve kinds, matched by type against whatever's been added below in Guided view. A kind not yet added shows 'not added' — add it in Guided view first, then it becomes editable here."
+				title="Reserves"
+				description="Eight reserve kinds, as the form prints them. A cell left blank takes the federal figure — the schedule is required only where Alberta differs. Bank reserves and insurance policy reserves have no federal equivalent, so for those this is the only source."
 				formId="AT1SCH17"
 			>
-				<div className="p-2">
-					<PaperClassGrid
-						arrayName="rows"
-						rows={gridRows}
-						columns={COLUMNS}
-						control={reservesControl}
-						disabled={disabled}
-						resolveCell={() => undefined}
-					/>
-				</div>
-			</PaperSection>
-			<PaperSection
-				title="Federal defaults"
-				description="Each field above is blank-means-'same as federal', not blank-means-'zero' — the engine reads the matching federal Schedule 13 figure whenever no Alberta override is entered here. Insurance and bank reserves have no federal equivalent at all, so they're always a direct Alberta entry."
-			>
-				<div className="overflow-x-auto p-2">
-					<table className="w-full border-collapse text-xs">
+				<div className="overflow-x-auto px-4 py-3">
+					<table className="w-full border-collapse text-sm">
 						<thead>
-							<tr className="border-b bg-muted/40">
-								<th className="px-3 py-2 text-left font-medium">Reserve kind</th>
-								<th className="px-3 py-2 text-left font-medium">T2SCH13 opening</th>
-								<th className="px-3 py-2 text-left font-medium">T2SCH13 transfer</th>
-								<th className="px-3 py-2 text-left font-medium">T2SCH13 closing</th>
+							<tr className="border-b">
+								<th className="w-[28%] px-2 pb-2 text-left font-medium">
+									&nbsp;
+								</th>
+								{COLUMNS.map((col) => (
+									<th
+										key={col.field}
+										className="px-2 pb-2 text-center align-bottom font-medium leading-tight"
+									>
+										{col.heading}
+									</th>
+								))}
 							</tr>
 						</thead>
 						<tbody>
 							{AT1_SCHEDULE_17_RESERVE_KINDS.map((kind) => {
-								const openingField = parseAt1LineItemId(kind.opening)?.field ?? kind.opening;
-								const transferField = parseAt1LineItemId(kind.transfer)?.field ?? kind.transfer;
-								const closingField = parseAt1LineItemId(kind.closing)?.field ?? kind.closing;
+								const type = TYPE_BY_OPENING_LINE[printed(kind.opening)];
+								if (!type) return null;
+								const i = indexOf(type);
 								return (
-									<tr key={kind.label} className="border-b last:border-b-0">
-										<td className="px-3 py-1.5 text-muted-foreground">{kind.label}</td>
-										<td className="px-3 py-1.5 font-mono">{FEDERAL_DEFAULT_LINES.get(openingField) ?? "—"}</td>
-										<td className="px-3 py-1.5 font-mono">{FEDERAL_DEFAULT_LINES.get(transferField) ?? "—"}</td>
-										<td className="px-3 py-1.5 font-mono">{FEDERAL_DEFAULT_LINES.get(closingField) ?? "—"}</td>
+									<tr key={kind.label} className="border-b">
+										<td className="px-2 py-1.5 font-medium">{kind.label}</td>
+										{COLUMNS.map((col) => (
+											<td key={col.field} className="px-2 py-1.5">
+												<div className="flex items-center gap-1.5">
+													<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+														{printed(kind[col.field])}
+													</span>
+													{i >= 0 ? (
+														<Controller
+															control={c}
+															name={`rows.${i}.${col.field}` as const}
+															render={({ field: f }) => (
+																<input
+																	type="number"
+																	inputMode="decimal"
+																	step="any"
+																	disabled={disabled}
+																	aria-label={`${kind.label} — ${col.heading}`}
+																	className={CELL}
+																	value={
+																		(f.value as number | undefined) ?? ""
+																	}
+																	onChange={(e) =>
+																		f.onChange(
+																			e.target.value === ""
+																				? undefined
+																				: Number(e.target.value),
+																		)
+																	}
+																	onBlur={f.onBlur}
+																/>
+															)}
+														/>
+													) : (
+														/*
+														 * No row for this kind yet. The input is live
+														 * anyway — typing appends the row, so a
+														 * preparer never has to "add" a reserve kind
+														 * the form already prints.
+														 */
+														<input
+															type="number"
+															inputMode="decimal"
+															step="any"
+															disabled={disabled}
+															aria-label={`${kind.label} — ${col.heading}`}
+															className={CELL}
+															defaultValue=""
+															onChange={(e) => {
+																if (e.target.value === "") return;
+																append({
+																	type,
+																	[col.field]: Number(e.target.value),
+																});
+															}}
+														/>
+													)}
+												</div>
+											</td>
+										))}
 									</tr>
 								);
 							})}
+							{/* TOTALS — printed inside the reserves box, with their own lines. */}
+							<tr className="bg-muted/30">
+								<td className="px-2 py-1.5 text-right font-medium">TOTALS:</td>
+								{COLUMNS.map((col) => (
+									<td key={col.field} className="px-2 py-1.5">
+										<div className="flex items-center gap-1.5">
+											<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+												{TOTAL_LINES[col.field]}
+											</span>
+											<span className="flex-1 text-right tabular-nums text-muted-foreground">
+												{at1Money(totalOf(col.field))}
+											</span>
+										</div>
+									</td>
+								))}
+							</tr>
 						</tbody>
 					</table>
 				</div>
 			</PaperSection>
-			<PaperSection title="Totals carried to Schedule 12">
-				{AT1_SCHEDULE_17_FIELDS.filter((f) => f.section === "totals").map((f) => (
-					<PaperLeaderRow
-						key={f.line}
-						line={parseAt1LineItemId(f.line)?.field ?? f.line}
-						caption={f.caption}
-						kind={f.kind}
-						role={f.role}
-						note={f.note}
-						from={f.from}
-						to={f.to}
-						onNavigate={onNavigate}
-						highlightLine={highlightLine}
-						control={reservesControl}
-						resolveLine={resolveTotalsLine}
-						disabled={disabled}
-					/>
+
+			{/*
+			 * Line 091 sits OUTSIDE the reserves box on the page, under no heading
+			 * at all — see `AT1_SCHEDULE_17`'s own section comment. Rendered the
+			 * same way: after the box, captioned with the page's own arithmetic.
+			 */}
+			<div className="flex items-center justify-end gap-3 px-1 text-sm">
+				<span className="font-semibold">Line 021 + line 051 =</span>
+				<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+					091
+				</span>
+				<span
+					className={cn(
+						"w-32 text-right tabular-nums text-muted-foreground",
+					)}
+				>
+					{at1Money(
+						(filedByField.get("091") as number | undefined) ??
+							totalOf("opening") + totalOf("transfer"),
+					)}
+				</span>
+			</div>
+
+			{/*
+			 * The two carry-forward instructions the page prints in bold italic.
+			 * Taken from the field definitions' own `to` refs rather than retyped,
+			 * so they cannot drift from the destinations the engine files against.
+			 */}
+			<div className="space-y-1 px-1 text-sm font-semibold">
+				{AT1_SCHEDULE_17_FIELDS.filter((f) => f.to).map((f) => (
+					<p key={f.line}>
+						{`Carry forward the amount at line ${printed(f.line)} to Schedule 12, line ${printed(f.to?.line ?? "")}.`}
+					</p>
 				))}
-				<PaperFootnotes notes={AT1_SCHEDULE_17_FOOTNOTES} />
-			</PaperSection>
+			</div>
+
+			<PaperFootnotes notes={AT1_SCHEDULE_17_FOOTNOTES} />
 		</div>
 	);
 }

@@ -23,6 +23,8 @@ import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
 import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
 import { albertaSchedule12 } from "./schedules/at1/alberta-schedule12";
 import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
+import { albertaCca13 } from "./schedules/at1/alberta-cca13";
+import { albertaReserves17 } from "./schedules/at1/alberta-reserves17";
 import { albertaSred16 } from "./schedules/at1/alberta-schedule16";
 import { albertaSchedule18Abil } from "./schedules/at1/alberta-schedule18";
 import { quebec } from "./schedules/co17/quebec";
@@ -82,6 +84,8 @@ export const SCHEDULES = [
 	albertaSchedule18Abil,
 	albertaResourceDeductions15,
 	albertaSred16,
+	albertaReserves17,
+	albertaCca13,
 	payments,
 	internetBusiness,
 	firstReturn,
@@ -145,17 +149,11 @@ export const scheduleTreeFor = (program: string) =>
 	}));
 
 /**
- * True for a schedule that belongs ONLY to `program` — e.g. an AT1 engagement's
- * "Alberta AT1 — required fields" block, as opposed to Schedule 8 (CCA), which
- * has no `programs` restriction because Alberta's own CCA reconciliation needs
- * the federal figures entered there too. Drives the sidebar's program filter:
- * narrowing to "just AT1" should hide the shared federal schedules, not the
- * whole return.
+ * Re-exported so every existing importer (`return-editor.tsx`) is unchanged.
+ * The rule itself lives in `shared/program-filter.ts`, away from this module's
+ * whole-UI import graph, so it can be tested — see that file's own header.
  */
-export const isProgramSpecific = (
-	s: { programs?: readonly ScheduleProgram[] },
-	program: string,
-) => !!s.programs && s.programs.every((p) => p === program);
+export { isProgramSpecific } from "./schedules/shared/program-filter";
 
 export const schemaFor = (key: ScheduleKey) => BY_KEY[key].schema;
 

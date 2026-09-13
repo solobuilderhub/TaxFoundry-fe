@@ -74,6 +74,7 @@ export const AT1_SCHEDULE_17_FIELDS: readonly PaperField[] = [
 
 export const AT1_SCHEDULE_17_FOOTNOTES: readonly string[] = [
   "This schedule is required if the opening balance or the claim for Alberta purposes differs from that for federal purposes.",
+  "Report all monetary amounts in dollars; DO NOT include cents.",
 ];
 
 export interface Schedule17ReserveKind {

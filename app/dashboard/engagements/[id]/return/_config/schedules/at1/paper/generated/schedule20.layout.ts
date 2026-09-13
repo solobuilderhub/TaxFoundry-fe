@@ -85,7 +85,7 @@ export const AT1_SCHEDULE_20_FIELDS: readonly PaperField[] = [
 export const AT1_SCHEDULE_20_FOOTNOTES: readonly string[] = [
   "This schedule is required if the opening balance or the claim for Alberta purposes differs from that for federal purposes.",
   "If the corporation is reporting nil net income or a loss for the year, donations cannot be claimed.",
-  "If the corporation elects to differ its Alberta claim for the additional deduction for gifts of medicine (federal T2 Schedule 2, line 660), enter the Alberta amount on Schedule 12, line 40, the federal amount on Schedule 12, line 41, and provide the explanation of the difference on Schedule 12, line 48.",
+  "Report all monetary amounts in dollars; DO NOT include cents.",
   "Report the combined totals for all three categories of gifts (to Canada or a province, of certified cultural property, and of certified ecologically sensitive land) in the 062-078 block.",
   "* For credit unions this amount is before the deduction of payments pursuant to allocations in proportion to borrowing and bonus interest.",
 ];
