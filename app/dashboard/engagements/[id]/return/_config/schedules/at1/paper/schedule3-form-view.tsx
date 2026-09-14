@@ -4,8 +4,19 @@ import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaOtherCredits3Values } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
-import { PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_SCHEDULE_3_FIELDS, AT1_SCHEDULE_3_FOOTNOTES, AT1_SCHEDULE_3_SECTIONS } from "./generated/schedule3.layout";
+import { CreditVintageTables } from "../alberta-credit-vintage-tables";
+import {
+	PaperFootnotes,
+	PaperLeaderRow,
+	PaperSection,
+	readFootnotePlacement,
+} from "./components/paper-primitives";
+import {
+	AT1_SCHEDULE_3_FIELDS,
+	AT1_SCHEDULE_3_FOOTNOTE_PLACEMENT,
+	AT1_SCHEDULE_3_FOOTNOTES,
+	AT1_SCHEDULE_3_SECTIONS,
+} from "./generated/schedule3.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 const SCHEDULE_ID = "003";
@@ -40,13 +51,31 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaOtherCredits3Values>> = {
  * hand here, under their own real jacket line numbers, so the paper view has
  * the same MAD section the guided editor does.
  */
-const MAD_JACKET_ROWS: { line: string; caption: string; name: keyof AlbertaOtherCredits3Values }[] = [
-	{ line: "000068", caption: "Alberta tax payable before this deduction", name: "taxPayableBeforeDeduction" },
-	{ line: "000070", caption: "AT1 page 2, line 070", name: "line070" },
-	{ line: "000071", caption: "AT1 page 2, line 071", name: "line071" },
-	{ line: "000072", caption: "AT1 page 2, line 072", name: "line072" },
-	{ line: "000074", caption: "AT1 page 2, line 074", name: "line074" },
-];
+/*
+ * ── Schedule 3's MAD section has THREE boxes: 600, 602, 604 ───────────────
+ *
+ * There were five more rows here — 000068, 000070, 000071, 000072, 000074 —
+ * and the page prints none of them. They are AT1 JACKET lines, which Schedule
+ * 3 only ever REFERENCES, inside line 602's own caption:
+ *
+ *     602   "From AT1 page 2, line 068 - (lines 070 + 072)"
+ *
+ * They were first added as five editable money boxes, which was the worse
+ * version of the same mistake: three of the five are not a preparer's to give
+ * at all (the jacket types 068 `computed`, and 070/072 `carried-in` from
+ * Schedules 1 and 4), so a return could state one ceiling here and transmit a
+ * different jacket. Making them read-only fixed that and still left five boxes
+ * on a form that has three.
+ *
+ * So they are gone. The room is derived by the engine (`SCHEDULE_3_ROOM` in
+ * ca-tax's `alberta-return.ts`) and line 602 states its own provenance exactly
+ * as the page does: `sourceText` carries the printed formula and `from` points
+ * at jacket 000068001, so the derivation is one hop away in the UI without
+ * inventing a row for each term.
+ *
+ * Jacket 071 and 074 — the two terms that ARE the preparer's — are entered on
+ * the Alberta jacket schedule, where the form prints them.
+ */
 
 /**
  * 302 (APITC carried forward from prior years, all vintages) has no single
@@ -96,11 +125,34 @@ export function Schedule3FormView({
 }) {
 	const s3Control = control as unknown as Control<AlbertaOtherCredits3Values>;
 	const resolveLine = buildResolveLine(computed);
+	const footnotes = readFootnotePlacement(
+		AT1_SCHEDULE_3_FOOTNOTES,
+		AT1_SCHEDULE_3_FOOTNOTE_PLACEMENT,
+	);
 
 	return (
 		<div className="space-y-4">
+			{/*
+			 * The eligibility instruction, where the page prints it: above the
+			 * first box. Without a certificate from the appropriate ministry none
+			 * of this schedule can be claimed at all, which makes it the first
+			 * thing a preparer should read rather than a footnote at the end.
+			 */}
+			{AT1_SCHEDULE_3_SECTIONS[0]?.printedBefore && (
+				<p className="px-1 text-sm font-medium text-muted-foreground">
+					{AT1_SCHEDULE_3_SECTIONS[0].printedBefore}
+				</p>
+			)}
 			{AT1_SCHEDULE_3_SECTIONS.map((section, i) => {
 				const fields = AT1_SCHEDULE_3_FIELDS.filter((f) => f.section === section.id);
+				/*
+				 * Pages 2 and 3 are three tables, not twenty-one leader rows.
+				 * Every column of them is a real field in `AT1_SCHEDULE_3_FIELDS`
+				 * — at occurrence 1, one per column — so the generic loop below
+				 * would otherwise render each table's seven headings as seven
+				 * stacked rows with no rows under them.
+				 */
+				if (section.id.endsWith("-vintage")) return null;
 				return (
 					<PaperSection
 						key={section.id}
@@ -108,18 +160,6 @@ export function Schedule3FormView({
 						description={section.description}
 						formId={i === 0 ? "AT1SCH03" : undefined}
 					>
-						{section.id === "mad" &&
-							MAD_JACKET_ROWS.map((row) => (
-								<PaperLeaderRow
-									key={row.line}
-									line={row.line}
-									caption={row.caption}
-									kind="money"
-									control={s3Control}
-									resolveLine={() => ({ editable: true, name: row.name })}
-									disabled={disabled}
-								/>
-							))}
 						{fields.map((f) => (
 							<PaperLeaderRow
 								key={f.line}
@@ -137,10 +177,45 @@ export function Schedule3FormView({
 								disabled={disabled}
 							/>
 						))}
+						<PaperFootnotes
+							notes={AT1_SCHEDULE_3_FOOTNOTES}
+							only={footnotes.forSection(section.id)}
+							marks={footnotes.marks}
+						/>
 					</PaperSection>
 				);
 			})}
-			<PaperFootnotes notes={AT1_SCHEDULE_3_FOOTNOTES} />
+
+			{/*
+			 * Pages 2 and 3. Each table carries its own printed footnotes at its
+			 * own foot — the Agri-processing one alone has three, running *** to
+			 * *****, and the last of them is what states the current-year row's
+			 * arithmetic and so proves which cells the page shades.
+			 */}
+			{AT1_SCHEDULE_3_SECTIONS.filter((sec) =>
+				sec.id.endsWith("-vintage"),
+			).map((sec) => (
+				<PaperSection key={sec.id} title={sec.title} description={sec.description}>
+					<CreditVintageTables
+						control={s3Control}
+						disabled={disabled}
+						section={sec.id}
+						footnoteSymbol={(mark) => footnotes.marks[mark]}
+					/>
+					<PaperFootnotes
+						notes={AT1_SCHEDULE_3_FOOTNOTES}
+						only={footnotes.forSection(sec.id)}
+						marks={footnotes.marks}
+					/>
+				</PaperSection>
+			))}
+
+			{/* Anything belonging to no box. */}
+			<PaperFootnotes
+				notes={AT1_SCHEDULE_3_FOOTNOTES}
+				only={footnotes.unplaced}
+				marks={footnotes.marks}
+			/>
 		</div>
 	);
 }

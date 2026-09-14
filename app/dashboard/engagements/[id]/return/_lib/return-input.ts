@@ -893,6 +893,14 @@ export type AlbertaValues = {
 	 */
 	totalAssets?: number;
 	/**
+	 * 000071 — Alberta Manufacturing and Processing Profits Deduction. A genuine preparer figure: `input` on the jacket, and nothing computes it. Read by TWO things — the jacket payload and Schedule 3’s shared ceiling — which is why it lives here and not on Schedule 3, where a second copy could disagree with it.
+	 */
+	manufacturingDeduction?: number;
+	/**
+	 * 000074 — Alberta Political Contributions Tax Credit. `input` on the jacket, same reasoning as `manufacturingDeduction` above.
+	 */
+	politicalContributionsTaxCredit?: number;
+	/**
 	 * 000001 — associated with one or more Canadian-controlled private corporations? Not derived from Schedule 1's own association test: that derivation is undefined whenever the corporation is not claiming the Alberta SBD, but this jacket line is unconditionally mandatory.
 	 */
 	associatedWithCcpcs?: YesNo;
@@ -1383,26 +1391,6 @@ export type IegAgreementMember = {
 };
 export type AlbertaOtherCredits3Values = {
 	/**
-	 * AT1 page 2, line 068 — Alberta tax payable before this deduction.
-	 */
-	taxPayableBeforeDeduction?: number;
-	/**
-	 * AT1 page 2, line 070.
-	 */
-	line070?: number;
-	/**
-	 * AT1 page 2, line 071.
-	 */
-	line071?: number;
-	/**
-	 * AT1 page 2, line 072.
-	 */
-	line072?: number;
-	/**
-	 * AT1 page 2, line 074.
-	 */
-	line074?: number;
-	/**
 	 * 003100 — total shown on all Investor Tax Credit certificates issued during the year.
 	 */
 	itcCertificatesIssued?: number;
@@ -1470,6 +1458,50 @@ export type AlbertaOtherCredits3Values = {
 	 * 003314 — total Agri-Processing Investment Tax Credit expired during the year (= 003338 occurrence 10).
 	 */
 	apitcExpired?: number;
+	/**
+	 * AT1 Schedule 3 pages 2 and 3 — the year-of-origin detail behind lines 102, 202 and 302.
+	 */
+	vintages?: AlbertaCreditVintages3Values;
+};
+export type AlbertaCreditVintages3Values = {
+	/**
+	 * Lines 120-130. Five rows at most — the current year and four preceding ones.
+	 */
+	investorTaxCredit?: AlbertaCreditVintageRow[];
+	/**
+	 * Lines 220-230. Eleven rows at most — the current year and ten preceding ones.
+	 */
+	capitalInvestmentTaxCredit?: AlbertaCreditVintageRow[];
+	/**
+	 * Lines 330-340. Eleven rows at most. Note this table’s columns are ordered received (334) before opening balance (335), the reverse of the other two.
+	 */
+	agriProcessingTaxCredit?: AlbertaCreditVintageRow[];
+};
+export type AlbertaCreditVintageRow = {
+	/**
+	 * Line 120 / 220 / 330 — the page’s "Year of origin": 0 is the current taxation year, 1 the 1st preceding, up to 4 (Investor Tax Credit) or 10 (the other two). A row without one cannot be placed on the form and is not filed.
+	 */
+	yearIndex?: number;
+	/**
+	 * Line 122 / 222 / 332 — that year’s own tax year end, ISO YYYY-MM-DD.
+	 */
+	taxYearEnd?: string;
+	/**
+	 * Line 124 / 224 / 335 — balance at the beginning of the year, including transfers on an eligible amalgamation or wind-up. Shaded out on the current-year row: the credit was received during the year, not carried into it.
+	 */
+	openingBalance?: number;
+	/**
+	 * Line 125 / 225 / 334 — credit received. On the ITC and CITC tables this means received in the CURRENT year, so it is shaded out on every preceding-year row. On the APITC table it means received in THAT vintage’s own year and stays live on every row — see the row type’s doc comment.
+	 */
+	received?: number;
+	/**
+	 * Line 126 / 226 / 336 — applied to reduce tax payable. Totalled by the page.
+	 */
+	applied?: number;
+	/**
+	 * Line 128 / 228 / 338 — expired during the year. Shaded out on the current-year row: nothing can expire in the year it was received.
+	 */
+	expired?: number;
 };
 export type AlbertaForeignInvestment4Values = {
 	/**
