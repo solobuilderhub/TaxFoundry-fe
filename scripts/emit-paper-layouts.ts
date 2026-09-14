@@ -30,6 +30,12 @@
 import { writeFileSync } from "node:fs";
 import {
 	AT1_JACKET,
+	AT1_JACKET_BLOCK_HEADINGS,
+	AT1_JACKET_CODE_OPTIONS,
+	AT1_JACKET_DAY_BANDS,
+	AT1_JACKET_DEPARTMENT_USE,
+	AT1_JACKET_LINES_NOT_PRINTED,
+	AT1_JACKET_RATE_ROWS,
 	AT1_SCHEDULE_1,
 	AT1_SCHEDULE_1_AGREEMENT_COLUMNS,
 	AT1_SCHEDULE_1_AGREEMENT_TOTALS_LABEL,
@@ -438,12 +444,40 @@ function emitProvenanceComment(
 	out.push(" */");
 }
 
+/**
+ * The AT1 jacket is flat PLUS four shapes a flat field list cannot hold.
+ *
+ * This function used to carry a comment saying line 066 ("Amount Taxable in
+ * Alberta") "appears on the printed form but is absent from
+ * AT1_JACKET_CAPTIONS … a known gap in the captions generator, not fixed
+ * here". It is fixed upstream now, along with 079 and 088 — the two printed
+ * subtotals 080 and 090 subtract — so the page's arithmetic closes.
+ *
+ * The four companion shapes:
+ *
+ *   - **The day-band table behind line 068.** Six lettered day counts (A-F)
+ *     and five prorated amounts (G-K). None is numbered, and line 068's own
+ *     caption — "Total (line G + line H + line I + line J + line K)" — names
+ *     five letters that are defined nowhere else.
+ *   - **The code lists.** Six fields are `kind: 'code'` and the page prints
+ *     every option beside a tick box. A filed "3" at line 051 means bankruptcy
+ *     and at 039 means a final return; without the lists neither the interface
+ *     can offer the choice nor a reader decode the answer.
+ *   - **Nine in-box headings**, three of which do real routing: the two
+ *     stacked over line 062 decide whether Schedule 12 is required at all and
+ *     which federal lines 062 must equal, and the paragraph over 101 is the
+ *     certification the signature attests to.
+ *   - **The "For Department Use" box**, including the one printed number this
+ *     package deliberately does not model. Carried so the renderer can say so
+ *     rather than silently showing two of three boxes.
+ */
 export function jacketPaperLayout(): string {
 	const out: string[] = [];
 	emitProvenanceComment(out, AT1_JACKET, [
-		'Line 066 ("Amount Taxable in Alberta = 062 × 065") appears on the printed',
-		"form but is absent from AT1_JACKET_CAPTIONS (generated from spec text, not",
-		"the PDF) — a known gap in the captions generator, not fixed here.",
+		"Two documents: this PDF for what the form says and prints, and the AT1 Net",
+		"File specification for what transmits (the Line-Item-IDs, the M/O/X",
+		"requirement per field, and the nine lines the RSI still carries that this",
+		"form no longer prints). See ca-tax's `jacket.ts` header.",
 	]);
 	emitPaperTypes(out);
 	out.push("");
@@ -455,11 +489,111 @@ export function jacketPaperLayout(): string {
 	}
 	out.push("];");
 	out.push("");
+	out.push(
+		"/** In the order the FORM prints them — not the specification's numeric order. The credits block runs 129, 082, 085, 110, 086, 115, 087. */",
+	);
 	out.push("export const AT1_JACKET_FIELDS: readonly PaperField[] = [");
 	for (const f of AT1_JACKET.fields) out.push(emitField(f));
 	out.push("];");
 	out.push("");
+	out.push(
+		"/** The lines the RSI still carries that this form no longer prints anywhere — four of them mandatory, so they transmit even when nil. A paper Form View must not render these among the printed rows: they are indistinguishable there, on a view whose whole purpose is to be the page. */",
+	);
+	out.push(
+		`export const AT1_JACKET_LINES_NOT_PRINTED: readonly string[] = [${AT1_JACKET_LINES_NOT_PRINTED.map((l) => q(l)).join(", ")}];`,
+	);
+	out.push("");
 	emitFootnotes(out, AT1_JACKET, "AT1_JACKET");
+	out.push("");
+	out.push("export interface JacketBlockHeading {");
+	out.push("  /** The printed line the heading stands immediately above. */");
+	out.push("  aboveLine: string;");
+	out.push("  text: string;");
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push(
+		"/** Three share `aboveLine: \"062\"` — the page stacks the Schedule 12 warning, the box heading and the federal-equality instruction. Print every match, in order. */",
+	);
+	out.push(
+		"export const AT1_JACKET_BLOCK_HEADINGS: readonly JacketBlockHeading[] = [",
+	);
+	for (const h of AT1_JACKET_BLOCK_HEADINGS) {
+		const parts = [`aboveLine: ${q(h.aboveLine)}`, `text: ${q(h.text)}`];
+		if (h.footnoteMarks?.length) {
+			parts.push(`footnoteMarks: [${h.footnoteMarks.join(", ")}]`);
+		}
+		out.push(`  { ${parts.join(", ")} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export interface JacketDayBand {");
+	out.push("  /** The letter the page prints beside the box, parentheses included. */");
+	out.push("  letter: string;");
+	out.push("  label: string;");
+	out.push("}");
+	out.push("");
+	out.push("export interface JacketRateRow {");
+	out.push("  letter: string;");
+	out.push('  /** Verbatim, trailing "=" and capital X included. */');
+	out.push("  formula: string;");
+	out.push("  /** Which day band the formula divides by (F) — never (F) itself. */");
+	out.push("  daysLetter: string;");
+	out.push("  rate: number;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"/** Six bands, five rates: (F) is the denominator, not a sixth band. */",
+	);
+	out.push("export const AT1_JACKET_DAY_BANDS: readonly JacketDayBand[] = [");
+	for (const b of AT1_JACKET_DAY_BANDS) {
+		out.push(`  { letter: ${q(b.letter)}, label: ${q(b.label)} },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export const AT1_JACKET_RATE_ROWS: readonly JacketRateRow[] = [");
+	for (const r of AT1_JACKET_RATE_ROWS) {
+		out.push(
+			`  { letter: ${q(r.letter)}, formula: ${q(r.formula)}, daysLetter: ${q(r.daysLetter)}, rate: ${r.rate} },`,
+		);
+	}
+	out.push("];");
+	out.push("");
+	out.push("export interface JacketCodeOption {");
+	out.push("  /** The digit the page prints beside the tick box, and the value transmitted. */");
+	out.push("  code: string;");
+	out.push("  label: string;");
+	out.push("}");
+	out.push("");
+	out.push(
+		"/** Printed line → its tick-box options. Line 028 is a code too and is absent: its value is a four-digit SIC code from a published classification, not a list of five. */",
+	);
+	out.push(
+		"export const AT1_JACKET_CODE_OPTIONS: Readonly<Record<string, readonly JacketCodeOption[]>> = {",
+	);
+	for (const [line, options] of Object.entries(AT1_JACKET_CODE_OPTIONS)) {
+		out.push(`  ${q(line)}: [`);
+		for (const o of options) {
+			out.push(`    { code: ${q(o.code)}, label: ${q(o.label)} },`);
+		}
+		out.push("  ],");
+	}
+	out.push("};");
+	out.push("");
+	out.push(
+		"/** Page 1's top-right box. `unmodelled` is line 004: printed, uncaptioned, in no spec table and in no certification sample — so there is nothing to transcribe, and guessing a caption is how a real figure lands against the wrong box. */",
+	);
+	out.push("export const AT1_JACKET_DEPARTMENT_USE = {");
+	out.push(`  heading: ${q(AT1_JACKET_DEPARTMENT_USE.heading)},`);
+	out.push(`  preprinted: ${q(AT1_JACKET_DEPARTMENT_USE.preprinted)},`);
+	out.push(
+		`  lines: [${AT1_JACKET_DEPARTMENT_USE.lines.map((l) => q(l)).join(", ")}] as readonly string[],`,
+	);
+	out.push(
+		`  unmodelled: [${AT1_JACKET_DEPARTMENT_USE.unmodelled.map((l) => q(l)).join(", ")}] as readonly string[],`,
+	);
+	out.push("};");
+	out.push("");
 	return out.join("\n");
 }
 
