@@ -55,6 +55,34 @@ export const alberta = defineSchedule({
 						required: true,
 						description: "Must equal federal GIFI 2599.",
 					}),
+					/*
+					 * Jacket lines 071 and 074 — the two page-2 figures nothing on
+					 * the return computes.
+					 *
+					 * They were collected on SCHEDULE 3 instead, as two of the five
+					 * terms of its shared ceiling. The other three of those five are
+					 * not a preparer's to give at all (068 is `computed` on the
+					 * jacket, 070 and 072 `carried-in` from Schedules 1 and 4), so
+					 * the whole group has moved: the engine derives the ceiling, and
+					 * these two live here, where the form prints them. Schedule 3
+					 * shows all five read-only.
+					 */
+					f.money(
+						"manufacturingDeduction",
+						"Manufacturing and Processing Profits Deduction (line 071)",
+						{
+							description:
+								"Reduces Alberta tax payable, and narrows the ceiling Schedule 3's credits draw on.",
+						},
+					),
+					f.money(
+						"politicalContributionsTaxCredit",
+						"Political Contributions Tax Credit (line 074)",
+						{
+							description:
+								"Reduces Alberta tax payable, and narrows the ceiling Schedule 3's credits draw on.",
+						},
+					),
 				],
 				{
 					variant: "card",

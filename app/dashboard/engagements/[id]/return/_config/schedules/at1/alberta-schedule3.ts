@@ -7,6 +7,11 @@ import { createElement } from "react";
 import type { AlbertaOtherCredits3Values } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { defineSchedule } from "../shared/define";
+import {
+	AgriProcessingTaxCreditVintageTable,
+	CapitalInvestmentTaxCreditVintageTable,
+	InvestorTaxCreditVintageTable,
+} from "./alberta-credit-vintage-tables";
 import { Schedule3FormView } from "./paper/schedule3-form-view";
 
 /**
@@ -23,11 +28,15 @@ import { Schedule3FormView } from "./paper/schedule3-form-view";
  * `packages/ca-tax/src/t2/at1/schedules/schedule3-other-deductions-credits.ts`
  * for the full derivation (TRA spec §3.2.3.4, no matching form PDF exists).
  * Simplified from the engine's full `Schedule3Input` for a usable form:
- *   - the by-year-of-origin detail pages (AITC/ACITC, lines 120-130/220-230)
- *     are NOT collected — the engine module itself does not compute a
- *     per-vintage split for ITC/CITC (the spec gives those two no
- *     application order or percentage rule the way it gives APITC), so there
- *     is nothing here for such a table to feed;
+ *   - the by-year-of-origin detail tables (lines 120-130 / 220-230 / 330-340)
+ *     ARE collected now, on `vintages`, as three real tables. They were not,
+ *     on the reasoning that "the engine does not compute a per-vintage split
+ *     for ITC/CITC … so there is nothing here for such a table to feed". The
+ *     first half is true and still is; the second does not follow. TRA
+ *     requires the detail pages alongside the aggregate claim, and the engine
+ *     module's own doc comment says it expects the caller to supply the split
+ *     ("a caller filing the AITC/ACITC detail pages supplies that per-vintage
+ *     split itself"). Nothing computes them; the preparer enters them;
  *   - APITC's per-vintage inputs ARE kept (the engine needs them for the
  *     20% / 30% / 50% caps), but as four flat named slots — current / 1st /
  *     2nd / 3rd-10th preceding — rather than a repeating `f.array` the way
@@ -35,35 +44,27 @@ import { Schedule3FormView } from "./paper/schedule3-form-view";
  *     partnerships are: the spec gives the first three vintages each their
  *     OWN percentage rule, so they are not interchangeable rows a preparer
  *     could add, remove or reorder;
- *   - MAD's shared-ceiling inputs (AT1 page 2 jacket lines
- *     068/070/071/072/074) are collected here directly — the same way
- *     `alberta-ieg.ts` collects figures with no jacket UI/composer to source
- *     them from yet.
+ *   - MAD's shared ceiling is NOT collected. It was: five money fields for
+ *     jacket lines 068/070/071/072/074, "collected here directly — the same
+ *     way `alberta-ieg.ts` collects figures with no jacket UI/composer to
+ *     source them from yet". That was true of 071 and 074 and never true of
+ *     the other three: the jacket types 068 as `computed` and 070/072 as
+ *     `carried-in` from Schedules 1 and 4, all of which the engine produces.
+ *
+ *     So a preparer could type one ceiling here while the return transmitted a
+ *     different jacket, and the deduction at 604 — with the jacket's own 076,
+ *     which takes it — would both be computed from a figure the return does
+ *     not contain. The engine derives the room now, after computing the tax
+ *     (`SCHEDULE_3_ROOM` in ca-tax's `alberta-return.ts`), and the paper Form
+ *     View shows all five read-only from the jacket's own payload.
+ *
+ *     071 and 074 moved to `alberta.ts` — the jacket schedule, where the form
+ *     puts them — so the one figure has one home.
  */
 const f = fieldsFor<AlbertaOtherCredits3Values>();
 
 export const albertaSchedule3Schema: FormSchema = defineSchema({
 	sections: [
-		section(
-			"mad",
-			"Maximum Allowable Deduction (line 600-604)",
-			[
-				f.money(
-					"taxPayableBeforeDeduction",
-					"Alberta tax payable before this deduction (AT1 page 2, line 068)",
-				),
-				f.money("line070", "AT1 page 2, line 070"),
-				f.money("line071", "AT1 page 2, line 071"),
-				f.money("line072", "AT1 page 2, line 072"),
-				f.money("line074", "AT1 page 2, line 074"),
-			],
-			{
-				variant: "card",
-				cols: 2,
-				description:
-					"The shared ceiling all three credits below draw on: room = line 068 − (070+071+072+074). The Total Deduction (line 604) is the lesser of that room and the credits actually applied.",
-			},
-		),
 		section(
 			"itc",
 			"Investor Tax Credit (line 100-108)",
@@ -177,6 +178,35 @@ export const albertaSchedule3Schema: FormSchema = defineSchema({
 				cols: 2,
 				description:
 					"Each vintage has its OWN percentage ceiling (20% / 30% / 50% / uncapped) before the shared room above applies. Amounts left blank claim the maximum each vintage's own cap and the remaining shared room allow, oldest vintage first.",
+			},
+		),
+		section(
+			"vintages",
+			"Carry forward by year of origin (pages 2 and 3)",
+			[
+				f.custom(
+					"vintages.investorTaxCredit",
+					"Investor Tax Credit by year of origin (lines 120-130)",
+					(props) => createElement(InvestorTaxCreditVintageTable, props),
+				),
+				f.custom(
+					"vintages.capitalInvestmentTaxCredit",
+					"Capital Investment Tax Credit by year of origin (lines 220-230)",
+					(props) => createElement(CapitalInvestmentTaxCreditVintageTable, props),
+				),
+				f.custom(
+					"vintages.agriProcessingTaxCredit",
+					"Agri-processing Investment Tax Credit by year of origin (lines 330-340)",
+					(props) => createElement(AgriProcessingTaxCreditVintageTable, props),
+				),
+			],
+			{
+				variant: "card",
+				// One table per row: eleven rows of six columns has no business
+				// being squeezed into half the section's width.
+				cols: 1,
+				description:
+					"The detail TRA requires alongside the aggregate claim above. Nothing here is computed — the engine derives the page-1 totals and leaves this split to you. The Investor Tax Credit runs five years; the other two run eleven. Cells the printed form shades out are shaded here too: they mean the quantity does not exist for that vintage, which is not the same as an empty box.",
 			},
 		),
 	],

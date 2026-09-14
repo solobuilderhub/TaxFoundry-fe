@@ -45,6 +45,8 @@ import {
 	AT1_SCHEDULE_2_FACTOR_DESTINATION,
 	AT1_SCHEDULE_2_FORMULAS,
 	AT1_SCHEDULE_3,
+	AT1_SCHEDULE_3_VINTAGE_TABLES,
+	AT1_SCHEDULE_3_VINTAGE_TOTALS_LABEL,
 	AT1_SCHEDULE_4,
 	AT1_SCHEDULE_4_COLUMNS,
 	AT1_SCHEDULE_10,
@@ -921,8 +923,101 @@ export function schedule10PaperLayout(): string {
 	return emitFlatSchedule(AT1_SCHEDULE_10, "AT1_SCHEDULE_10");
 }
 
+/**
+ * Schedule 3 is flat PLUS the three carry-forward-by-year-of-origin tables.
+ *
+ * Pages 2 and 3 are nothing but those tables, and they were absent from the
+ * definition entirely — `computeSchedule3` has a good reason not to COMPUTE the
+ * ITC/CITC split, which was never a reason to leave two printed pages out of a
+ * transcription of the form.
+ *
+ * The flat field list cannot hold two things the tables say. Which cells the
+ * page SHADES OUT — a shaded cell states that the quantity does not exist for
+ * that vintage, which is not the same as an empty one — and how DEEP each table
+ * runs: four preceding years for the Investor Tax Credit, ten for the other two.
+ */
 export function schedule3PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_3, "AT1_SCHEDULE_3");
+	const out: string[] = [];
+	out.push(emitFlatSchedule(AT1_SCHEDULE_3, "AT1_SCHEDULE_3"));
+	out.push("");
+	out.push("export interface Schedule3VintageColumn {");
+	out.push("  /** The printed line. Each row of the table is one OCCURRENCE of it. */");
+	out.push("  line: string;");
+	out.push("  /** The column heading, verbatim, including any arithmetic it states. */");
+	out.push("  heading: string;");
+	out.push('  kind: "code" | "date" | "money";');
+	out.push('  role: "input" | "computed";');
+	out.push(
+		"  /** Year-of-origin indexes the page SHADES OUT for this column — 0 is the current year. A shaded cell says the quantity does not exist for that vintage, which is not an empty box. */",
+	);
+	out.push("  shadedYears?: readonly number[];");
+	out.push("  /** True where the page prints a cell for this column in its Totals row. */");
+	out.push("  totalled?: boolean;");
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push("export interface Schedule3VintageTable {");
+	out.push("  /** Matches the section id its columns belong to. */");
+	out.push('  section: "itc-vintage" | "citc-vintage" | "apitc-vintage";');
+	out.push("  title: string;");
+	out.push(
+		"  /** The deepest preceding-year row the page prints — FOUR for the Investor Tax Credit, TEN for the other two. Rendering all three alike invents rows the form has no boxes for. */",
+	);
+	out.push("  maxPrecedingYear: number;");
+	out.push("  columns: readonly Schedule3VintageColumn[];");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_3_VINTAGE_TABLES: readonly Schedule3VintageTable[] = [",
+	);
+	for (const t of AT1_SCHEDULE_3_VINTAGE_TABLES) {
+		out.push(`  {`);
+		out.push(`    section: ${q(t.section)},`);
+		out.push(`    title: ${q(t.title)},`);
+		out.push(`    maxPrecedingYear: ${t.maxPrecedingYear},`);
+		out.push(`    columns: [`);
+		for (const c of t.columns) {
+			const parts = [
+				`line: ${q(c.line)}`,
+				`heading: ${q(c.heading)}`,
+				`kind: ${q(c.kind)}`,
+				`role: ${q(c.role)}`,
+			];
+			if (c.shadedYears?.length) {
+				parts.push(`shadedYears: [${c.shadedYears.join(", ")}]`);
+			}
+			if (c.totalled) parts.push("totalled: true");
+			if (c.footnoteMarks?.length) {
+				parts.push(`footnoteMarks: [${c.footnoteMarks.join(", ")}]`);
+			}
+			out.push(`      { ${parts.join(", ")} },`);
+		}
+		out.push(`    ],`);
+		out.push(`  },`);
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		`export const AT1_SCHEDULE_3_VINTAGE_TOTALS_LABEL = ${q(AT1_SCHEDULE_3_VINTAGE_TOTALS_LABEL)};`,
+	);
+	out.push("");
+	out.push(
+		"/** The row label for one year-of-origin index, as the page prints it. */",
+	);
+	out.push("export function albertaVintageRowLabel(yearIndex: number): string {");
+	out.push('  if (yearIndex === 0) return "Current";');
+	out.push("  const suffix =");
+	out.push('    yearIndex % 10 === 1 && yearIndex !== 11');
+	out.push('      ? "st"');
+	out.push('      : yearIndex % 10 === 2 && yearIndex !== 12');
+	out.push('        ? "nd"');
+	out.push('        : yearIndex % 10 === 3 && yearIndex !== 13');
+	out.push('          ? "rd"');
+	out.push('          : "th";');
+	out.push("  return `${yearIndex}${suffix} preceding taxation year`;");
+	out.push("}");
+	out.push("");
+	return out.join("\n");
 }
 
 export function schedule15PaperLayout(): string {
