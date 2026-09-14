@@ -1742,6 +1742,22 @@ export function readFootnotePlacement(
  * `only` selects the subset belonging to one section (pass the placement rows
  * for that section); `marks` supplies each one's printed glyph. Both optional,
  * so the original whole-list call still behaves exactly as it did.
+ *
+ * ── Why a note with no glyph gets no glyph ──────────────────────────────────
+ *
+ * The fallback used to be `marks?.[i] ?? "*"`, so every note the form does NOT
+ * asterisk was printed with an invented asterisk. `FormFootnotePlacement.mark`
+ * is optional precisely because a form often anchors a note without one — AT1
+ * Schedule 29's page-3 Notes block opens each entry with the line it governs
+ * ("Line 270: total must not exceed line 208"), and that type's own doc says
+ * inventing a glyph "sends a reader hunting the page for it".
+ *
+ * The AT1 jacket made it unarguable. Two of its notes carry their asterisks IN
+ * the text — the page marks no box with either, so ca-tax transcribes the
+ * glyphs as printed — and four more are whole instruction paragraphs with no
+ * reference anywhere. Under the old fallback the first pair rendered as
+ * `* *All address changes…` and the paragraphs each acquired a reference to
+ * nothing.
  */
 export function PaperFootnotes({
 	notes,
@@ -1751,7 +1767,7 @@ export function PaperFootnotes({
 	notes: readonly string[] | undefined;
 	/** Indices to show, in order. Omit for all of them. */
 	only?: readonly number[];
-	/** Printed glyph per footnote index. A missing entry falls back to `*`. */
+	/** Printed glyph per footnote index. A missing entry prints NO glyph — see above. */
 	marks?: Readonly<Record<number, string | undefined>>;
 }) {
 	if (!notes || notes.length === 0) return null;
@@ -1763,7 +1779,9 @@ export function PaperFootnotes({
 		<ol className="space-y-1 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
 			{shown.map((i) => (
 				<li key={i} className="flex gap-2">
-					<span className="shrink-0 font-mono">{marks?.[i] ?? "*"}</span>
+					{marks?.[i] && (
+						<span className="shrink-0 font-mono">{marks[i]}</span>
+					)}
 					<span>{notes[i]}</span>
 				</li>
 			))}

@@ -47,42 +47,53 @@ export const alberta = defineSchedule({
 				"financials",
 				"Financial statement figures",
 				[
-					f.money("grossRevenue", "Gross revenue (line 047)", {
+					f.money("grossRevenue", "Gross Revenue (to nearest thousand) (line 047)", {
 						required: true,
-						description: "Per the financial statements, before any deduction.",
+						description:
+							"Per the financial statements, before any deduction. Enter the full dollar amount: the printed form pre-prints three trailing zeros because it is completed in thousands, but this product transmits whole dollars like every other money field on the return.",
 					}),
-					f.money("totalAssets", "Total assets (line 048)", {
-						required: true,
-						description: "Must equal federal GIFI 2599.",
-					}),
+					f.money(
+						"totalAssets",
+						"Total Assets (book value per balance sheet, to nearest thousand) (line 048)",
+						{
+							required: true,
+							description: "Must equal federal GIFI 2599.",
+						},
+					),
 					/*
-					 * Jacket lines 071 and 074 — the two page-2 figures nothing on
-					 * the return computes.
+					 * ── Jacket lines 071 and 074 are NOT collected, and must not be ─
 					 *
-					 * They were collected on SCHEDULE 3 instead, as two of the five
-					 * terms of its shared ceiling. The other three of those five are
-					 * not a preparer's to give at all (068 is `computed` on the
-					 * jacket, 070 and 072 `carried-in` from Schedules 1 and 4), so
-					 * the whole group has moved: the engine derives the ceiling, and
-					 * these two live here, where the form prints them. Schedule 3
-					 * shows all five read-only.
+					 * Two money fields sat here, moved off Schedule 3 with the comment
+					 * "these two live here, where the form prints them". The form
+					 * prints them NOWHERE. Reading TRA11722 Rev. 2025-07 end to end
+					 * found no box for either on page 1 or page 2, and the reason is
+					 * that both programmes are closed:
+					 *
+					 *   071  Alberta M&P profits deduction — pre-2001-04-01 only
+					 *   074  political contributions credit — corporate political
+					 *        contributions have been prohibited in Alberta since
+					 *        2015-06-15 (Bill 1), so the contribution the credit
+					 *        rewards cannot lawfully be made
+					 *
+					 * Both are still MANDATORY Field IDs in the Net File
+					 * specification, so the return transmits them — as a constant
+					 * zero, which is what §3.2.3 prescribes for a mandatory field
+					 * whose value cannot be determined. ca-tax types both
+					 * `role: 'computed'` and the paper Form View lists them in its
+					 * "Filed, but not printed on this form" block.
+					 *
+					 * Why this was worth removing rather than relabelling: 071 and 074
+					 * are subtracted from AT1 Schedule 3's shared ceiling. A figure
+					 * typed into either box would silently reduce a live ITC, CITC or
+					 * APITC claim — the same failure mode that got the five MAD rows
+					 * deleted from Schedule 3, arrived at from the other direction.
+					 *
+					 * `AlbertaValues` keeps both optional fields. They are the
+					 * engine's named terms for the ceiling derivation
+					 * (`SCHEDULE_3_ROOM` in ca-tax's `alberta-return.ts`) and the only
+					 * route by which a future reassessment of a pre-2001 or pre-2015
+					 * year could supply one. Nothing writes them, so both are nil.
 					 */
-					f.money(
-						"manufacturingDeduction",
-						"Manufacturing and Processing Profits Deduction (line 071)",
-						{
-							description:
-								"Reduces Alberta tax payable, and narrows the ceiling Schedule 3's credits draw on.",
-						},
-					),
-					f.money(
-						"politicalContributionsTaxCredit",
-						"Political Contributions Tax Credit (line 074)",
-						{
-							description:
-								"Reduces Alberta tax payable, and narrows the ceiling Schedule 3's credits draw on.",
-						},
-					),
 				],
 				{
 					variant: "card",
@@ -105,7 +116,7 @@ export const alberta = defineSchedule({
 					),
 					f.radio(
 						"windUpOfSubsidiary",
-						"Wind-up of a subsidiary under ITA s.88? (line 031)",
+						"Has there been a wind-up of a subsidiary under federal Income Tax Act (ITA) section 88 during the current taxation year? (line 031)",
 						YES_NO,
 						{
 							required: true,
@@ -131,9 +142,20 @@ export const alberta = defineSchedule({
 						YES_NO,
 						{ required: true },
 					),
+					/*
+					 * The DATE qualifier is not decoration, and it was missing.
+					 *
+					 * This label read "Transfer of property under ITA 85(1), 85(2)
+					 * or 97(2)?", which is the Net File specification's own
+					 * abbreviation of the field. The printed AT1 asks about a
+					 * transfer "that occurred after May 30, 2001, and during the
+					 * taxation year being reported" — a narrower question, and a
+					 * preparer answering the short version can answer "Yes" to a
+					 * transfer the form is not asking about.
+					 */
 					f.radio(
 						"transferOfProperty",
-						"Transfer of property under ITA 85(1), 85(2) or 97(2)? (line 054)",
+						"Was there a transfer of property under federal ITA subsection 85(1), 85(2) or 97(2) that occurred after May 30, 2001, and during the taxation year being reported? (line 054)",
 						YES_NO,
 						{ required: true },
 					),
@@ -151,13 +173,19 @@ export const alberta = defineSchedule({
 				[
 					f.radio(
 						"reportsDifferentAlbertaIncome",
-						"Reporting different taxable income for Alberta than federally? (line 060)",
+						"Is the corporation reporting different taxable income for Alberta and federal purposes? (line 060)",
 						YES_NO,
 						{ required: true },
 					),
+					/*
+					 * "discrectionary" is the printed form's typo, kept because the
+					 * label is the page's words and a preparer reconciling against
+					 * the paper should find the same string. ca-tax's `jacket.ts`
+					 * carries it too, with a test asserting it survives.
+					 */
 					f.radio(
 						"electsDifferentDiscretionaryAmounts",
-						"Elected different discretionary amounts, or do opening balances differ? (line 061)",
+						"Has the corporation elected to use any different discrectionary amounts for the current year claim or do opening balances differ for federal and Alberta purposes? (line 061)",
 						YES_NO,
 						{ required: true },
 					),
