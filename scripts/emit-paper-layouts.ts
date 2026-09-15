@@ -60,6 +60,9 @@ import {
 	AT1_SCHEDULE_13,
 	AT1_SCHEDULE_13_COLUMNS,
 	AT1_SCHEDULE_15,
+	AT1_SCHEDULE_15_AREAS,
+	AT1_SCHEDULE_15_CLOSING_INSTRUCTION,
+	AT1_SCHEDULE_15_PER_COUNTRY,
 	AT1_SCHEDULE_16,
 	AT1_SCHEDULE_17,
 	AT1_SCHEDULE_17_RESERVES,
@@ -1154,8 +1157,212 @@ export function schedule3PaperLayout(): string {
 	return out.join("\n");
 }
 
+/**
+ * Schedule 15 is flat PLUS the two-column continuity grid every one of its
+ * areas prints.
+ *
+ * The flat field list loses three things, and each of them changes what a
+ * preparer should do:
+ *
+ *   - **Which cells the page SHADES OUT.** A shaded cell says the quantity
+ *     does not exist on that side of the pool — Regulation 1201 applies to
+ *     regular expenses and 1202(2) to successor expenses, and the page shades
+ *     each column out on the other's row to say so. Without it a renderer
+ *     draws sixteen open boxes where Area A has nine.
+ *   - **The "Amount Available" rows**, printed with a box in both columns and
+ *     a line number in neither. Nothing transmits them, and each is where its
+ *     area's whole negative-balance rule is anchored.
+ *   - **Which two cells share a row.** Nothing about lines 001 and 011 says
+ *     they are one quantity on two sides of one pool; both carry the same
+ *     caption precisely because the page prints one label between them.
+ *
+ * Also emitted: the carry-forward instruction each area prints beneath its
+ * table, verbatim, because it states the arithmetic that reaches AT1
+ * Schedule 12.
+ */
 export function schedule15PaperLayout(): string {
-	return emitFlatSchedule(AT1_SCHEDULE_15, "AT1_SCHEDULE_15");
+	const out: string[] = [];
+	out.push(emitFlatSchedule(AT1_SCHEDULE_15, "AT1_SCHEDULE_15"));
+	out.push("");
+	out.push("export interface ResourceContinuityRow {");
+	out.push(
+		"  /** The row label, verbatim, as the page prints it once for both columns. */",
+	);
+	out.push("  label: string;");
+	out.push("  regular?: string;");
+	out.push("  successor?: string;");
+	out.push(
+		"  /** Columns the page SHADES OUT: the quantity does not exist on that side, which is not the same as an empty box. */",
+	);
+	out.push('  shaded?: readonly ("regular" | "successor")[];');
+	out.push(
+		"  /** The page prints an open box in both columns and numbers neither — the \"Amount Available\" subtotals. */",
+	);
+	out.push("  unnumbered?: boolean;");
+	out.push(
+		"  /** Printed in a BOX OF ITS OWN below the area's footnotes, column headings repeated. Only \"Foreign-source resource income\" (231/233) does this — it caps Area F's claim rather than moving the pool. */",
+	);
+	out.push("  separateBox?: boolean;");
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push("export interface ResourceContinuityArea {");
+	out.push("  /** Matches the section id its lines belong to. */");
+	out.push("  section: string;");
+	out.push("  title: string;");
+	out.push(
+		"  /** The line the page prints immediately under the box heading, verbatim. Area F's is routing: a country-specific expense belongs in Area G or H instead. */",
+	);
+	out.push("  subtitle?: string;");
+	out.push(
+		"  /** Absent on Area B, which prints ONE unheaded column — it has no successor side at all. */",
+	);
+	out.push("  columnHeadings?: readonly [string, string];");
+	out.push("  rows: readonly ResourceContinuityRow[];");
+	out.push(
+		"  /** The bold instruction printed beneath the table, verbatim. */",
+	);
+	out.push("  carryForward?: string;");
+	out.push(
+		"  /** The same instruction structured: the claim lines it names, and the AT1 Schedule 12 line they total to. */",
+	);
+	out.push("  carryForwardTo?: { line: string; claims: readonly string[] };");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_15_AREAS: readonly ResourceContinuityArea[] = [",
+	);
+	for (const a of AT1_SCHEDULE_15_AREAS) {
+		out.push("  {");
+		out.push(`    section: ${q(a.section)},`);
+		out.push(`    title: ${q(a.title)},`);
+		if (a.subtitle) out.push(`    subtitle: ${q(a.subtitle)},`);
+		if (a.columnHeadings) {
+			out.push(
+				`    columnHeadings: [${a.columnHeadings.map((h) => q(h)).join(", ")}],`,
+			);
+		}
+		if (a.carryForward) out.push(`    carryForward: ${q(a.carryForward)},`);
+		if (a.carryForwardTo) {
+			out.push(
+				`    carryForwardTo: { line: ${q(a.carryForwardTo.line)}, claims: [${a.carryForwardTo.claims.map((c) => q(c)).join(", ")}] },`,
+			);
+		}
+		out.push("    rows: [");
+		for (const r of a.rows) {
+			const parts = [`label: ${q(r.label)}`];
+			if (r.regular) parts.push(`regular: ${q(r.regular)}`);
+			if (r.successor) parts.push(`successor: ${q(r.successor)}`);
+			if (r.shaded?.length) {
+				parts.push(`shaded: [${r.shaded.map((s) => q(s)).join(", ")}]`);
+			}
+			if (r.unnumbered) parts.push("unnumbered: true");
+			if (r.separateBox) parts.push("separateBox: true");
+			if (r.footnoteMarks?.length) {
+				parts.push(`footnoteMarks: [${r.footnoteMarks.join(", ")}]`);
+			}
+			out.push(`      { ${parts.join(", ")} },`);
+		}
+		out.push("    ],");
+		out.push("  },");
+	}
+	out.push("];");
+	out.push("");
+	/*
+	 * Pages 5 and 6 are a THIRD shape. Areas G and H are per-country tables
+	 * whose printed lines are COLUMNS, not rows — lettered A-I / J-R and
+	 * AA-JJ / KK-SS, with one row per country. Four columns the page computes
+	 * and numbers nowhere (E, N, FF, OO) are the four its negative-balance
+	 * footnotes are entirely about, and four grand totals it identifies only by
+	 * letter (I, R, JJ, SS) are four of the six terms that reach AT1 Schedule
+	 * 12 line 030. None of that fits a row-shaped grid.
+	 */
+	out.push("export interface PerCountryColumn {");
+	out.push(
+		"  /** The letter the page heads this column with. Absent on the country stub. */",
+	);
+	out.push("  letter?: string;");
+	out.push("  /** Verbatim, including any arithmetic it states. */");
+	out.push("  heading: string;");
+	out.push(
+		'  /** Absent on the four "Amount available" columns, which the page computes and numbers nowhere. */',
+	);
+	out.push("  line?: string;");
+	out.push('  kind: "code" | "money";');
+	out.push('  role: "input" | "computed";');
+	out.push("  footnoteMarks?: readonly number[];");
+	out.push("}");
+	out.push("");
+	out.push("export interface PerCountryTable {");
+	out.push(
+		'  /** The page\'s sub-heading — "Regular Expenses" / "Successor Expenses". */',
+	);
+	out.push("  title: string;");
+	out.push("  columns: readonly PerCountryColumn[];");
+	out.push(
+		"  /** The box the page prints under the table with a LETTER and no line number, totalling the claim column across every country. */",
+	);
+	out.push("  grandTotal: { letter: string; ofColumn: string };");
+	out.push("}");
+	out.push("");
+	out.push("export interface PerCountryArea {");
+	out.push("  section: string;");
+	out.push("  title: string;");
+	out.push("  /** The paragraph the page prints under the heading, verbatim. */");
+	out.push("  subtitle: string;");
+	out.push("  tables: readonly PerCountryTable[];");
+	out.push("}");
+	out.push("");
+	out.push(
+		"export const AT1_SCHEDULE_15_PER_COUNTRY: readonly PerCountryArea[] = [",
+	);
+	for (const a of AT1_SCHEDULE_15_PER_COUNTRY) {
+		out.push("  {");
+		out.push(`    section: ${q(a.section)},`);
+		out.push(`    title: ${q(a.title)},`);
+		out.push(`    subtitle: ${q(a.subtitle)},`);
+		out.push("    tables: [");
+		for (const t of a.tables) {
+			out.push("      {");
+			out.push(`        title: ${q(t.title)},`);
+			out.push(
+				`        grandTotal: { letter: ${q(t.grandTotal.letter)}, ofColumn: ${q(t.grandTotal.ofColumn)} },`,
+			);
+			out.push("        columns: [");
+			for (const c of t.columns) {
+				const parts: string[] = [];
+				if (c.letter) parts.push(`letter: ${q(c.letter)}`);
+				parts.push(`heading: ${q(c.heading)}`);
+				if (c.line) parts.push(`line: ${q(c.line)}`);
+				parts.push(`kind: ${q(c.kind)}`, `role: ${q(c.role)}`);
+				if (c.footnoteMarks?.length) {
+					parts.push(`footnoteMarks: [${c.footnoteMarks.join(", ")}]`);
+				}
+				out.push(`          { ${parts.join(", ")} },`);
+			}
+			out.push("        ],");
+			out.push("      },");
+		}
+		out.push("    ],");
+		out.push("  },");
+	}
+	out.push("];");
+	out.push("");
+	out.push(
+		"/** The bold instruction at the foot of page 6. It belongs to no area: it totals Area F's two claims with the four per-country grand totals, and four of its six terms are LETTERS rather than line numbers. */",
+	);
+	out.push("export const AT1_SCHEDULE_15_CLOSING_INSTRUCTION = {");
+	out.push(`  text: ${q(AT1_SCHEDULE_15_CLOSING_INSTRUCTION.text)},`);
+	out.push(`  to: ${q(AT1_SCHEDULE_15_CLOSING_INSTRUCTION.to)},`);
+	out.push(
+		`  lines: [${AT1_SCHEDULE_15_CLOSING_INSTRUCTION.lines.map((l) => q(l)).join(", ")}] as readonly string[],`,
+	);
+	out.push(
+		`  letters: [${AT1_SCHEDULE_15_CLOSING_INSTRUCTION.letters.map((l) => q(l)).join(", ")}] as readonly string[],`,
+	);
+	out.push("};");
+	out.push("");
+	return out.join("\n");
 }
 
 /**
