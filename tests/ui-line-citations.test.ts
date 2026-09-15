@@ -110,34 +110,34 @@ for (const id of AT1_EDI_LINES) {
  * Found the moment range citations became visible to this check, and left here
  * named rather than quietly excluded: each one is a real promise the editor
  * makes to a preparer that nothing verifies. They are not citation typos —
- * they are two form DEFINITIONS that are short of their printed pages, which
- * is the same class of gap AT1 Schedules 1, 3 and 29 each had to be corrected
- * for.
+ * they are form DEFINITIONS that are short of their printed pages, which is
+ * the same class of gap AT1 Schedules 1, 3, 29 and the jacket each had to be
+ * corrected for.
  *
  *   alberta-continuity.ts   AT1 Schedule 21 ends at 350 in the definition, and
  *                           the editor cites 169, 181 and 187 as the closing
  *                           ends of three continuity bands.
- *   alberta-schedule15.ts   AT1 Schedule 15's definition holds FIVE lines
- *                           (241, 261, 281, 293, 301) while the editor collects
- *                           and cites a dozen more. Nearly the whole schedule
- *                           is untranscribed.
  *
  * Deliberately per-file AND per-line, so a NEW bad citation in either file
  * still fails. Delete an entry as its schedule is transcribed; the list going
  * empty is the goal.
+ *
+ * ── One entry is gone, and it was the big one ───────────────────────────────
+ *
+ * `at1/alberta-schedule15.ts` used to hold EIGHT lines the editor cited and
+ * nothing could confirm, because AT1 Schedule 15's form definition declared
+ * five lines against a six-page form — "nearly the whole schedule is
+ * untranscribed", as the note here said. All six pages are transcribed now
+ * (127 numbered boxes, Areas A to H), so every citation on the largest
+ * schedule in the Alberta return is checked against the printed page rather
+ * than passing by coincidence with some other form's line numbers.
+ *
+ * That leaves AT1 Schedule 21, whose definition stops at 350 while the editor
+ * cites 169, 181 and 187 as the closing ends of three continuity bands. Same
+ * class of gap, one schedule, three lines.
  */
 const KNOWN_GAPS: Record<string, readonly string[]> = {
 	"at1/alberta-continuity.ts": ["169", "181", "187"],
-	"at1/alberta-schedule15.ts": [
-		"171",
-		"173",
-		"191",
-		"223",
-		"257",
-		"277",
-		"297",
-		"317",
-	],
 };
 
 /** `join()` gives backslashes on Windows; the keys above are POSIX. */
