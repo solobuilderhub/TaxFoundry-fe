@@ -303,7 +303,7 @@ export function EngagementExport({ id }: { id: string }) {
 			 * AT1 only for now: the captions come from the AT1 paper layouts, and the
 			 * federal T2 and Québec CO-17 have no equivalent generated set yet.
 			 */}
-			{isAt1 && <FiledLinesReview computed={computed} />}
+			{isAt1 && <FiledLinesReview computed={computed} xml={payload?.xml} />}
 
 			{/* Filing payload (XML). */}
 			<Card>
