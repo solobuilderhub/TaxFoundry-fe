@@ -1577,6 +1577,18 @@ export type AlbertaSchedule12Values = {
 	 */
 	albertaSection110_5Additions?: number;
 	/**
+	 * 012100 — does the corporation's calculation of active business income for Alberta purposes differ from its federal ABI? §3.2.3.13 defaults this to "No", which is what this engine computes (it takes the federal figure). Answer "Yes" to file the reconciliation below; AT1 Schedule 1 line 003 — and therefore the Alberta small business deduction — is then computed on 012106 instead of the federal amount.
+	 */
+	abiDiffersFromFederal?: "yes" | "no";
+	/**
+	 * 012102 — the federal active business income being reconciled: T2 line 400, or federal Schedule 7 amount Q / Schedule 16 line 124 when line 400 is nil or negative. Signed. Required when 012100 is "Yes"; the specification says the field must not exist when it is "No".
+	 */
+	abiFederalAmount?: number;
+	/**
+	 * 012104 — the adjustment to ABI for Alberta purposes due to discretionary items. Signed: the form prints "Show negative amount in brackets ()". Required when 012100 is "Yes", absent when "No".
+	 */
+	abiDiscretionaryAdjustment?: number;
+	/**
 	 * 012063 / AT1 Schedule 21 line 007 — Part VI.1 tax deductible. Federal T2 line 325. Blank = the federal engine's own figure, from the T2 preferred-share schedules. Enter it here when the T2 was not prepared in this app, so there is nothing for the engine to compute it from.
 	 */
 	partVI1TaxDeductible?: number;

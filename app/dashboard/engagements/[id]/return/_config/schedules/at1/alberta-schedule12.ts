@@ -5,7 +5,8 @@ import {
 } from "@classytic/formkit/server";
 import { createElement } from "react";
 import type { AlbertaSchedule12Values } from "../../../_lib/return-input";
-import { money } from "../../fields";
+import { fieldsFor, money } from "../../fields";
+import { YES_NO } from "../../options";
 import { defineSchedule } from "../shared/define";
 import { Schedule12View } from "./paper/schedule12-view";
 
@@ -47,6 +48,8 @@ import { Schedule12View } from "./paper/schedule12-view";
  * left blank, Alberta follows federal. An explicit Alberta 0 against a
  * non-zero federal amount is a real divergence and IS filed as one.
  */
+
+const f = fieldsFor<AlbertaSchedule12Values>();
 
 export const albertaSchedule12Schema: FormSchema = defineSchema({
 	sections: [
@@ -149,6 +152,43 @@ export const albertaSchedule12Schema: FormSchema = defineSchema({
 				variant: "card",
 				description:
 					"The one Area B item that ADDS to taxable income rather than deducting from it. It also drives the floor on lines 090/091: where the deductions exhaust income, taxable income is reported as these additions rather than as a negative.",
+			},
+		),
+		section(
+			"abi",
+			"Active business income for Alberta purposes (lines 100-106)",
+			[
+				f.radio(
+					"abiDiffersFromFederal",
+					"Does the Alberta ABI differ from the federal ABI? (line 100)",
+					YES_NO,
+					{
+						description:
+							'Mandatory on every Schedule 12, and "No" for most returns — the engine takes the federal figure. Answer "Yes" only to reconcile a genuinely different Alberta amount; the two boxes below are then required, and the Alberta small business deduction is computed on their total instead of the federal amount.',
+					},
+				),
+				money(
+					"abiFederalAmount",
+					"Federal active business income being reconciled (line 102)",
+					{
+						description:
+							"Federal T2 line 400 — or federal Schedule 7 amount Q / Schedule 16 line 124 where line 400 is nil or negative. Leave blank to use the figure this return already computed.",
+					},
+				),
+				money(
+					"abiDiscretionaryAdjustment",
+					"Adjustment for discretionary items (line 104)",
+					{
+						description:
+							'The difference Alberta’s discretionary claims make to active business income. May be negative — the form prints "Show negative amount in brackets ()".',
+					},
+				),
+			],
+			{
+				variant: "card",
+				cols: 1,
+				description:
+					'Line 106 (the Alberta ABI) is their sum — computed, not entered. Answering "No" files line 100 alone: the specification says 102, 104 and 106 must NOT exist in that case.',
 			},
 		),
 	],

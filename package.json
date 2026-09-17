@@ -51,7 +51,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@classytic/ca-tax": "^0.0.22",
+    "@classytic/ca-tax": "^0.0.23",
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@tailwindcss/typography": "^0.5.16",
