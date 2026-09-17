@@ -57,12 +57,18 @@ import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
  */
 const OWN_FIELD: Partial<Record<string, keyof AlbertaValues>> = {
 	"001": "associatedWithCcpcs",
+	"030": "specialCorporationStatus",
 	"031": "windUpOfSubsidiary",
 	"032": "firstYearAfterAmalgamation",
 	"038": "taxYearEndChanged",
+	"039": "taxYearEndChangeReason",
+	"041": "functionalCurrency",
 	"047": "grossRevenue",
 	"048": "totalAssets",
 	"050": "finalReturn",
+	"051": "finalReturnReason",
+	"052": "dateOfAmalgamation",
+	"053": "dateOperationsCeased",
 	"054": "transferOfProperty",
 	"060": "reportsDifferentAlbertaIncome",
 	"061": "electsDifferentDiscretionaryAmounts",
@@ -121,6 +127,48 @@ function fromClientOrEngagement(
 /** The jacket's real TRA schedule id ('000') — NOT the nav chip ("AT1"), which `schedulePayloads` never uses. */
 const JACKET_SCHEDULE_ID = "000";
 
+/**
+ * Printed jacket line → the computed field holding its value.
+ *
+ * ── Why this is needed ──────────────────────────────────────────────────────
+ *
+ * `buildResolveLine` looked the jacket up in `computed.schedulePayloads`, and
+ * that array NEVER contains it. The AT1 payload builders emit 001, 002, 010,
+ * 012, 013, 016, 017, 018, 020, 021, 029 and 4970 — supporting schedules only.
+ * The jacket ("000") and the EDI block are applied at RENDER time, by
+ * `renderAt1NetFile` and the RSI adapter, out of `At1FilingData`.
+ *
+ * So the lookup always missed, `filedByField` was always empty, and every
+ * computed money line fell through to "—" even after a successful compute — on
+ * the one page whose purpose is line-by-line verification against the numbered
+ * AT1. The figures existed all along; they were only reachable on the Tax
+ * Summary, under slugs instead of line numbers.
+ *
+ * (Same root cause as the pre-transmit review, which now reads the generated
+ * payload XML. This view runs BEFORE any payload exists, so it reads the
+ * engine's own named fields instead.)
+ *
+ * ── Why only these six ──────────────────────────────────────────────────────
+ *
+ * Each is a 1:1 match with what `at1-line-items.ts` emits for that line,
+ * checked getter by getter. Lines the engine does not publish as a named field
+ * stay blank rather than being guessed at.
+ *
+ * Line 090 is deliberately ABSENT. `totalOwing` looks like the balance and is
+ * not: `at1-engine.ts` sets `totalOwing = albertaTaxPayable * 100` — line 080
+ * in cents — while 090 is the balance after instalments and credits. Wiring it
+ * would print a confident wrong number on a tax form, which is worse than
+ * printing nothing.
+ */
+const COMPUTED_FIELD: Partial<Record<string, string>> = {
+	"062": "albertaTaxableIncome",
+	"065": "allocationFactor",
+	"068": "basicAlbertaTax",
+	"070": "albertaSmallBusinessDeduction",
+	"080": "albertaTaxPayable",
+	"129": "innovationEmploymentGrant",
+};
+
 const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
 
 /**
@@ -150,13 +198,31 @@ function buildResolveLine(
 		const field = printed(line);
 
 		const ownName = OWN_FIELD[field];
-		if (ownName) return { editable: true, name: ownName };
+		if (ownName)
+			return {
+				editable: true,
+				name: ownName,
+				// Present only for the coded lines; a money or date box gets none
+				// and renders as an ordinary input.
+				options: AT1_JACKET_CODE_OPTIONS[field],
+			};
 
 		const fromClient = fromClientOrEngagement(field, engagement, client);
 		if (fromClient) return fromClient;
 
+		// The engine's own figure for this line, where it publishes one.
+		const slug = COMPUTED_FIELD[field];
+		if (slug) {
+			const f = computed?.fields?.find((x) => x.line === slug);
+			if (f?.value != null)
+				return { editable: false, value: f.value as string | number };
+		}
+
 		const filedValue = filedByField.get(field);
-		return { editable: false, value: filedValue as string | number | undefined };
+		return {
+			editable: false,
+			value: filedValue as string | number | undefined,
+		};
 	};
 }
 
@@ -518,10 +584,13 @@ function DayBandTable() {
  *
  * The number is the value TRANSMITTED, not a display order — a filed "3" means
  * bankruptcy at line 051 and a final return at line 039 — so each option shows
- * its code. Read-only: this product collects type of corporation from the
- * client profile and does not yet collect the other five (see the gap noted on
- * `alberta.ts`), and showing the list is how a preparer can see which answer
- * the form expects even where no box here takes it.
+ * its code.
+ *
+ * This is the printed page's own list, kept beneath the row as the form prints
+ * it. The row ITSELF is now a select over the same options (see
+ * `OWN_FIELD`/`resolveLine` above): 030, 039, 041 and 051 were uncollectable
+ * until this session, when nothing anywhere wrote them, and the list was all a
+ * preparer had. 029 remains read-only, from the client profile.
  */
 function CodeOptions({ line }: { line: string }) {
 	const options = AT1_JACKET_CODE_OPTIONS[line];

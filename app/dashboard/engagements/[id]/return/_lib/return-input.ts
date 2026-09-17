@@ -126,6 +126,8 @@ export type NetIncomeValues = {
 	 * Schedule 1, keyed by CRA line number: { "104": 50000, "403": 55000 }.
 	 *
 	 * The line number is the transmission key, so storing it as the key means what the preparer typed is already in the shape the return is filed in. The former { description, amount }[] shape reconciled on screen and could not be filed — a transmitted return has no field for a preparer's own wording.
+	 *
+	 * Accepts the sparse ARRAY react-hook-form produces for a numeric field path (`lines.101` → `lines[101]`) and normalizes it to this record — the index is the line number, so the conversion is exact. Blank and cleared boxes are dropped rather than stored as null or zero: an untyped line has no amount, which is not the same statement as a line reported at nil.
 	 */
 	lines?: {
 		[k: string]: number;
@@ -936,6 +938,30 @@ export type AlbertaValues = {
 	 * 000095 — was the return prepared by a tax preparer for a fee?
 	 */
 	preparedByTaxPreparerForFee?: YesNo;
+	/**
+	 * 000030 — special corporation status code. "If fed 200218=1 or federal form 018 exists, then this field must equal either 1=Investment Corp., 2=Mutual Fund Corp." Neither federal line 218 nor federal Schedule 18 is modelled here, so this is supplied rather than derived; the printed page annotates the whole field "(if applicable)".
+	 */
+	specialCorporationStatus?: string;
+	/**
+	 * 000039 — reason for the tax year end change: 1=CRA approved change, 2=change in control, 3=final return. Required when 000038 = Yes; "If 000038=2, then value must be blank", which the engine enforces by dropping it when the gate shuts. A 3 here forces 000050 to Yes, by line 050’s own rule.
+	 */
+	taxYearEndChangeReason?: string;
+	/**
+	 * 000041 — functional currency code, if other than Canadian: 1=USA, 2=UK, 3=European Monetary Union, 4=Australia, 5=Japan. Absent means Canadian.
+	 */
+	functionalCurrency?: string;
+	/**
+	 * 000051 — reason for the final return: 1=amalgamation, 2=discontinuance of the Alberta permanent establishment, 3=bankruptcy, 4=wind-up into parent, 5=dissolution. Required when 000050 = Yes; "If 000050=2, field must not exist."
+	 */
+	finalReturnReason?: string;
+	/**
+	 * 000052 — date of amalgamation, required when 000051 = 1. Must equal the tax year end or the day after it: a 1 at 000051 means the corporation ceased to exist BY amalgamating, so this is the predecessor’s final return and its year ended the day before. Not jacket line 032, which asks the SUCCESSOR about its first year.
+	 */
+	dateOfAmalgamation?: string;
+	/**
+	 * 000053 — date operations ceased, required when 000051 = 5 (dissolution).
+	 */
+	dateOperationsCeased?: string;
 };
 export type AlbertaSbdValues = {
 	/**

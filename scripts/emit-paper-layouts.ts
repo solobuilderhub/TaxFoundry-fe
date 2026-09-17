@@ -223,6 +223,60 @@ export function emit(
 	out.push(
 		" * overwrite a computed number, and the return then does not foot.",
 	);
+	out.push(" *");
+	out.push(
+		" * ── `lines.101` is an ARRAY index to react-hook-form ────────────────────────",
+	);
+	out.push(" *");
+	out.push(
+		" * A numeric path segment means an array index, so these names build a sparse",
+	);
+	out.push(
+		" * `lines[]` one longer than the highest line here, rather than the record the",
+	);
+	out.push(
+		" * contract stores — and `JSON.stringify` writes each hole as `null`, so an",
+	);
+	out.push(
+		" * untouched Schedule 1 leaves the browser as a wall of nulls. That rejected",
+	);
+	out.push(
+		" * EVERY save of a return that had rendered this schedule, in production, with",
+	);
+	out.push(" * `expected record, received array`.");
+	out.push(" *");
+	out.push(
+		" * The names are deliberately NOT changed to dodge it. `lines.101` is the whole",
+	);
+	out.push(
+		" * point of this schedule — the box is named for the line it files under — and",
+	);
+	out.push(
+		" * renaming to something like `lines.L101` would move the mapping problem into",
+	);
+	out.push(
+		" * the payload, where getting it wrong puts a figure on the wrong CRA line",
+	);
+	out.push(
+		" * instead of failing loudly. The array index IS the line number, so the server",
+	);
+	out.push(
+		" * normalizes it back to a record at the contract boundary, exactly and in one",
+	);
+	out.push(
+		" * place (`NetIncomeValues` in apps/server's `contracts/t2-input.ts`, which",
+	);
+	out.push(" * carries the full reasoning and the regression test).");
+	out.push(" *");
+	out.push(
+		" * Adding a line here is therefore safe and needs nothing else. What is NOT safe",
+	);
+	out.push(
+		" * is adding numerically-named fields to a slice whose contract has no such",
+	);
+	out.push(
+		" * normalization — this is currently the only schedule in the app using them.",
+	);
 	out.push(" */");
 	out.push("export const netIncome = defineSchedule({");
 	out.push(`  key: ${q(key)},`);
@@ -486,9 +540,7 @@ export function jacketPaperLayout(): string {
 	out.push("");
 	out.push("export const AT1_JACKET_SECTIONS: readonly PaperSectionDef[] = [");
 	for (const s of AT1_JACKET.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");
@@ -516,7 +568,7 @@ export function jacketPaperLayout(): string {
 	out.push("}");
 	out.push("");
 	out.push(
-		"/** Three share `aboveLine: \"062\"` — the page stacks the Schedule 12 warning, the box heading and the federal-equality instruction. Print every match, in order. */",
+		'/** Three share `aboveLine: "062"` — the page stacks the Schedule 12 warning, the box heading and the federal-equality instruction. Print every match, in order. */',
 	);
 	out.push(
 		"export const AT1_JACKET_BLOCK_HEADINGS: readonly JacketBlockHeading[] = [",
@@ -531,7 +583,9 @@ export function jacketPaperLayout(): string {
 	out.push("];");
 	out.push("");
 	out.push("export interface JacketDayBand {");
-	out.push("  /** The letter the page prints beside the box, parentheses included. */");
+	out.push(
+		"  /** The letter the page prints beside the box, parentheses included. */",
+	);
 	out.push("  letter: string;");
 	out.push("  label: string;");
 	out.push("}");
@@ -540,7 +594,9 @@ export function jacketPaperLayout(): string {
 	out.push("  letter: string;");
 	out.push('  /** Verbatim, trailing "=" and capital X included. */');
 	out.push("  formula: string;");
-	out.push("  /** Which day band the formula divides by (F) — never (F) itself. */");
+	out.push(
+		"  /** Which day band the formula divides by (F) — never (F) itself. */",
+	);
 	out.push("  daysLetter: string;");
 	out.push("  rate: number;");
 	out.push("}");
@@ -563,7 +619,9 @@ export function jacketPaperLayout(): string {
 	out.push("];");
 	out.push("");
 	out.push("export interface JacketCodeOption {");
-	out.push("  /** The digit the page prints beside the tick box, and the value transmitted. */");
+	out.push(
+		"  /** The digit the page prints beside the tick box, and the value transmitted. */",
+	);
 	out.push("  code: string;");
 	out.push("  label: string;");
 	out.push("}");
@@ -613,9 +671,7 @@ function emitFlatSchedule(
 		`export const ${constPrefix}_SECTIONS: readonly PaperSectionDef[] = [`,
 	);
 	for (const s of form.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");
@@ -666,7 +722,9 @@ export function schedule29PaperLayout(): string {
 	out.push("];");
 	out.push("");
 	out.push("export interface Schedule29AllocationColumn {");
-	out.push("  /** The printed line for each MEMBER's own cell in this column. */");
+	out.push(
+		"  /** The printed line for each MEMBER's own cell in this column. */",
+	);
 	out.push("  line: string;");
 	out.push("  heading: string;");
 	out.push('  kind: "text" | "date" | "money";');
@@ -769,7 +827,8 @@ export function schedule18PaperLayout(): string {
 		];
 		if (c.gainOrLoss) parts.push(`gainOrLoss: ${q(c.gainOrLoss)}`);
 		if (c.lossRestricted) parts.push("lossRestricted: true");
-		if (c.restrictionNote) parts.push(`restrictionNote: ${q(c.restrictionNote)}`);
+		if (c.restrictionNote)
+			parts.push(`restrictionNote: ${q(c.restrictionNote)}`);
 		if (c.footnoteMarks?.length) {
 			parts.push(`footnoteMarks: [${c.footnoteMarks.join(", ")}]`);
 		}
@@ -796,7 +855,9 @@ export function schedule18PaperLayout(): string {
 	out.push("];");
 	out.push("");
 	out.push("export interface Schedule18AbilColumn {");
-	out.push("  /** The letter the page heads this column with, where it heads one. */");
+	out.push(
+		"  /** The letter the page heads this column with, where it heads one. */",
+	);
 	out.push('  column?: "A" | "B" | "C" | "D";');
 	out.push("  heading: string;");
 	out.push("  /** Absent on column D, which the page does not number. */");
@@ -878,12 +939,16 @@ export function schedule1PaperLayout(): string {
 	out.push("");
 	out.push("export interface Schedule1Column {");
 	out.push('  column: "A" | "B" | "C" | "D" | "E" | "F" | "G";');
-	out.push("  /** Verbatim, arithmetic included. The page numbers none of them. */");
+	out.push(
+		"  /** Verbatim, arithmetic included. The page numbers none of them. */",
+	);
 	out.push("  heading: string;");
 	out.push("  footnoteMarks?: readonly number[];");
 	out.push("}");
 	out.push("");
-	out.push("export const AT1_SCHEDULE_1_COLUMNS: readonly Schedule1Column[] = [");
+	out.push(
+		"export const AT1_SCHEDULE_1_COLUMNS: readonly Schedule1Column[] = [",
+	);
 	for (const c of AT1_SCHEDULE_1_COLUMNS) {
 		const parts = [`column: ${q(c.column)}`, `heading: ${q(c.heading)}`];
 		if (c.footnoteMarks?.length) {
@@ -958,10 +1023,14 @@ export function schedule1PaperLayout(): string {
 	 * associated group this cascade is the only route to it.
 	 */
 	out.push("export interface Schedule1AreaBStep {");
-	out.push("  /** The letter the page labels this amount with, parentheses included. */");
+	out.push(
+		"  /** The letter the page labels this amount with, parentheses included. */",
+	);
 	out.push("  letter: string;");
 	out.push("  label: string;");
-	out.push("  /** The arithmetic printed beside the label, where the page prints any. */");
+	out.push(
+		"  /** The arithmetic printed beside the label, where the page prints any. */",
+	);
 	out.push("  formula?: string;");
 	out.push("  /** A sub-heading printed immediately above this step. */");
 	out.push("  heading?: string;");
@@ -971,19 +1040,25 @@ export function schedule1PaperLayout(): string {
 	out.push("  exitTo015?: string;");
 	out.push("}");
 	out.push("");
-	out.push(`export const AT1_SCHEDULE_1_AREA_B_TITLE = ${q(AT1_SCHEDULE_1_AREA_B_TITLE)};`);
+	out.push(
+		`export const AT1_SCHEDULE_1_AREA_B_TITLE = ${q(AT1_SCHEDULE_1_AREA_B_TITLE)};`,
+	);
 	out.push("");
 	out.push(
 		"/** The rule, then the two adjustments by name — both conditions a preparer has to test against their own year. */",
 	);
-	out.push("export const AT1_SCHEDULE_1_AREA_B_PREAMBLE: readonly string[] = [");
+	out.push(
+		"export const AT1_SCHEDULE_1_AREA_B_PREAMBLE: readonly string[] = [",
+	);
 	for (const line of AT1_SCHEDULE_1_AREA_B_PREAMBLE) out.push(`  ${q(line)},`);
 	out.push("];");
 	out.push("");
 	out.push(
 		"/** Twelve steps for eleven letters — the page labels TWO amounts (c), one per side of 2022-04-07. */",
 	);
-	out.push("export const AT1_SCHEDULE_1_AREA_B_STEPS: readonly Schedule1AreaBStep[] = [");
+	out.push(
+		"export const AT1_SCHEDULE_1_AREA_B_STEPS: readonly Schedule1AreaBStep[] = [",
+	);
 	for (const step of AT1_SCHEDULE_1_AREA_B_STEPS) {
 		const parts = [`letter: ${q(step.letter)}`, `label: ${q(step.label)}`];
 		if (step.formula) parts.push(`formula: ${q(step.formula)}`);
@@ -996,7 +1071,9 @@ export function schedule1PaperLayout(): string {
 	out.push(
 		"/** What A and B mean in the two (c) formulas. Without it those rows name two letters defined nowhere. */",
 	);
-	out.push("export const AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS: readonly string[] = [");
+	out.push(
+		"export const AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS: readonly string[] = [",
+	);
 	for (const line of AT1_SCHEDULE_1_AREA_B_LARGE_CORPORATIONS) {
 		out.push(`  ${q(line)},`);
 	}
@@ -1078,9 +1155,13 @@ export function schedule3PaperLayout(): string {
 	out.push(emitFlatSchedule(AT1_SCHEDULE_3, "AT1_SCHEDULE_3"));
 	out.push("");
 	out.push("export interface Schedule3VintageColumn {");
-	out.push("  /** The printed line. Each row of the table is one OCCURRENCE of it. */");
+	out.push(
+		"  /** The printed line. Each row of the table is one OCCURRENCE of it. */",
+	);
 	out.push("  line: string;");
-	out.push("  /** The column heading, verbatim, including any arithmetic it states. */");
+	out.push(
+		"  /** The column heading, verbatim, including any arithmetic it states. */",
+	);
 	out.push("  heading: string;");
 	out.push('  kind: "code" | "date" | "money";');
 	out.push('  role: "input" | "computed";');
@@ -1088,7 +1169,9 @@ export function schedule3PaperLayout(): string {
 		"  /** Year-of-origin indexes the page SHADES OUT for this column — 0 is the current year. A shaded cell says the quantity does not exist for that vintage, which is not an empty box. */",
 	);
 	out.push("  shadedYears?: readonly number[];");
-	out.push("  /** True where the page prints a cell for this column in its Totals row. */");
+	out.push(
+		"  /** True where the page prints a cell for this column in its Totals row. */",
+	);
 	out.push("  totalled?: boolean;");
 	out.push("  footnoteMarks?: readonly number[];");
 	out.push("}");
@@ -1141,14 +1224,16 @@ export function schedule3PaperLayout(): string {
 	out.push(
 		"/** The row label for one year-of-origin index, as the page prints it. */",
 	);
-	out.push("export function albertaVintageRowLabel(yearIndex: number): string {");
+	out.push(
+		"export function albertaVintageRowLabel(yearIndex: number): string {",
+	);
 	out.push('  if (yearIndex === 0) return "Current";');
 	out.push("  const suffix =");
-	out.push('    yearIndex % 10 === 1 && yearIndex !== 11');
+	out.push("    yearIndex % 10 === 1 && yearIndex !== 11");
 	out.push('      ? "st"');
-	out.push('      : yearIndex % 10 === 2 && yearIndex !== 12');
+	out.push("      : yearIndex % 10 === 2 && yearIndex !== 12");
 	out.push('        ? "nd"');
-	out.push('        : yearIndex % 10 === 3 && yearIndex !== 13');
+	out.push("        : yearIndex % 10 === 3 && yearIndex !== 13");
 	out.push('          ? "rd"');
 	out.push('          : "th";');
 	out.push("  return `${yearIndex}${suffix} preceding taxation year`;");
@@ -1196,7 +1281,7 @@ export function schedule15PaperLayout(): string {
 	);
 	out.push('  shaded?: readonly ("regular" | "successor")[];');
 	out.push(
-		"  /** The page prints an open box in both columns and numbers neither — the \"Amount Available\" subtotals. */",
+		'  /** The page prints an open box in both columns and numbers neither — the "Amount Available" subtotals. */',
 	);
 	out.push("  unnumbered?: boolean;");
 	out.push(
@@ -1308,7 +1393,9 @@ export function schedule15PaperLayout(): string {
 	out.push("export interface PerCountryArea {");
 	out.push("  section: string;");
 	out.push("  title: string;");
-	out.push("  /** The paragraph the page prints under the heading, verbatim. */");
+	out.push(
+		"  /** The paragraph the page prints under the heading, verbatim. */",
+	);
 	out.push("  subtitle: string;");
 	out.push("  tables: readonly PerCountryTable[];");
 	out.push("}");
@@ -1554,9 +1641,7 @@ export function t2Schedule8PaperLayout(): string {
 		"export const T2_SCHEDULE_8_SECTIONS: readonly PaperSectionDef[] = [",
 	);
 	for (const s of T2_SCHEDULE_8.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");
@@ -1596,9 +1681,7 @@ export function schedule20PaperLayout(): string {
 		"export const AT1_SCHEDULE_20_SECTIONS: readonly PaperSectionDef[] = [",
 	);
 	for (const s of AT1_SCHEDULE_20.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");
@@ -1633,9 +1716,7 @@ export function schedule21PaperLayout(): string {
 		"export const AT1_SCHEDULE_21_SECTIONS: readonly PaperSectionDef[] = [",
 	);
 	for (const s of AT1_SCHEDULE_21.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");
@@ -1740,9 +1821,7 @@ export function schedule13PaperLayout(): string {
 		"export const AT1_SCHEDULE_13_SECTIONS: readonly PaperSectionDef[] = [",
 	);
 	for (const s of AT1_SCHEDULE_13.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");
@@ -1807,9 +1886,7 @@ export function schedule17PaperLayout(): string {
 		"export const AT1_SCHEDULE_17_SECTIONS: readonly PaperSectionDef[] = [",
 	);
 	for (const s of AT1_SCHEDULE_17.sections) {
-		out.push(
-			emitSectionDef(s),
-		);
+		out.push(emitSectionDef(s));
 	}
 	out.push("];");
 	out.push("");

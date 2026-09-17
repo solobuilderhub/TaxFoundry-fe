@@ -49,11 +49,11 @@ import {
 	schedule2PaperLayout,
 	schedule4PaperLayout,
 	schedule10PaperLayout,
-	schedule16PaperLayout,
-	schedule18PaperLayout,
 	schedule12PaperLayout,
 	schedule13PaperLayout,
+	schedule16PaperLayout,
 	schedule17PaperLayout,
+	schedule18PaperLayout,
 	schedule20PaperLayout,
 	schedule21PaperLayout,
 	schedule29PaperLayout,
@@ -751,9 +751,9 @@ describe("the Schedule 4 (AT1) paper layout is in step with AT1_SCHEDULE_4", () 
 			"C, D and G are the derivation behind H and the page numbers none of them",
 		).toEqual(["C", "D", "G"]);
 		// The page's own capital X for multiplication, not a lower-case x.
-		expect(
-			AT1_SCHEDULE_4_COLUMNS.find((c) => c.column === "D")?.heading,
-		).toBe("B X C X (AT1 line 068 / AT1 line 066)");
+		expect(AT1_SCHEDULE_4_COLUMNS.find((c) => c.column === "D")?.heading).toBe(
+			"B X C X (AT1 line 068 / AT1 line 066)",
+		);
 	});
 });
 
@@ -949,9 +949,15 @@ describe("no generated paper layout is orphaned", () => {
 
 		const views = files.filter((p) => /-(form-)?view\.tsx$/.test(p));
 		const unrendered = views.filter((view) => {
-			const stem = view.split("/").pop()?.replace(/\.tsx$/, "") ?? "";
+			const stem =
+				view
+					.split("/")
+					.pop()
+					?.replace(/\.tsx$/, "") ?? "";
 			// A view importing ITSELF proves nothing, so its own file is excluded.
-			return !files.some((p) => p !== view && readFileSync(p, "utf8").includes(stem));
+			return !files.some(
+				(p) => p !== view && readFileSync(p, "utf8").includes(stem),
+			);
 		});
 
 		expect(
@@ -1110,10 +1116,26 @@ describe("the formatter cannot rewrite a generated layout", () => {
 		const config = JSON.parse(readFileSync("biome.json", "utf8")) as {
 			files?: { includes?: string[] };
 		};
+		/*
+		 * Either spelling counts. Biome FORMATS ITS OWN CONFIG, and running
+		 * `npm run format` over a commit that touches `biome.json` rewrites
+		 * `!**\/paper/generated/**` to `!**\/paper/generated` — the canonical
+		 * form, which still excludes the directory's contents (verified by
+		 * running `biome check --write` against a layout file and confirming it
+		 * came back byte-identical).
+		 *
+		 * Pinning the long spelling made this test fail for a config biome had
+		 * just normalized, which reads as "the exclusion was removed" when
+		 * nothing was removed at all. What must hold is that the directory is
+		 * excluded, not how the pattern is punctuated.
+		 */
+		const patterns = config.files?.includes ?? [];
 		expect(
-			config.files?.includes,
-			"removing this exclusion lets `biome check --write` rewrite the emitted layouts",
-		).toContain("!**/paper/generated/**");
+			patterns.some(
+				(p) => p === "!**/paper/generated" || p === "!**/paper/generated/**",
+			),
+			`removing this exclusion lets \`biome check --write\` rewrite the emitted layouts. Patterns: ${JSON.stringify(patterns)}`,
+		).toBe(true);
 	});
 
 	/**
@@ -1139,5 +1161,31 @@ describe("the formatter cannot rewrite a generated layout", () => {
 			config.files?.includes,
 			"removing this exclusion lets `biome check --write` rewrite the emitted ReturnInput types, and the drift test that notices lives in apps/server",
 		).toContain("!**/return/_lib/return-input.ts");
+	});
+
+	/**
+	 * `schedules/t2/net-income.ts` is generated too — and it is the one that got
+	 * away.
+	 *
+	 * The other emitted files live in a `generated/` directory or are named in
+	 * the project guide, so both read as machine-written at a glance. This one
+	 * sits in `schedules/t2/` among hand-authored siblings, looks exactly like
+	 * them, and was NOT excluded. A `npm run format` over a commit that touched
+	 * it duly reformatted all 521 lines, and the drift test failed as though the
+	 * ENGINE had moved — which is precisely the false alarm these exclusions
+	 * exist to prevent.
+	 *
+	 * It is the fourth such file, not the third the guide describes. Nothing
+	 * distinguishes it from a hand-written module by looking, so this test is
+	 * the only thing standing between it and the next formatter run.
+	 */
+	it("biome.json excludes the emitted Schedule 1 editor schema", () => {
+		const config = JSON.parse(readFileSync("biome.json", "utf8")) as {
+			files?: { includes?: string[] };
+		};
+		expect(
+			config.files?.includes,
+			"removing this exclusion lets the formatter rewrite net-income.ts, which `emit-paper-layouts.ts` generates — the drift test then fails as if the engine had changed",
+		).toContain("!**/return/_config/schedules/t2/net-income.ts");
 	});
 });

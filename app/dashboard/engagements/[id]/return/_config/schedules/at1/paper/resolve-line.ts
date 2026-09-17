@@ -18,7 +18,14 @@ export type { NavigateToLine } from "../../shared/define";
  * and clicking a radio wrote the STRING `"yes"` into a field the server
  * schema requires to be `boolean`, which the API rejected on save.
  */
-export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "bool-flag" | "code";
+export type PaperFieldKind =
+	| "money"
+	| "date"
+	| "text"
+	| "rate"
+	| "flag"
+	| "bool-flag"
+	| "code";
 export type PaperFieldRole = "input" | "computed" | "total" | "carried-in";
 
 export interface PaperField {
@@ -54,7 +61,30 @@ export interface PaperSectionDef {
  */
 export type LineValue =
 	/** A genuine editable field on THIS schedule's own `control` — render a real input bound to `name`. */
-	| { editable: true; name: string }
+	| {
+			editable: true;
+			name: string;
+			/**
+			 * The permitted answers, for a line whose value is a CODE rather than a
+			 * figure or free text (jacket 030/039/041/051, and the tick-box lists
+			 * elsewhere on the AT1).
+			 *
+			 * Carried here rather than read from the layout by the primitives,
+			 * because the option lists are per-form data — the jacket's live in the
+			 * generated `AT1_JACKET_CODE_OPTIONS` — and teaching a generic row
+			 * component to look them up would make it know which form it is
+			 * rendering. Given options, a `code` field renders as a select; without
+			 * them it stays free text, which is correct for a code drawn from a
+			 * published classification rather than a short list (line 028's
+			 * four-digit SIC code being exactly that).
+			 *
+			 * It matters that this is a select where a list exists: the code IS the
+			 * transmitted value, so a typo is a different answer rather than a
+			 * malformed one. A "3" at line 051 files bankruptcy; at 039 it files
+			 * final return.
+			 */
+			options?: readonly { code: string; label: string }[];
+	  }
 	/**
 	 * Read-only — computed, carried in from elsewhere, or otherwise not this
 	 * schedule's own input. `value` is `undefined` when nothing is known yet

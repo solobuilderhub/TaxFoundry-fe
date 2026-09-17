@@ -2,10 +2,11 @@
 
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import { Fragment, useEffect, useRef, useState } from "react";
 import { Check, Link2, Pencil, X } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { type Control, Controller, type Path, useWatch } from "react-hook-form";
 import { cn } from "@/lib/utils";
+import { canNavigateToForm } from "../../../../form-nav";
 import { at1Money, parseAt1LineItemId } from "../at1-lines";
 import type {
 	LineValue,
@@ -384,7 +385,17 @@ export function ProvenanceBadge({
 		to.note || `Carries forward to ${to.form}, line ${toDisplayLine}.`;
 	const toBadge = (
 		<TooltipWrapper content={toTooltip} side="top">
-			{onNavigate ? (
+			{/*
+			 * A button only where the reference can actually be followed.
+			 *
+			 * Gating on `onNavigate` alone made every badge a button, including
+			 * the ones pointing at forms the editor has no page for — clicking
+			 * "→ T661 line 460" did nothing at all, silently, which reads as the
+			 * app being broken rather than as the reference being external.
+			 * `canNavigateToForm` asks the same map `onNavigate` will consult, so
+			 * the two cannot disagree about what is reachable.
+			 */}
+			{onNavigate && canNavigateToForm(to.form) ? (
 				<button
 					type="button"
 					onClick={() => onNavigate(to.form, to.line)}
@@ -504,7 +515,10 @@ function LinkedDisplay({
 						: "text-foreground",
 				)}
 			>
-				<Link2 className="size-3 shrink-0 text-violet-600/70 dark:text-violet-400/70" aria-hidden />
+				<Link2
+					className="size-3 shrink-0 text-violet-600/70 dark:text-violet-400/70"
+					aria-hidden
+				/>
 				<span className="truncate">{text || "—"}</span>
 				{stale && (
 					<span
@@ -704,7 +718,11 @@ export function OwnLinkedValue<T extends Record<string, unknown>>({
 						: `Enter the Alberta amount if it differs from ${slot.label}`
 				}
 			>
-				{editing ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+				{editing ? (
+					<Check className="size-3.5" />
+				) : (
+					<Pencil className="size-3.5" />
+				)}
 			</button>
 		</span>
 	);
@@ -867,6 +885,53 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 								</div>
 							);
 						}}
+					/>
+				) : resolved.options ? (
+					/*
+					 * A coded answer with a known list of permitted values.
+					 *
+					 * Native <select> rather than the design system's own,
+					 * deliberately: this row sits inside a facsimile of a printed
+					 * page, where the boxes are short and inline, and a portalled
+					 * listbox breaks that layout. The value written is the CODE,
+					 * which is what TRA receives.
+					 */
+					<Controller
+						control={control}
+						name={resolved.name as Path<T>}
+						render={({ field }) => (
+							<select
+								disabled={disabled}
+								aria-label={caption}
+								className={cn(
+									"h-8 w-36 shrink-0 rounded-md border border-l-2 border-input border-l-blue-500/60 bg-transparent px-1.5 text-sm outline-none",
+									"dark:border-l-blue-400/70 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
+									"disabled:cursor-not-allowed disabled:border-dashed disabled:border-l-2 disabled:bg-muted/50 disabled:opacity-50",
+								)}
+								value={(field.value as string | undefined) ?? ""}
+								onChange={(e) =>
+									field.onChange(
+										e.target.value === "" ? undefined : e.target.value,
+									)
+								}
+								onBlur={field.onBlur}
+							>
+								{/*
+								 * Blank stays selectable. Every coded line on this page is
+								 * conditional, so withdrawing an answer given by mistake has
+								 * to be possible — and for the gated ones it is the only way
+								 * to leave the field absent, which the specification requires
+								 * once the gate above is "No".
+								 */}
+								<option value="">—</option>
+								{/* `?? []` only to keep the narrowing TS loses inside this callback — the branch is reached only when options exist. */}
+								{(resolved.options ?? []).map((o) => (
+									<option key={o.code} value={o.code}>
+										{o.code} — {o.label}
+									</option>
+								))}
+							</select>
+						)}
 					/>
 				) : (
 					<Controller
@@ -1511,170 +1576,178 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	const growable = !!onAppend && !!onRemove;
 	return (
 		<div className="space-y-2">
-		<div className="overflow-x-auto rounded-lg border bg-card">
-			<table className="w-full border-collapse text-xs">
-				<thead>
-					<tr className="border-b bg-muted/40">
-						<th className="sticky left-0 min-w-[10rem] bg-muted/40 px-3 py-2 text-left font-medium">
-							&nbsp;
-						</th>
-						{columns.map((c, i) => (
-							<th
-								key={c.fieldName ?? `col-${i}`}
-								className="min-w-[7rem] px-2 py-2 text-left font-medium"
-							>
-								{!lineFor && (
-									<span className="block font-mono text-[10px] text-muted-foreground">
-										{c.line}
-									</span>
-								)}
-								<TooltipWrapper
-									content={c.printedHeading}
-									side="top"
-									disabled={!c.printedHeading}
-								>
-									<span
-										className={cn(
-											c.printedHeading &&
-												"cursor-help underline decoration-dotted underline-offset-2",
-										)}
-									>
-										{c.caption}
-									</span>
-								</TooltipWrapper>
+			<div className="overflow-x-auto rounded-lg border bg-card">
+				<table className="w-full border-collapse text-xs">
+					<thead>
+						<tr className="border-b bg-muted/40">
+							<th className="sticky left-0 min-w-[10rem] bg-muted/40 px-3 py-2 text-left font-medium">
+								&nbsp;
 							</th>
-						))}
-						{growable && <th className="w-10 px-2 py-2">&nbsp;</th>}
-					</tr>
-				</thead>
-				<tbody>
-					{rows.map((row) => (
-						<tr key={row.key} className="border-b last:border-b-0">
-							<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">
-								{row.label}
-							</td>
-							{columns.map((col, i) => {
-								const editable = row.arrayIndex !== undefined && col.fieldName;
-								const readOnlyText = formatReadOnly(
-									col.kind,
-									resolveCell(row, col),
-								);
-								const cellLine = lineFor?.(row, col);
-								return (
-									<td key={col.fieldName ?? `col-${i}`} className="px-2 py-1.5">
-										{cellLine && (
-											<span className="mb-0.5 block font-mono text-[10px] text-muted-foreground">
-												{cellLine}
-											</span>
-										)}
-										{editable ? (
-											<Controller
-												control={control}
-												name={
-													`${arrayName}.${row.arrayIndex}.${col.fieldName}` as Path<T>
-												}
-												render={({ field }) => (
-													<input
-														type={
-															col.kind === "date"
-																? "date"
-																: isTextKind(col.kind)
-																	? "text"
-																	: "number"
-														}
-														inputMode={
-															col.kind === "date" || isTextKind(col.kind)
-																? undefined
-																: "decimal"
-														}
-														step="any"
-														disabled={disabled}
-														aria-label={`${row.label} — ${col.caption}`}
-														className={cn(
-															"h-8 w-full min-w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm tabular-nums outline-none",
-															col.kind === "date" || isTextKind(col.kind)
-																? "text-left"
-																: "text-right",
-															"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-															"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
-														)}
-														value={
-															col.kind === "date"
-																? dateInputValue(
-																		field.value as string | number | undefined,
-																	)
-																: ((field.value as
-																		| string
-																		| number
-																		| undefined) ?? "")
-														}
-														onChange={(e) => {
-															const v = e.target.value;
-															field.onChange(
-																v === ""
-																	? undefined
-																	: col.kind === "date" || isTextKind(col.kind)
-																		? v
-																		: Number(v),
-															);
-														}}
-														onBlur={field.onBlur}
-													/>
-												)}
-											/>
-										) : readOnlyText ? (
-											<span
-												className="block h-8 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right leading-8 text-muted-foreground"
-												title={readOnlyText}
-											>
-												{readOnlyText}
-											</span>
-										) : (
-											<TooltipWrapper
-												content={
-													row.arrayIndex === undefined
-														? `${row.label} has not been added to this return yet -- there's no row to show a value for.`
-														: `No value yet for ${row.label} -- ${col.caption.toLowerCase()}.`
-												}
-												side="top"
-											>
-												<span className="block h-8 cursor-help rounded-md border border-dashed bg-muted/50 text-center leading-8 text-muted-foreground">
-													{row.arrayIndex === undefined ? "not added" : "—"}
-												</span>
-											</TooltipWrapper>
-										)}
-									</td>
-								);
-							})}
-							{growable && (
-								<td className="px-2 py-1.5 text-center">
-									<button
-										type="button"
-										onClick={() => onRemove?.(row.arrayIndex ?? -1)}
-										disabled={disabled || row.arrayIndex === undefined}
-										aria-label={`Remove ${row.label}`}
-										title={`Remove ${row.label}`}
-										className="rounded-md border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+							{columns.map((c, i) => (
+								<th
+									key={c.fieldName ?? `col-${i}`}
+									className="min-w-[7rem] px-2 py-2 text-left font-medium"
+								>
+									{!lineFor && (
+										<span className="block font-mono text-[10px] text-muted-foreground">
+											{c.line}
+										</span>
+									)}
+									<TooltipWrapper
+										content={c.printedHeading}
+										side="top"
+										disabled={!c.printedHeading}
 									>
-										✕
-									</button>
-								</td>
-							)}
+										<span
+											className={cn(
+												c.printedHeading &&
+													"cursor-help underline decoration-dotted underline-offset-2",
+											)}
+										>
+											{c.caption}
+										</span>
+									</TooltipWrapper>
+								</th>
+							))}
+							{growable && <th className="w-10 px-2 py-2">&nbsp;</th>}
 						</tr>
-					))}
-				</tbody>
-			</table>
-		</div>
-		{growable && (
-			<button
-				type="button"
-				onClick={onAppend}
-				disabled={disabled}
-				className="rounded-md border px-2.5 py-1 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{addLabel}
-			</button>
-		)}
+					</thead>
+					<tbody>
+						{rows.map((row) => (
+							<tr key={row.key} className="border-b last:border-b-0">
+								<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">
+									{row.label}
+								</td>
+								{columns.map((col, i) => {
+									const editable =
+										row.arrayIndex !== undefined && col.fieldName;
+									const readOnlyText = formatReadOnly(
+										col.kind,
+										resolveCell(row, col),
+									);
+									const cellLine = lineFor?.(row, col);
+									return (
+										<td
+											key={col.fieldName ?? `col-${i}`}
+											className="px-2 py-1.5"
+										>
+											{cellLine && (
+												<span className="mb-0.5 block font-mono text-[10px] text-muted-foreground">
+													{cellLine}
+												</span>
+											)}
+											{editable ? (
+												<Controller
+													control={control}
+													name={
+														`${arrayName}.${row.arrayIndex}.${col.fieldName}` as Path<T>
+													}
+													render={({ field }) => (
+														<input
+															type={
+																col.kind === "date"
+																	? "date"
+																	: isTextKind(col.kind)
+																		? "text"
+																		: "number"
+															}
+															inputMode={
+																col.kind === "date" || isTextKind(col.kind)
+																	? undefined
+																	: "decimal"
+															}
+															step="any"
+															disabled={disabled}
+															aria-label={`${row.label} — ${col.caption}`}
+															className={cn(
+																"h-8 w-full min-w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm tabular-nums outline-none",
+																col.kind === "date" || isTextKind(col.kind)
+																	? "text-left"
+																	: "text-right",
+																"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
+																"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
+															)}
+															value={
+																col.kind === "date"
+																	? dateInputValue(
+																			field.value as
+																				| string
+																				| number
+																				| undefined,
+																		)
+																	: ((field.value as
+																			| string
+																			| number
+																			| undefined) ?? "")
+															}
+															onChange={(e) => {
+																const v = e.target.value;
+																field.onChange(
+																	v === ""
+																		? undefined
+																		: col.kind === "date" ||
+																				isTextKind(col.kind)
+																			? v
+																			: Number(v),
+																);
+															}}
+															onBlur={field.onBlur}
+														/>
+													)}
+												/>
+											) : readOnlyText ? (
+												<span
+													className="block h-8 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right leading-8 text-muted-foreground"
+													title={readOnlyText}
+												>
+													{readOnlyText}
+												</span>
+											) : (
+												<TooltipWrapper
+													content={
+														row.arrayIndex === undefined
+															? `${row.label} has not been added to this return yet -- there's no row to show a value for.`
+															: `No value yet for ${row.label} -- ${col.caption.toLowerCase()}.`
+													}
+													side="top"
+												>
+													<span className="block h-8 cursor-help rounded-md border border-dashed bg-muted/50 text-center leading-8 text-muted-foreground">
+														{row.arrayIndex === undefined ? "not added" : "—"}
+													</span>
+												</TooltipWrapper>
+											)}
+										</td>
+									);
+								})}
+								{growable && (
+									<td className="px-2 py-1.5 text-center">
+										<button
+											type="button"
+											onClick={() => onRemove?.(row.arrayIndex ?? -1)}
+											disabled={disabled || row.arrayIndex === undefined}
+											aria-label={`Remove ${row.label}`}
+											title={`Remove ${row.label}`}
+											className="rounded-md border px-1.5 py-0.5 text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+										>
+											✕
+										</button>
+									</td>
+								)}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			{growable && (
+				<button
+					type="button"
+					onClick={onAppend}
+					disabled={disabled}
+					className="rounded-md border px-2.5 py-1 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{addLabel}
+				</button>
+			)}
 		</div>
 	);
 }
@@ -1779,9 +1852,7 @@ export function PaperFootnotes({
 		<ol className="space-y-1 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
 			{shown.map((i) => (
 				<li key={i} className="flex gap-2">
-					{marks?.[i] && (
-						<span className="shrink-0 font-mono">{marks[i]}</span>
-					)}
+					{marks?.[i] && <span className="shrink-0 font-mono">{marks[i]}</span>}
 					<span>{notes[i]}</span>
 				</li>
 			))}

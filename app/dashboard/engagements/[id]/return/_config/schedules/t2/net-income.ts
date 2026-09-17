@@ -18,6 +18,28 @@ import { Schedule1FormView } from "./paper/schedule1-form-view";
  * filing shape, with no mapping step to get wrong. Totals and figures carried
  * from other schedules are omitted: rendering them editable invites someone to
  * overwrite a computed number, and the return then does not foot.
+ *
+ * ── `lines.101` is an ARRAY index to react-hook-form ────────────────────────
+ *
+ * A numeric path segment means an array index, so these names build a sparse
+ * `lines[]` one longer than the highest line here, rather than the record the
+ * contract stores — and `JSON.stringify` writes each hole as `null`, so an
+ * untouched Schedule 1 leaves the browser as a wall of nulls. That rejected
+ * EVERY save of a return that had rendered this schedule, in production, with
+ * `expected record, received array`.
+ *
+ * The names are deliberately NOT changed to dodge it. `lines.101` is the whole
+ * point of this schedule — the box is named for the line it files under — and
+ * renaming to something like `lines.L101` would move the mapping problem into
+ * the payload, where getting it wrong puts a figure on the wrong CRA line
+ * instead of failing loudly. The array index IS the line number, so the server
+ * normalizes it back to a record at the contract boundary, exactly and in one
+ * place (`NetIncomeValues` in apps/server's `contracts/t2-input.ts`, which
+ * carries the full reasoning and the regression test).
+ *
+ * Adding a line here is therefore safe and needs nothing else. What is NOT safe
+ * is adding numerically-named fields to a slice whose contract has no such
+ * normalization — this is currently the only schedule in the app using them.
  */
 export const netIncome = defineSchedule({
   key: "netIncome",

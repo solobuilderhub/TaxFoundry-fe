@@ -4,9 +4,47 @@ import type { AlbertaValues } from "../../../_lib/return-input";
 import { fieldsFor } from "../../fields";
 import { YES_NO } from "../../options";
 import { defineSchedule } from "../shared/define";
+import { AT1_JACKET_CODE_OPTIONS } from "./paper/generated/jacket.layout";
 import { JacketFormView } from "./paper/jacket-form-view";
 
 const f = fieldsFor<AlbertaValues>();
+
+/**
+ * A coded answer's options, taken from the GENERATED jacket layout rather than
+ * retyped here.
+ *
+ * These lists are the printed form's own tick-box wording (ca-tax's
+ * `AT1_JACKET_CODE_OPTIONS`, transcribed from TRA11722 and emitted into
+ * `generated/jacket.layout.ts`). Restating them in this file would create a
+ * second copy that a preparer could read while the engine filed the first —
+ * and the codes are the payload, so a drifted label is a mislabelled answer,
+ * not a cosmetic difference.
+ */
+const codeOptions = (line: string) =>
+	(AT1_JACKET_CODE_OPTIONS[line] ?? []).map((o) => ({
+		label: `${o.code} — ${o.label}`,
+		value: o.code,
+	}));
+
+/**
+ * The gates, and what each one makes mandatory.
+ *
+ * Declarative `condition` rules rather than predicate functions, so the schema
+ * stays plain data and importable from a server component (see `fields.ts`).
+ * The editor stores a radio's answer as the literal `"yes"` / `"no"`, which is
+ * what these compare against — NOT Alberta's 1/2 encoding, which only exists
+ * at the filing boundary.
+ */
+const whenYearEndChanged = {
+	watch: "taxYearEndChanged",
+	operator: "===",
+	value: "yes",
+} as const;
+const whenFinalReturn = {
+	watch: "finalReturn",
+	operator: "===",
+	value: "yes",
+} as const;
 
 /**
  * Alberta AT1 jacket — the mandatory fields nothing else on the return carries.
@@ -47,11 +85,15 @@ export const alberta = defineSchedule({
 				"financials",
 				"Financial statement figures",
 				[
-					f.money("grossRevenue", "Gross Revenue (to nearest thousand) (line 047)", {
-						required: true,
-						description:
-							"Per the financial statements, before any deduction. Enter the full dollar amount: the printed form pre-prints three trailing zeros because it is completed in thousands, but this product transmits whole dollars like every other money field on the return.",
-					}),
+					f.money(
+						"grossRevenue",
+						"Gross Revenue (to nearest thousand) (line 047)",
+						{
+							required: true,
+							description:
+								"Per the financial statements, before any deduction. Enter the full dollar amount: the printed form pre-prints three trailing zeros because it is completed in thousands, but this product transmits whole dollars like every other money field on the return.",
+						},
+					),
 					f.money(
 						"totalAssets",
 						"Total Assets (book value per balance sheet, to nearest thousand) (line 048)",
@@ -114,6 +156,24 @@ export const alberta = defineSchedule({
 							required: true,
 						},
 					),
+					/*
+					 * 030 and 041 (below) are the two conditional codes with no
+					 * gate on this return, so neither can be prompted for: the
+					 * spec conditions 030 on federal line 218 / federal Schedule
+					 * 18, and 041 on a federal functional-currency election, and
+					 * this engine models none of the three. Offered as optional
+					 * answers rather than derived — and left absent they are
+					 * dropped, which is right for almost every corporation.
+					 */
+					f.select(
+						"specialCorporationStatus",
+						"Special Corporation Status, if applicable (line 030)",
+						codeOptions("030"),
+						{
+							description:
+								'Leave blank unless one of these describes the corporation. The specification requires 1 or 2 here for an investment or mutual fund corporation ("if fed 200218=1 or federal form 018 exists"); the rest of the list is the printed form\'s own.',
+						},
+					),
 					f.radio(
 						"windUpOfSubsidiary",
 						"Has there been a wind-up of a subsidiary under federal Income Tax Act (ITA) section 88 during the current taxation year? (line 031)",
@@ -136,12 +196,54 @@ export const alberta = defineSchedule({
 							required: true,
 						},
 					),
+					f.select(
+						"taxYearEndChangeReason",
+						'If "Yes", specify the reason (line 039)',
+						codeOptions("039"),
+						{
+							condition: whenYearEndChanged,
+							description:
+								'Required once line 038 is "Yes" — the specification says "If 000038=1, must be a valid code", and equally "If 000038=2, then value must be blank". Choosing "3 — Final Return" means line 050 below must also be "Yes".',
+						},
+					),
 					f.radio(
 						"finalReturn",
 						"Is this the final return? (line 050)",
 						YES_NO,
 						{ required: true },
 					),
+					f.select(
+						"finalReturnReason",
+						'If "Yes", specify the reason (line 051)',
+						codeOptions("051"),
+						{
+							condition: whenFinalReturn,
+							description:
+								'Required once line 050 is "Yes". Two of the five reasons need a date as well, and the box for it appears when you pick one.',
+						},
+					),
+					f.date("dateOfAmalgamation", "Date of amalgamation (line 052)", {
+						condition: {
+							rules: [
+								whenFinalReturn,
+								{ watch: "finalReturnReason", operator: "===", value: "1" },
+							],
+							logic: "and",
+						},
+						description:
+							"Must be the tax year end or the day after it. Reason 1 means the corporation ceased to exist BY amalgamating, so this is the predecessor's final return and its year ended the day before the amalgamation. This is not line 032 above, which asks the SUCCESSOR whether this is its first year after one.",
+					}),
+					f.date("dateOperationsCeased", "Date operations ceased (line 053)", {
+						condition: {
+							rules: [
+								whenFinalReturn,
+								{ watch: "finalReturnReason", operator: "===", value: "5" },
+							],
+							logic: "and",
+						},
+						description:
+							"Required when the reason is dissolution of the corporation.",
+					}),
 					/*
 					 * The DATE qualifier is not decoration, and it was missing.
 					 *
@@ -159,12 +261,21 @@ export const alberta = defineSchedule({
 						YES_NO,
 						{ required: true },
 					),
+					f.select(
+						"functionalCurrency",
+						"Functional currency used, if other than Canadian (line 041)",
+						codeOptions("041"),
+						{
+							description:
+								"Leave blank for Canadian dollars, which is the answer for all but a corporation that has elected a functional currency federally.",
+						},
+					),
 				],
 				{
 					variant: "card",
 					cols: 1,
 					description:
-						'Every one is mandatory. Left blank the return cannot be filed — which is deliberate: TRA records "No" as an answer given, so nothing here is assumed for you.',
+						'The yes/no questions are all mandatory: left blank the return cannot be filed — which is deliberate, because TRA records "No" as an answer given, so nothing here is assumed for you. The coded answers between them are conditional, and each appears only when the question above it makes one necessary.',
 				},
 			),
 			section(

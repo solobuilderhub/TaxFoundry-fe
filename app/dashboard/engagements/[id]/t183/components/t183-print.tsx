@@ -14,6 +14,7 @@ import {
 	useEngagement,
 	useEngagementActions,
 } from "@/hooks/query/use-engagements";
+import { formatCalendarDate } from "@/lib/format-date";
 import { getT183Schema, type T183Values } from "../../../_config/t183-config";
 
 const money = (v: number) =>
@@ -22,8 +23,9 @@ const money = (v: number) =>
 		currency: "CAD",
 		maximumFractionDigits: 0,
 	}).format(v || 0);
-const d = (iso?: string) =>
-	iso ? new Date(iso).toLocaleDateString("en-CA") : "—";
+// Calendar dates, never instants — a T183 is signed and filed, and a tax year
+// end that shifts with the viewer's timezone changes what the officer attests.
+const d = formatCalendarDate;
 
 function Field({ label, value }: { label: string; value: string }) {
 	return (

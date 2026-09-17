@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { type Control, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { Client } from "@/api/clients";
 import type { EngagementYear } from "@/api/engagements";
@@ -29,6 +30,7 @@ import {
 	useEngagementActions,
 } from "@/hooks/query/use-engagements";
 import { cn } from "@/lib/utils";
+import { FORM_ID_TO_SCHEDULE_KEY } from "../_config/form-nav";
 import {
 	FACTOR_LINES,
 	HIDDEN_LINES,
@@ -47,7 +49,7 @@ import { Schedule10View } from "../_config/schedules/at1/paper/schedule10-view";
 import { Schedule12View } from "../_config/schedules/at1/paper/schedule12-view";
 import type { NavigateToLine } from "../_config/schedules/shared/define";
 import { bookNetIncomeOf } from "../_lib/calc";
-import type { ReturnInput } from "../_lib/return-input";
+import type { CcaClass, ReturnInput } from "../_lib/return-input";
 import { useCcaPreviewTotal } from "../_lib/use-cca-preview";
 import { AutoFillDialog } from "./auto-fill-dialog";
 import { GifiImportDialog } from "./gifi-import-dialog";
@@ -91,36 +93,6 @@ const READ_ONLY_SCHEDULES = [
 	},
 ];
 
-/**
- * A paper Form View's cross-reference badges point at a `FormDefinition.id`
- * (`"AT1SCH12"`), not a `ScheduleKey` — the two vocabularies are deliberately
- * different (see `../_config/schedules/at1/forms` in `@classytic/ca-tax` for
- * the former). A schedule missing here just means its `to` badges render
- * inert (no `onNavigate` match) rather than throwing — safe by construction.
- * Two AT1 schedules fold into a FEDERAL schedule's own form-view rather than
- * getting their own `ScheduleKey` (Schedule 13's Alberta CCA override lives
- * under `"cca"`, Schedule 17's reserves under `"reserves"`) — confirmed by
- * reading each schedule file's own `formView:` wiring, not guessed.
- */
-const FORM_ID_TO_SCHEDULE_KEY: Record<
-	string,
-	ScheduleKey | "schedule2" | "schedule10" | "schedule12"
-> = {
-	AT1: "alberta",
-	AT1SCH1: "albertaSbd",
-	AT1SCH2: "schedule2",
-	AT1SCH03: "albertaOtherCredits3",
-	AT1SCH04: "albertaForeignInvestment4",
-	AT1SCH10: "schedule10",
-	AT1SCH12: "schedule12",
-	AT1SCH13: "cca",
-	AT1SCH15: "albertaResourceDeductions15",
-	AT1SCH17: "reserves",
-	AT1SCH20: "albertaDonations",
-	AT1SCH21: "albertaContinuity",
-	AT1SCH29: "albertaIeg",
-};
-
 /** True if a schedule slice carries any entered value (drives the nav "has data" dot). */
 const hasData = (v: unknown): boolean =>
 	!!v &&
@@ -135,13 +107,19 @@ const hasData = (v: unknown): boolean =>
  * cleared box goes back to "not entered" rather than storing an explicit
  * nothing the contract would have to interpret.
  */
-function withValueAt(ri: ReturnInput, path: string, value: unknown): ReturnInput {
+function withValueAt(
+	ri: ReturnInput,
+	path: string,
+	value: unknown,
+): ReturnInput {
 	const [head, ...rest] = path.split(".");
 	const root: Record<string, unknown> = { ...(ri as Record<string, unknown>) };
 	let parent = root;
 	let key = head as string;
 	for (const next of rest) {
-		const child = { ...((parent[key] as Record<string, unknown> | undefined) ?? {}) };
+		const child = {
+			...((parent[key] as Record<string, unknown> | undefined) ?? {}),
+		};
 		parent[key] = child;
 		parent = child;
 		key = next;
@@ -593,21 +571,27 @@ export function ReturnEditor({ id }: { id: string }) {
 										returnInput={seeded}
 										writeInput={writeInput}
 										footer={
-											active === "incomeStatement" ? (
-												<p className="text-sm text-muted-foreground">
-													Net income (GIFI 9999):{" "}
-													<span className="font-medium tabular-nums text-foreground">
-														{money(bookNI)}
-													</span>
-												</p>
-											) : active === "cca" ? (
-												<p className="text-sm text-muted-foreground">
-													Total CCA (Schedule 8):{" "}
-													<span className="font-medium tabular-nums text-foreground">
-														{money(ccaDisplay)}
-													</span>
-												</p>
-											) : null
+											active === "incomeStatement"
+												? /*
+													 * A render-prop, so this reads the LIVE form rather than
+													 * the saved return. It was `money(bookNI)`, computed from
+													 * `seeded` — what was last persisted — so typing a revenue
+													 * figure left this line reporting the PREVIOUS one until
+													 * "Save schedule" was pressed: two totals on one screen
+													 * disagreeing, with nothing to say which the return would
+													 * use.
+													 */
+													(form) => (
+														<LiveNetIncomeFooter control={form.control} />
+													)
+												: active === "cca"
+													? (form) => (
+															<LiveCcaFooter
+																engagementId={id}
+																control={form.control}
+															/>
+														)
+													: null
 										}
 									/>
 								)}
@@ -617,6 +601,79 @@ export function ReturnEditor({ id }: { id: string }) {
 				/>
 			</div>
 		</div>
+	);
+}
+
+/**
+ * GIFI 9999 beside the save button, from the boxes as they are being typed.
+ *
+ * Same arithmetic as `bookNetIncomeOf` — revenue less the four expense lines —
+ * but over the LIVE form instead of the persisted return, which is the whole
+ * point: the saved figure and the figures on screen are different things until
+ * a save lands, and showing the saved one under boxes holding the other is how
+ * a preparer ends up trusting a number the return will not use.
+ *
+ * It stays a separate component because `useWatch` is a hook and the footer is
+ * built inside a render-prop.
+ */
+function LiveNetIncomeFooter({ control }: { control: Control<never> }) {
+	const v = useWatch({ control }) as Record<string, unknown> | undefined;
+	const n = (x: unknown) =>
+		typeof x === "number" && Number.isFinite(x) ? x : 0;
+	const total =
+		n(v?.revenue) -
+		n(v?.costOfSales) -
+		n(v?.salariesAndWages) -
+		n(v?.amortization) -
+		n(v?.otherExpenses);
+	return (
+		<p className="text-sm text-muted-foreground">
+			Net income (GIFI 9999):{" "}
+			<span className="font-medium tabular-nums text-foreground">
+				{money(total)}
+			</span>
+		</p>
+	);
+}
+
+/**
+ * Total CCA beside the save button, previewed from the rows as they are typed.
+ *
+ * Same staleness the net income footer had: this read `seeded.cca?.classes`,
+ * so adding a class or changing a claim left the total reporting the LAST
+ * SAVED set of rows. `useCcaPreviewTotal` was already debounced and already
+ * re-queried whenever its argument changed — it was simply being handed the
+ * saved slice instead of the live one.
+ *
+ * Unlike net income this is not local arithmetic: the hook asks the server to
+ * run the real `computeCcaClass`, because a second implementation of the
+ * declining-balance, half-year, AIIP and immediate-expensing rules is exactly
+ * what this app removed once already.
+ *
+ * It is a PREVIEW and deliberately narrower than the filed figure — it covers
+ * the ordinary declining-balance classes only, not a new class 13 leasehold
+ * layer or class 14 property (`cca-preview.service.ts` says so itself), so it
+ * under-reports when one of those is entered. The Tax Summary still prefers a
+ * fresh compute's own `ccaClaimed` for that reason; here, where the preparer is
+ * editing the rows, the number that matches the rows is the useful one.
+ */
+function LiveCcaFooter({
+	engagementId,
+	control,
+}: {
+	engagementId: string;
+	control: Control<never>;
+}) {
+	const v = useWatch({ control }) as { classes?: CcaClass[] } | undefined;
+	const { total, loading } = useCcaPreviewTotal(engagementId, v?.classes);
+	return (
+		<p className="text-sm text-muted-foreground">
+			Total CCA (Schedule 8):{" "}
+			<span className="font-medium tabular-nums text-foreground">
+				{money(total)}
+			</span>
+			{loading && <span className="ml-2 text-xs">updating…</span>}
+		</p>
 	);
 }
 
@@ -639,7 +696,15 @@ function ScheduleForm({
 	value: Record<string, unknown>;
 	saving: boolean;
 	onSave: (v: Record<string, unknown>) => void;
-	footer?: React.ReactNode;
+	/**
+	 * A summary line beside the save button. Pass a FUNCTION to read the live
+	 * form (a running total that must track what is being typed); pass a node
+	 * for anything whose source is outside the form, like the server-computed
+	 * CCA preview.
+	 */
+	footer?:
+		| React.ReactNode
+		| ((form: { control: Control<never> }) => React.ReactNode);
 	computed: ReturnType<typeof useLatestComputedReturn>["latest"];
 	stale: boolean;
 	engagement?: EngagementYear;
@@ -719,7 +784,9 @@ function ScheduleForm({
 								</div>
 							)}
 							<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-								{footer ?? <span />}
+								{(typeof footer === "function"
+									? footer(form as unknown as { control: Control<never> })
+									: footer) ?? <span />}
 								<Button type="submit" disabled={saving}>
 									{saving ? "Saving…" : "Save schedule"}
 								</Button>

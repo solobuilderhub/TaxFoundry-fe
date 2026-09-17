@@ -29,11 +29,12 @@ import {
 	useEngagementActions,
 } from "@/hooks/query/use-engagements";
 import { useReviewMemos } from "@/hooks/query/use-review-memos";
+import { formatCalendarDate } from "@/lib/format-date";
 import { getCertificationSchema } from "../../_config/certification-config";
 import { HIDDEN_LINES, labelForLine } from "../return/_config/line-labels";
 
-const fmtDate = (iso?: string) =>
-	iso ? new Date(iso).toLocaleDateString("en-CA") : "—";
+// Calendar dates — see `lib/format-date.ts`.
+const fmtDate = formatCalendarDate;
 
 const PROV_VARIANT: Record<
 	FieldProvenance,

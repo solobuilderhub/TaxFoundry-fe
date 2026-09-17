@@ -1,8 +1,11 @@
 "use client";
 
-import type { Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
 import type { IncomeStatementValues } from "../../../../_lib/return-input";
-import { PaperLeaderRow, PaperSection } from "../../at1/paper/components/paper-primitives";
+import {
+	PaperLeaderRow,
+	PaperSection,
+} from "../../at1/paper/components/paper-primitives";
 import type { LineValue, NavigateToLine } from "../../at1/paper/resolve-line";
 
 /**
@@ -40,15 +43,75 @@ export function IncomeStatementFormView({
 }) {
 	const isControl = control as unknown as Control<IncomeStatementValues>;
 
-	const FIELDS: readonly { line: string; caption: string; fieldName: keyof IncomeStatementValues }[] = [
+	const FIELDS: readonly {
+		line: string;
+		caption: string;
+		fieldName: keyof IncomeStatementValues;
+	}[] = [
 		{ line: "8299", caption: "Total revenue", fieldName: "revenue" },
 		{ line: "8518", caption: "Cost of sales", fieldName: "costOfSales" },
-		{ line: "9060", caption: "Salaries & wages", fieldName: "salariesAndWages" },
-		{ line: "8670", caption: "Amortization of tangible assets", fieldName: "amortization" },
-		{ line: "9270", caption: "Other operating expenses", fieldName: "otherExpenses" },
+		{
+			line: "9060",
+			caption: "Salaries & wages",
+			fieldName: "salariesAndWages",
+		},
+		{
+			line: "8670",
+			caption: "Amortization of tangible assets",
+			fieldName: "amortization",
+		},
+		{
+			line: "9270",
+			caption: "Other operating expenses",
+			fieldName: "otherExpenses",
+		},
 	];
 
-	const resolveLine = (fieldName: keyof IncomeStatementValues) => (): LineValue => ({ editable: true, name: fieldName });
+	const resolveLine =
+		(fieldName: keyof IncomeStatementValues) => (): LineValue => ({
+			editable: true,
+			name: fieldName,
+		});
+
+	/*
+	 * GIFI 9999, computed LIVE from the boxes above.
+	 *
+	 * This row rendered an empty `—` on every return, for every corporation,
+	 * while wearing a "Computed" badge and a caption promising "total revenue
+	 * minus every expense above" — it resolved to a hardcoded `undefined` and
+	 * nothing ever filled it in. The figure it should show was on screen the
+	 * whole time, in the footer a few lines below, which made the two disagree
+	 * openly: the footer read the SAVED return and this row read nothing.
+	 *
+	 * `useWatch` rather than the saved slice, because this is the schedule's own
+	 * arithmetic on boxes the preparer is editing right now. A total that only
+	 * catches up on "Save schedule" is worse than no total: it states a figure
+	 * that contradicts the numbers directly above it, and the preparer cannot
+	 * tell which one the return will use.
+	 *
+	 * Deliberately NOT read from `computed`: net income for tax purposes goes on
+	 * through Schedule 1, so the engine's figure is a different number that
+	 * would silently disagree with this sum. 9999 is the accounting result.
+	 */
+	const entered = useWatch({ control: isControl });
+	const n = (v: unknown) =>
+		typeof v === "number" && Number.isFinite(v) ? v : 0;
+	const netIncome =
+		n(entered?.revenue) -
+		n(entered?.costOfSales) -
+		n(entered?.salariesAndWages) -
+		n(entered?.amortization) -
+		n(entered?.otherExpenses);
+	// Nothing typed at all reads as a blank rather than a confident 0 — the same
+	// distinction the rest of this app keeps between an absent figure and a nil
+	// one. Any single box filled makes the arithmetic real, including a genuine 0.
+	const anyEntered = [
+		entered?.revenue,
+		entered?.costOfSales,
+		entered?.salariesAndWages,
+		entered?.amortization,
+		entered?.otherExpenses,
+	].some((v) => typeof v === "number" && Number.isFinite(v));
 
 	return (
 		<div className="space-y-4">
@@ -82,7 +145,10 @@ export function IncomeStatementFormView({
 					kind="money"
 					role="computed"
 					control={isControl}
-					resolveLine={(): LineValue => ({ editable: false, value: undefined })}
+					resolveLine={(): LineValue => ({
+						editable: false,
+						value: anyEntered ? netIncome : undefined,
+					})}
 					disabled={disabled}
 				/>
 			</PaperSection>
