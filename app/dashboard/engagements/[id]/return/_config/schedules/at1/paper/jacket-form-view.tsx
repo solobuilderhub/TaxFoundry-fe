@@ -5,7 +5,7 @@ import type { Control } from "react-hook-form";
 import type { Client } from "@/api/clients";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { EngagementYear } from "@/api/engagements";
-import type { AlbertaValues } from "../../../../_lib/return-input";
+import type { AlbertaValues, ReturnInput } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperFootnotes,
@@ -154,11 +154,11 @@ const JACKET_SCHEDULE_ID = "000";
  * checked getter by getter. Lines the engine does not publish as a named field
  * stay blank rather than being guessed at.
  *
- * Line 090 is deliberately ABSENT. `totalOwing` looks like the balance and is
- * not: `at1-engine.ts` sets `totalOwing = albertaTaxPayable * 100` — line 080
- * in cents — while 090 is the balance after instalments and credits. Wiring it
- * would print a confident wrong number on a tax form, which is worse than
- * printing nothing.
+ * Line 090 is deliberately absent FROM THIS MAP, and is derived instead — see
+ * `derivedJacketLines`. The trap it avoids: `totalOwing` looks like the balance
+ * and is not. `at1-engine.ts` sets `totalOwing = albertaTaxPayable * 100`, i.e.
+ * line 080 in cents, while 090 is the balance after instalments and credits.
+ * Mapping it here would have printed a confident wrong number on a tax form.
  */
 const COMPUTED_FIELD: Partial<Record<string, string>> = {
 	"062": "albertaTaxableIncome",
@@ -179,11 +179,64 @@ const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
  */
 const NOT_PRINTED = new Set(AT1_JACKET_LINES_NOT_PRINTED);
 
+/**
+ * The printed page's own totals, struck exactly as it strikes them.
+ *
+ * These four are not engine fields — the engine publishes the components, and
+ * the FORM combines them — so they rendered "—" even on a fully computed
+ * return, on the page whose job is checking the arithmetic line by line.
+ *
+ *   079  Total (lines 070 + 072 + 076)
+ *   082  Instalments and other payments        ← entered, on the payments slice
+ *   088  Total (lines 129 + 082 + 085 + 086 + 115 + 087)
+ *   090  Balance Unpaid (Overpayment) (080 − 088)
+ *
+ * 082 is an INPUT, not a computed line: the preparer enters it, just not on
+ * this schedule — the editor collects it once per engagement under `payments`.
+ * It is shown read-only here rather than as a second box, so the two cannot
+ * drift.
+ *
+ * 088 is printed but NOT FILED: ca-tax transmits only 090, because 088 has no
+ * line item of its own on the wire. Showing it is still right — it is on the
+ * page, and it is the subtotal a preparer checks 090 against.
+ *
+ * The credits at 085, 086, 087, 115 and the deductions at 072, 076 have no
+ * computed field in this engine and are nil on every return it produces, so
+ * they contribute zero. When one is wired, it belongs in these sums — the
+ * printed captions above are the specification for what each must contain.
+ */
+function derivedJacketLines(
+	computed: ComputedReturn | undefined,
+	returnInput: ReturnInput | undefined,
+): Partial<Record<string, number>> {
+	const fields = computed?.fields;
+	if (!fields || fields.length === 0) return {};
+	const f = (slug: string): number => {
+		const hit = fields.find((x) => x.line === slug);
+		return hit?.value == null ? 0 : Number(hit.value) || 0;
+	};
+	const taxPayable = f("albertaTaxPayable");
+	const sbd = f("albertaSmallBusinessDeduction");
+	const ieg = f("innovationEmploymentGrant");
+	const instalments = Number(returnInput?.payments?.instalmentsPaid ?? 0) || 0;
+
+	const total079 = sbd; // + 072 + 076, both nil in this engine
+	const total088 = ieg + instalments; // + 085 + 086 + 115 + 087, all nil
+	return {
+		"079": total079,
+		"082": instalments,
+		"088": total088,
+		"090": taxPayable - total088,
+	};
+}
+
 function buildResolveLine(
 	computed: ComputedReturn | undefined,
 	engagement: EngagementYear | undefined,
 	client: Client | undefined,
+	returnInput: ReturnInput | undefined,
 ): ResolveLine {
+	const derived = derivedJacketLines(computed, returnInput);
 	const filed = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === JACKET_SCHEDULE_ID,
 	);
@@ -214,8 +267,44 @@ function buildResolveLine(
 		const slug = COMPUTED_FIELD[field];
 		if (slug) {
 			const f = computed?.fields?.find((x) => x.line === slug);
-			if (f?.value != null)
-				return { editable: false, value: f.value as string | number };
+			const value = f?.value == null ? undefined : (f.value as string | number);
+			/*
+			 * 062 shows the computed figure AND can be overridden.
+			 *
+			 * Not a plain editable box: on the normal path this is derived
+			 * (federal taxable income × the allocation factor) and the preparer
+			 * needs to SEE it — replacing that with an empty field would hide
+			 * the number on the one page meant for checking numbers.
+			 *
+			 * The unlock is what makes an AT1 preparable when the T2 was done in
+			 * another package: there is nothing to derive from, every line under
+			 * 062 reads $0, and this is the box TRA's own jacket provides for
+			 * saying so. Overriding writes the same slice the engine reads, so
+			 * the figure has one home.
+			 */
+			if (field === "062") {
+				return {
+					editable: false,
+					value,
+					linked: {
+						backing: "own",
+						name: "albertaTaxableIncome",
+						label:
+							"Alberta taxable income — enter it when the T2 was prepared elsewhere",
+					},
+				};
+			}
+			if (value !== undefined) return { editable: false, value };
+		}
+
+		// A total the PAGE strikes from figures the engine published separately.
+		const derivedValue = derived[field];
+		if (derivedValue !== undefined) {
+			return {
+				editable: false,
+				value: derivedValue,
+				...(field === "082" ? { sourceLabel: "payments" } : {}),
+			};
 		}
 
 		const filedValue = filedByField.get(field);
@@ -267,6 +356,7 @@ export function JacketFormView({
 	client,
 	onNavigate,
 	highlightLine,
+	returnInput,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
@@ -275,8 +365,14 @@ export function JacketFormView({
 	client?: Client;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	returnInput?: ReturnInput;
 }) {
-	const resolveLine = buildResolveLine(computed, engagement, client);
+	const resolveLine = buildResolveLine(
+		computed,
+		engagement,
+		client,
+		returnInput,
+	);
 	const albertaControl = control as unknown as Control<AlbertaValues>;
 	const footnotes = readFootnotePlacement(
 		AT1_JACKET_FOOTNOTES,

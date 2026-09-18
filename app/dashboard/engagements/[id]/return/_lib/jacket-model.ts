@@ -70,7 +70,20 @@ interface BuildInput {
 	taxYearEnd?: string;
 	fields: Field[];
 	returnInput: ReturnInput;
-	identity: { corporation: string; businessNumber: string; corpType?: string };
+	identity: {
+		corporation: string;
+		businessNumber: string;
+		corpType?: string;
+		/**
+		 * From the CLIENT's registered address — the return editor has no
+		 * province control, so `returnInput.identification.province` is
+		 * undefined on almost every return and line 750 printed "—" even when
+		 * the province was perfectly well known. The same gap was already fixed
+		 * once in the review layer (`clientProvince`); the jacket kept printing
+		 * the dash.
+		 */
+		province?: string;
+	};
 }
 
 const toNumber = (v: unknown): number => {
@@ -275,7 +288,7 @@ export function buildJacket(input: BuildInput): JacketDoc {
 		{
 			ref: "750",
 			label: "Province of permanent establishment",
-			value: ident.province ?? "—",
+			value: ident.province ?? identity.province ?? "—",
 			kind: "text",
 		},
 	];

@@ -939,6 +939,10 @@ export type AlbertaValues = {
 	 */
 	preparedByTaxPreparerForFee?: YesNo;
 	/**
+	 * 000062 — Alberta taxable income or (loss), ENTERED rather than derived. Leave blank on a return whose T2 is prepared in this app: the engine then computes it as federal taxable income × the allocation factor, which is the normal path. Supply it when the federal return was prepared elsewhere and there is nothing here to derive from — TRA’s own jacket types 062 as an input for exactly that case. Enter the ALBERTA figure, already allocated; the allocation factor is not applied again.
+	 */
+	albertaTaxableIncome?: number;
+	/**
 	 * 000030 — special corporation status code. "If fed 200218=1 or federal form 018 exists, then this field must equal either 1=Investment Corp., 2=Mutual Fund Corp." Neither federal line 218 nor federal Schedule 18 is modelled here, so this is supplied rather than derived; the printed page annotates the whole field "(if applicable)".
 	 */
 	specialCorporationStatus?: string;

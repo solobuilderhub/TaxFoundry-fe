@@ -95,6 +95,14 @@ export const alberta = defineSchedule({
 						},
 					),
 					f.money(
+						"albertaTaxableIncome",
+						"Alberta taxable income or (loss), if the T2 was prepared elsewhere (line 062)",
+						{
+							description:
+								"Leave BLANK on a return whose federal T2 is prepared in this app — the engine computes 062 as federal taxable income times the Alberta allocation factor, and that is the normal path. Fill it in only when the T2 was prepared in another package: there is then nothing to derive from, and without it basic tax (068), the small business deduction (070) and tax payable (080) all read $0. Enter the ALBERTA figure, already allocated — the allocation factor is not applied again. A figure entered here is reported in review as entered rather than computed.",
+						},
+					),
+					f.money(
 						"totalAssets",
 						"Total Assets (book value per balance sheet, to nearest thousand) (line 048)",
 						{
