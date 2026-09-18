@@ -105,6 +105,33 @@ describe("AT1 jacket settlement", () => {
 	it("omits the grant row when nothing is claimed", () => {
 		expect(byRef(at1({ tax: 8_000, ieg: 0 }), "129")).toBeUndefined();
 	});
+
+	/**
+	 * Case A02 — Aurora Grid Analytics Inc., an $18M-grind IEG claim, checked
+	 * against AuraTax and an independent master model.
+	 *
+	 * Real reference figures from a differential run, kept because they are an
+	 * OUTSIDE check: every other case here asserts our arithmetic against our
+	 * own reasoning, and this one against two implementations that share none of
+	 * our code.
+	 *
+	 *   080 tax payable            66,000
+	 *   129 IEG                   105,600
+	 *   082 instalments           100,000
+	 *   090 balance       66,000 − (105,600 + 100,000) = −139,600
+	 *
+	 * The jacket reported "784 Refund $34,000" — short by exactly the IEG,
+	 * because it netted the instalments and not the grant. The federal ref in
+	 * that output is the other half of the same bug: an Alberta return labelled
+	 * with federal line numbers.
+	 */
+	it("matches the A02 reference case against AuraTax and the master model", () => {
+		const doc = at1({ tax: 66_000, instalments: 100_000, ieg: 105_600 });
+		expect(byRef(doc, "090")?.label).toBe("Overpayment");
+		expect(byRef(doc, "090")?.value).toBe(139_600);
+		// Not $34,000, which is what netting only the instalments produced.
+		expect(byRef(doc, "090")?.value).not.toBe(34_000);
+	});
 });
 
 describe("federal jacket settlement is unchanged", () => {
