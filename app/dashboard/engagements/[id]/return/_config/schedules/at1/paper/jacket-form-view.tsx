@@ -220,9 +220,22 @@ function derivedJacketLines(
 	const ieg = f("innovationEmploymentGrant");
 	const instalments = Number(returnInput?.payments?.instalmentsPaid ?? 0) || 0;
 
+	/*
+	 * 066 — Amount Taxable in Alberta, `062 × 065`, "if negative, enter 0".
+	 *
+	 * Printed on the form and never transmitted (the specification has no row
+	 * for it), which is why no engine field carries it — but it is the base
+	 * every rate below it applies to, so a preparer checking 068 needs it. It
+	 * rendered "—" on every return until now.
+	 */
+	const amountTaxableInAlberta = Math.max(
+		0,
+		Math.round(f("albertaTaxableIncome") * (f("allocationFactor") || 0)),
+	);
 	const total079 = sbd; // + 072 + 076, both nil in this engine
 	const total088 = ieg + instalments; // + 085 + 086 + 115 + 087, all nil
 	return {
+		"066": amountTaxableInAlberta,
 		"079": total079,
 		"082": instalments,
 		"088": total088,
