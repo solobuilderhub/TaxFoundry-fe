@@ -1,6 +1,11 @@
 "use client";
 
-import { type Control, Controller, useFieldArray, useWatch } from "react-hook-form";
+import {
+	type Control,
+	Controller,
+	useFieldArray,
+	useWatch,
+} from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type {
 	AlbertaIegValues,
@@ -71,7 +76,6 @@ const MEMBER_FIELD: Partial<Record<string, keyof IegAgreementMember>> = {
 	"260": "priorYear2",
 	"265": "taxableCapitalPriorYear",
 };
-
 
 const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
 
@@ -280,6 +284,18 @@ export function Schedule29FormView({
 				);
 			})}
 
+			{/*
+			 * The worksheet behind 114, 116 and 126. Placed before the allocation
+			 * grid because it feeds the grant itself, whereas the allocation grid
+			 * only splits an agreed limit between members.
+			 */}
+			<PaperSection
+				title="Associated group — taxable capital and prior-year expenditures"
+				description="Not a printed table: lines 114, 116 and 126 are single boxes on the page, and this is the group they are struck from. Include this corporation even when it has no associates — its own taxable capital and prior-year eligible expenditures are what the grind is measured on, and without them the grant computes as nil."
+			>
+				<GroupRoster control={iegControl} disabled={disabled} />
+			</PaperSection>
+
 			<PaperSection
 				title={sectionMeta("allocation")?.title ?? "Allocation"}
 				description={sectionMeta("allocation")?.description}
@@ -330,6 +346,161 @@ export function Schedule29FormView({
  * X − ((Y + Z) / 2), and 267/268 are floored at nil per member — so adding up
  * the column would show a number the return does not file.
  */
+/**
+ * The associated-group roster — the worksheet lines 114, 116 and 126 are struck
+ * from.
+ *
+ * It existed only in the Guided view, and the consequence was not cosmetic: a
+ * preparer working in Form View had no way to enter the group at all, so the
+ * base amount (118) and taxable capital (126) computed nil and the Innovation
+ * Employment Grant came out $0 — on a return that had claimed one. A bench run
+ * needed the Guided view as an exception to get a grant to compute at all, and
+ * an earlier case moved from $0 to $31,250 the moment the roster was filled.
+ *
+ * Rendered as the roster rather than by making 114/116/126 editable, which was
+ * the other way to close it. Those three are struck FROM this table — the
+ * claimant's own row, and the group's taxable capital — so typing them directly
+ * would create a second source for figures the engine derives, and the two
+ * would disagree the moment a member changed. This codebase has that rule
+ * everywhere else; it holds here too.
+ *
+ * The printed form carries no grid for this (114/116/126 are single boxes, and
+ * the group behind them is a worksheet), so it renders as its own block rather
+ * than as a facsimile of a table that is not on the page.
+ *
+ * A group of one is still a group: the claimant corporation belongs in this
+ * table even with no associates, because its own taxable capital and prior-year
+ * expenditures are what the grind is measured on.
+ */
+function GroupRoster({
+	control,
+	disabled,
+}: {
+	control: Control<AlbertaIegValues>;
+	disabled?: boolean;
+}) {
+	const members = useWatch({ control, name: "group" }) ?? [];
+	const { append, remove } = useFieldArray({ control, name: "group" });
+	const COLUMNS = [
+		{ name: "name", heading: "Corporation name", kind: "text" },
+		{
+			name: "taxableCapital",
+			heading: "Taxable capital employed in Canada",
+			kind: "money",
+		},
+		{
+			name: "priorYear1",
+			heading: "Eligible Alberta SR&ED — 1st preceding year",
+			kind: "money",
+		},
+		{
+			name: "priorYear2",
+			heading: "Eligible Alberta SR&ED — 2nd preceding year",
+			kind: "money",
+		},
+	] as const;
+
+	return (
+		<div className="space-y-2 p-2">
+			<div className="overflow-x-auto">
+				<table className="w-full border-collapse text-sm">
+					<thead>
+						<tr>
+							<th className="w-8 border-b px-1 pb-2" />
+							{COLUMNS.map((col) => (
+								<th
+									key={col.name}
+									className="min-w-[10rem] border-b px-2 pb-2 text-left align-bottom font-medium"
+								>
+									<span className="block leading-tight">{col.heading}</span>
+								</th>
+							))}
+							<th className="w-10 border-b px-1 pb-2" />
+						</tr>
+					</thead>
+					<tbody>
+						{members.map((_m, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: row order is the preparer's own, and removing by index is how the grid edits
+							<tr key={`group-${i}`} className="border-b">
+								<td className="px-1 py-1.5 text-center font-mono text-[11px] text-muted-foreground">
+									{i + 1}
+								</td>
+								{COLUMNS.map((col) => (
+									<td key={col.name} className="px-2 py-1.5">
+										<Controller
+											control={control}
+											name={`group.${i}.${col.name}` as const}
+											render={({ field }) =>
+												col.kind === "money" ? (
+													<input
+														type="number"
+														inputMode="decimal"
+														step="any"
+														disabled={disabled}
+														aria-label={`${col.heading} — member ${i + 1}`}
+														className={`${CELL} text-right tabular-nums`}
+														value={(field.value as number | undefined) ?? ""}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value === ""
+																	? undefined
+																	: Number(e.target.value),
+															)
+														}
+														onBlur={field.onBlur}
+													/>
+												) : (
+													<input
+														type="text"
+														disabled={disabled}
+														aria-label={`${col.heading} — member ${i + 1}`}
+														className={CELL}
+														value={(field.value as string | undefined) ?? ""}
+														onChange={(e) =>
+															field.onChange(e.target.value || undefined)
+														}
+														onBlur={field.onBlur}
+													/>
+												)
+											}
+										/>
+									</td>
+								))}
+								<td className="px-1 py-1.5 text-right">
+									<button
+										type="button"
+										onClick={() => remove(i)}
+										disabled={disabled}
+										className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+										aria-label={`Remove member ${i + 1}`}
+									>
+										✕
+									</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			<button
+				type="button"
+				onClick={() => append({})}
+				disabled={disabled}
+				className="rounded-md border px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+			>
+				Add member
+			</button>
+			{members.length === 0 && (
+				<p className="px-1 text-xs text-muted-foreground">
+					No members yet. Add this corporation even if it has no associates —
+					lines 114, 116 and 126 are struck from this table, and without it the
+					grant computes as nil.
+				</p>
+			)}
+		</div>
+	);
+}
+
 function AllocationGrid({
 	control,
 	disabled,
@@ -488,9 +659,7 @@ function AllocationGrid({
 										</td>
 									);
 								}
-								const value = filedByFieldOccurrence.get(
-									`${col.totalsLine}-1`,
-								);
+								const value = filedByFieldOccurrence.get(`${col.totalsLine}-1`);
 								return (
 									<td key={col.line} className="px-2 py-1.5">
 										<div className="flex items-center gap-1.5">
@@ -554,5 +723,3 @@ function AllocationGrid({
 		</div>
 	);
 }
-
-

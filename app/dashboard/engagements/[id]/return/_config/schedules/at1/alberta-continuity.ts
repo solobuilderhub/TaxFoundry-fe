@@ -3,13 +3,13 @@ import { createElement } from "react";
 import type { AlbertaContinuityValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
 import { YES_NO } from "../../options";
+import { defineSchedule } from "../shared/define";
 import {
 	LimitedPartnershipTable,
 	NonCapitalVintageTable,
 	OtherLossVintageTable,
 	RifeContinuitySection,
 } from "./alberta-loss-vintage-tables";
-import { defineSchedule } from "../shared/define";
 import { Schedule21FormView } from "./paper/schedule21-form-view";
 
 const f = fieldsFor<AlbertaContinuityValues>();
@@ -147,6 +147,30 @@ export const albertaContinuity = defineSchedule({
 					cols: 1,
 					description:
 						"Alberta-only request — federal has no net-capital carry-back input to default from, even when (as here) the current-year net-capital loss matches federal's. Carry this year's Alberta net-capital loss back to up to 3 preceding years; the total reduces the closing balance that carries forward. Applied at the ½ inclusion rate on Schedule 10, same as the gross amount entered here.",
+				},
+			),
+			section(
+				"nonCapitalCarryback",
+				"Non-capital loss carry-back (Schedule 10, lines 002-008)",
+				[
+					f.money(
+						"nonCapitalCurrentYearLoss",
+						"Current year non-capital loss, if the T2 was prepared elsewhere",
+						{
+							description:
+								"Blank = the federal figure, which is the normal path. Enter it as a POSITIVE amount only when the federal return was prepared in another package: the carry-back below cannot exceed the current-year loss, and with no federal return here that loss reads nil, so the request would be refused.",
+						},
+					),
+					f.array("nonCapitalCarrybacks", "Carry back to prior years", [
+						field.date("taxYearEnd", "Prior year-end"),
+						money("amount", "Amount"),
+					]),
+				],
+				{
+					variant: "card",
+					cols: 1,
+					description:
+						"Unlike the capital and farm columns beside it, this one DOES default from the federal return — leave it empty on a return whose T2 is prepared here. It exists because it was the one column of the four that could not be stated on the Alberta side at all, so a preparer whose T2 came from another package could request a capital carry-back but not a non-capital one.",
 				},
 			),
 			section(
