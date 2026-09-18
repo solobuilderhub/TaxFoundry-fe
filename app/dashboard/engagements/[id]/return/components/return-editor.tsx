@@ -429,6 +429,28 @@ export function ReturnEditor({ id }: { id: string }) {
 										federal return itself is a separate engagement.
 									</p>
 								)}
+								{/*
+								 * The same note, in the mode that needs it MORE.
+								 *
+								 * It used to render only when the filter was OFF, so it
+								 * vanished the moment a preparer switched to "AT1 only" —
+								 * and "AT1 only" reads as "the only schedules that belong
+								 * to this return" rather than "the AT1-specific ones".
+								 *
+								 * That reading has a cost. A bench run adopted a strict
+								 * AT1-only protocol on the strength of it and reported the
+								 * income basis, the CCA chain and the loss carry-back as
+								 * blocked — all three are enterable, on the federal input
+								 * schedules this filter had just hidden.
+								 */}
+								{showProgramFilter && onlyProgramSpecific && (
+									<p className="px-2 pb-2 text-[11px] leading-snug text-muted-foreground">
+										{tree.length - visibleTree.length} federal schedule(s)
+										hidden. They are INPUTS to this {engagement.program} —
+										income, CCA and losses are entered there and flow through —
+										not a separate return to file.
+									</p>
+								)}
 								{onlyProgramSpecific && visibleTree.length === 0 && (
 									<p className="px-2 py-1 text-xs text-muted-foreground">
 										No {engagement.program}-only schedules on this return yet.
