@@ -1,3 +1,5 @@
+import type { PaperFieldRole as GeneratedPaperFieldRole } from "./generated/jacket.layout";
+
 export type { NavigateToLine } from "../../shared/define";
 
 /**
@@ -26,7 +28,33 @@ export type PaperFieldKind =
 	| "flag"
 	| "bool-flag"
 	| "code";
-export type PaperFieldRole = "input" | "computed" | "total" | "carried-in";
+/**
+ * `not-collected` — on the printed form, modelled nowhere: no editable
+ * binding, nothing computes it, nothing files it. It was being expressed as
+ * `computed`, which made the renderer print a "Computed" badge over an empty
+ * cell and told a preparer the engine had worked out a nil. AT1 Schedule 1's
+ * 019/020/021/044 are the current members.
+ *
+ * This copy is hand-authored (see above) and therefore CAN drift from the
+ * generated one — it just did, when ca-tax gained this member. The assertion
+ * below is what stops that happening silently a second time.
+ */
+export type PaperFieldRole =
+	| "input"
+	| "computed"
+	| "total"
+	| "carried-in"
+	| "not-collected";
+
+/**
+ * Compile-time proof that this hand-authored union still matches what the
+ * emitter writes into every generated layout. Fails in both directions: a role
+ * added to ca-tax and missing here, or removed there and left here.
+ */
+type _Mutual<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+const _rolesMatchGenerated: _Mutual<PaperFieldRole, GeneratedPaperFieldRole> =
+	true;
+void _rolesMatchGenerated;
 
 export interface PaperField {
 	line: string;
@@ -150,3 +178,69 @@ export type LinkedSlot =
 	  };
 
 export type ResolveLine = (line: string) => LineValue;
+
+/**
+ * Every line one AT1 schedule has a value for, keyed by its printed 3-digit
+ * field — the transmitted lines AND the print-only ones.
+ *
+ * Thirteen paper Form Views each built this map inline, identically, reading
+ * `payload.values` alone. That was right when `values` was all there was; it
+ * stopped being right when the engine gained a `display` channel for the
+ * subtotals §3.2.3 gives no line code (Schedule 12's 052/080/081, Schedule
+ * 18's column totals, Schedule 21's 013/015 and its RIFE continuity). Thirteen
+ * copies meant thirteen places to forget, so there is one now.
+ *
+ * `values` wins on a collision. Nothing should ever appear in both — a ca-tax
+ * test pins that — but if something did, the figure that was actually FILED is
+ * the one a preparer needs to see.
+ *
+ * Read-only. This is the display side; `values` alone is what transmits, and
+ * the filing path never comes through here.
+ */
+export function filedByFieldFor(
+	computed:
+		| {
+				schedulePayloads?:
+					| {
+							scheduleId: string;
+							values: { lineItemId: string; value: string | number }[];
+							display?: { lineItemId: string; value: string | number }[];
+					  }[]
+					| null;
+		  }
+		| undefined,
+	scheduleId: string,
+	parseField: (lineItemId: string) => string | undefined,
+): Map<string, string | number> {
+	const payload = computed?.schedulePayloads?.find(
+		(p) => p.scheduleId === scheduleId,
+	);
+	const out = new Map<string, string | number>();
+	// Print-only first, so a filed value overwrites it rather than the reverse.
+	for (const v of [...(payload?.display ?? []), ...(payload?.values ?? [])]) {
+		const field = parseField(v.lineItemId);
+		if (field !== undefined) out.set(field, v.value);
+	}
+	return out;
+}
+
+/**
+ * Read a numeric figure out of the working return by dotted path.
+ *
+ * Lives beside {@link LinkedSlot} because it is the other half of it: a linked
+ * slot names a path, and this is how a view reads what is stored there before
+ * offering to overwrite it. Schedule 21 had the only copy; Schedule 1 needed
+ * the same thing for line 003, and a second copy is how two views come to
+ * disagree about what "stored" means.
+ *
+ * Returns `undefined` for anything that is not a number — including a value
+ * that is present but of the wrong type, which is a real possibility on a
+ * working return assembled from many schedules and must not render as a figure.
+ */
+export function valueAt(ri: unknown, path: string): number | undefined {
+	let cur: unknown = ri;
+	for (const key of path.split(".")) {
+		cur = (cur as Record<string, unknown> | undefined)?.[key];
+	}
+	return typeof cur === "number" ? cur : undefined;
+}

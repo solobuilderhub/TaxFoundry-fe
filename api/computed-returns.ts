@@ -25,6 +25,19 @@ export interface ComputedScheduleValue {
 export interface ComputedSchedulePayload {
 	scheduleId: string;
 	values: ComputedScheduleValue[];
+	/**
+	 * PRINT-ONLY lines — computed and shown, never transmitted.
+	 *
+	 * The subtotals every AT1 schedule prints that §3.2.3 gives no line code:
+	 * Schedule 12's 052/080/081, Schedule 18's column totals and capital-gain
+	 * working, Schedule 21's 013/015 and its whole RIFE continuity. The engine
+	 * computed each one, used it, and threw it away — so the paper Form View
+	 * rendered a "Computed" badge over an empty cell, and every formula the
+	 * page prints ("054 − 080 + 082") pointed at a box that was always blank.
+	 *
+	 * Read for DISPLAY only. `values` is what is filed.
+	 */
+	display?: ComputedScheduleValue[];
 }
 
 /** Immutable fold of the fact-log through the engine (a cache, never authoritative). */

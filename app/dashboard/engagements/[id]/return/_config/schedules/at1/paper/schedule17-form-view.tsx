@@ -1,6 +1,11 @@
 "use client";
 
-import { type Control, Controller, useFieldArray, useWatch } from "react-hook-form";
+import {
+	type Control,
+	Controller,
+	useFieldArray,
+	useWatch,
+} from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import { cn } from "@/lib/utils";
 import type {
@@ -16,6 +21,7 @@ import {
 	AT1_SCHEDULE_17_RESERVE_KINDS,
 } from "./generated/schedule17.layout";
 import type { NavigateToLine } from "./resolve-line";
+import { filedByFieldFor } from "./resolve-line";
 
 const SCHEDULE_ID = "017";
 
@@ -108,14 +114,10 @@ export function Schedule17FormView({
 	const { append } = useFieldArray({ control: c, name: "rows" });
 	const rows = useWatch({ control: c, name: "rows" }) ?? [];
 
-	const filed = computed?.schedulePayloads?.find(
-		(p) => p.scheduleId === SCHEDULE_ID,
-	);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const p = parseAt1LineItemId(v.lineItemId);
-			return p ? [[p.field, v.value] as const] : [];
-		}),
+	const filedByField = filedByFieldFor(
+		computed,
+		SCHEDULE_ID,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
 
 	const indexOf = (type: ReserveType) =>
@@ -175,9 +177,7 @@ export function Schedule17FormView({
 																	disabled={disabled}
 																	aria-label={`${kind.label} — ${col.heading}`}
 																	className={CELL}
-																	value={
-																		(f.value as number | undefined) ?? ""
-																	}
+																	value={(f.value as number | undefined) ?? ""}
 																	onChange={(e) =>
 																		f.onChange(
 																			e.target.value === ""
@@ -251,9 +251,7 @@ export function Schedule17FormView({
 					091
 				</span>
 				<span
-					className={cn(
-						"w-32 text-right tabular-nums text-muted-foreground",
-					)}
+					className={cn("w-32 text-right tabular-nums text-muted-foreground")}
 				>
 					{at1Money(
 						(filedByField.get("091") as number | undefined) ??

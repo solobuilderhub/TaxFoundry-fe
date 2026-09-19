@@ -15,6 +15,7 @@ import {
 	AT1_SCHEDULE_16_SECTIONS,
 } from "./generated/schedule16.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
+import { filedByFieldFor } from "./resolve-line";
 
 const SCHEDULE_ID = "016";
 
@@ -48,14 +49,10 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaSred16Values>> = {
 };
 
 function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
-	const filed = computed?.schedulePayloads?.find(
-		(p) => p.scheduleId === SCHEDULE_ID,
-	);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
-		}),
+	const filedByField = filedByFieldFor(
+		computed,
+		SCHEDULE_ID,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
 
 	return (line: string): LineValue => {

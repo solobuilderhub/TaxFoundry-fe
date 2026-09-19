@@ -10,7 +10,7 @@
  * form. The paper renderer, not this file, is responsible for keeping
  * computed/carried-in lines read-only.
  */
-export type PaperFieldRole = "input" | "computed" | "total" | "carried-in";
+export type PaperFieldRole = "input" | "computed" | "total" | "carried-in" | "not-collected";
 export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";
 
 export interface PaperField {

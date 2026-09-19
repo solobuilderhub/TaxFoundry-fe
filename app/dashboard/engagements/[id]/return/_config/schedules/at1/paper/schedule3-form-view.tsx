@@ -3,8 +3,8 @@
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaOtherCredits3Values } from "../../../../_lib/return-input";
-import { parseAt1LineItemId } from "./at1-lines";
 import { CreditVintageTables } from "../alberta-credit-vintage-tables";
+import { parseAt1LineItemId } from "./at1-lines";
 import {
 	PaperFootnotes,
 	PaperLeaderRow,
@@ -18,6 +18,7 @@ import {
 	AT1_SCHEDULE_3_SECTIONS,
 } from "./generated/schedule3.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
+import { filedByFieldFor } from "./resolve-line";
 
 const SCHEDULE_ID = "003";
 
@@ -89,19 +90,22 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaOtherCredits3Values>> = {
 const READ_ONLY_DESPITE_INPUT_ROLE = new Set(["302"]);
 
 function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
-		}),
+	const filedByField = filedByFieldFor(
+		computed,
+		SCHEDULE_ID,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
 
 	return (line: string): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
-		const ownName = READ_ONLY_DESPITE_INPUT_ROLE.has(field) ? undefined : OWN_FIELD[field];
+		const ownName = READ_ONLY_DESPITE_INPUT_ROLE.has(field)
+			? undefined
+			: OWN_FIELD[field];
 		if (ownName) return { editable: true, name: ownName };
-		return { editable: false, value: filedByField.get(field) as string | number | undefined };
+		return {
+			editable: false,
+			value: filedByField.get(field) as string | number | undefined,
+		};
 	};
 }
 
@@ -144,7 +148,9 @@ export function Schedule3FormView({
 				</p>
 			)}
 			{AT1_SCHEDULE_3_SECTIONS.map((section, i) => {
-				const fields = AT1_SCHEDULE_3_FIELDS.filter((f) => f.section === section.id);
+				const fields = AT1_SCHEDULE_3_FIELDS.filter(
+					(f) => f.section === section.id,
+				);
 				/*
 				 * Pages 2 and 3 are three tables, not twenty-one leader rows.
 				 * Every column of them is a real field in `AT1_SCHEDULE_3_FIELDS`
@@ -192,23 +198,27 @@ export function Schedule3FormView({
 			 * *****, and the last of them is what states the current-year row's
 			 * arithmetic and so proves which cells the page shades.
 			 */}
-			{AT1_SCHEDULE_3_SECTIONS.filter((sec) =>
-				sec.id.endsWith("-vintage"),
-			).map((sec) => (
-				<PaperSection key={sec.id} title={sec.title} description={sec.description}>
-					<CreditVintageTables
-						control={s3Control}
-						disabled={disabled}
-						section={sec.id}
-						footnoteSymbol={(mark) => footnotes.marks[mark]}
-					/>
-					<PaperFootnotes
-						notes={AT1_SCHEDULE_3_FOOTNOTES}
-						only={footnotes.forSection(sec.id)}
-						marks={footnotes.marks}
-					/>
-				</PaperSection>
-			))}
+			{AT1_SCHEDULE_3_SECTIONS.filter((sec) => sec.id.endsWith("-vintage")).map(
+				(sec) => (
+					<PaperSection
+						key={sec.id}
+						title={sec.title}
+						description={sec.description}
+					>
+						<CreditVintageTables
+							control={s3Control}
+							disabled={disabled}
+							section={sec.id}
+							footnoteSymbol={(mark) => footnotes.marks[mark]}
+						/>
+						<PaperFootnotes
+							notes={AT1_SCHEDULE_3_FOOTNOTES}
+							only={footnotes.forSection(sec.id)}
+							marks={footnotes.marks}
+						/>
+					</PaperSection>
+				),
+			)}
 
 			{/* Anything belonging to no box. */}
 			<PaperFootnotes

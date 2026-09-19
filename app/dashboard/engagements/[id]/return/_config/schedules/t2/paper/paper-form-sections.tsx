@@ -12,6 +12,7 @@ import type {
 	NavigateToLine,
 	ResolveLine,
 } from "../../at1/paper/resolve-line";
+import type { PaperFieldKind, PaperFieldRole } from "./generated/jacket.layout";
 
 /**
  * The figures this computed return filed for one schedule, keyed `line-occurrence`.
@@ -41,14 +42,20 @@ export function filedValuesFor(
 
 /**
  * One field of a generated paper layout. Structurally identical across every
- * emitted `*.layout.ts`, which each declare their own copy of this type, so it
- * is restated here rather than imported from one arbitrary layout file.
+ * emitted `*.layout.ts`, which each declare their own copy of this type.
+ *
+ * The two unions used to be RESTATED here rather than imported, to avoid
+ * depending on one arbitrary layout file. That cost more than it saved: when
+ * ca-tax's `FormFieldRole` gained `not-collected`, all 37 generated layouts
+ * picked it up and this copy did not, so every layout stopped being assignable
+ * to its own consumer's type. They are imported now — the emitter writes one
+ * spelling into all 37, so "arbitrary" was never really arbitrary.
  */
 export interface PaperLayoutField {
 	line: string;
 	caption: string;
-	kind: "money" | "date" | "text" | "rate" | "flag" | "code";
-	role: "input" | "computed" | "total" | "carried-in";
+	kind: PaperFieldKind;
+	role: PaperFieldRole;
 	section: string;
 	note?: string;
 	from?: { form: string; line: string; note?: string };

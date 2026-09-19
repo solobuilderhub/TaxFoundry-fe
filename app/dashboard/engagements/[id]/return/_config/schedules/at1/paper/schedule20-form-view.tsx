@@ -13,9 +13,18 @@ import type {
 	AlbertaDonationsValues,
 } from "../../../../_lib/return-input";
 import { at1Money, parseAt1LineItemId } from "./at1-lines";
-import { PaperFootnotes, PaperLeaderRow, PaperSection } from "./components/paper-primitives";
-import { AT1_SCHEDULE_20_FIELDS, AT1_SCHEDULE_20_FOOTNOTES, AT1_SCHEDULE_20_SECTIONS } from "./generated/schedule20.layout";
+import {
+	PaperFootnotes,
+	PaperLeaderRow,
+	PaperSection,
+} from "./components/paper-primitives";
+import {
+	AT1_SCHEDULE_20_FIELDS,
+	AT1_SCHEDULE_20_FOOTNOTES,
+	AT1_SCHEDULE_20_SECTIONS,
+} from "./generated/schedule20.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
+import { filedByFieldFor } from "./resolve-line";
 
 const SCHEDULE_ID = "020";
 
@@ -48,14 +57,15 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaDonationsValues>> = {
 };
 
 /** Which field of a `carryforwardRows` row each printed column binds to. */
-const CARRYFORWARD_FIELD: Record<string, keyof AlbertaDonationCarryforwardRow> = {
-	"090": "yearOfOrigin",
-	"092": "charitable",
-	"094": "toCanadaOrProvince",
-	"096": "culturalProperty",
-	"098": "ecologicalLand",
-	"100": "medicine",
-};
+const CARRYFORWARD_FIELD: Record<string, keyof AlbertaDonationCarryforwardRow> =
+	{
+		"090": "yearOfOrigin",
+		"092": "charitable",
+		"094": "toCanadaOrProvince",
+		"096": "culturalProperty",
+		"098": "ecologicalLand",
+		"100": "medicine",
+	};
 
 const CF_CELL =
 	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
@@ -202,9 +212,7 @@ function CarryforwardTable({
 															sum +
 															n(
 																r?.[
-																	CARRYFORWARD_FIELD[
-																		f.line
-																	] as keyof typeof r
+																	CARRYFORWARD_FIELD[f.line] as keyof typeof r
 																],
 															),
 														0,
@@ -231,12 +239,10 @@ function CarryforwardTable({
 }
 
 function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
-		}),
+	const filedByField = filedByFieldFor(
+		computed,
+		SCHEDULE_ID,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
 
 	return (line: string): LineValue => {
@@ -244,7 +250,8 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 		const ownName = OWN_FIELD[field];
 		if (ownName) return { editable: true, name: ownName };
 		const value = filedByField.get(field) as string | number | undefined;
-		const sourceLabel = field === "002" || field === "010" ? "Donations & Gifts (S2)" : undefined;
+		const sourceLabel =
+			field === "002" || field === "010" ? "Donations & Gifts (S2)" : undefined;
 		return { editable: false, value, sourceLabel };
 	};
 }
@@ -273,13 +280,16 @@ export function Schedule20FormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
-	const donationsControl = control as unknown as Control<AlbertaDonationsValues>;
+	const donationsControl =
+		control as unknown as Control<AlbertaDonationsValues>;
 	const resolveLine = buildResolveLine(computed);
 
 	return (
 		<div className="space-y-4">
 			{AT1_SCHEDULE_20_SECTIONS.map((section, i) => {
-				const fields = AT1_SCHEDULE_20_FIELDS.filter((f) => f.section === section.id);
+				const fields = AT1_SCHEDULE_20_FIELDS.filter(
+					(f) => f.section === section.id,
+				);
 				if (fields.length === 0) return null;
 				const card = (
 					<PaperSection
@@ -306,21 +316,21 @@ export function Schedule20FormView({
 							/>
 						) : (
 							fields.map((f) => (
-							<PaperLeaderRow
-								key={f.line}
-								line={parseAt1LineItemId(f.line)?.field ?? f.line}
-								caption={f.caption}
-								kind={f.kind}
-								role={f.role}
-								note={f.note}
-								from={f.from}
-								to={f.to}
-								onNavigate={onNavigate}
-								highlightLine={highlightLine}
-								control={donationsControl}
-								resolveLine={resolveLine}
-								disabled={disabled}
-							/>
+								<PaperLeaderRow
+									key={f.line}
+									line={parseAt1LineItemId(f.line)?.field ?? f.line}
+									caption={f.caption}
+									kind={f.kind}
+									role={f.role}
+									note={f.note}
+									from={f.from}
+									to={f.to}
+									onNavigate={onNavigate}
+									highlightLine={highlightLine}
+									control={donationsControl}
+									resolveLine={resolveLine}
+									disabled={disabled}
+								/>
 							))
 						)}
 					</PaperSection>

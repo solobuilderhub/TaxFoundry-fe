@@ -337,33 +337,55 @@ export function ProvenanceBadge({
 			);
 		}
 		const isCarriedIn = role === "carried-in";
+		/*
+		 * On the form, modelled nowhere — no editable binding, nothing computes
+		 * it, nothing files it.
+		 *
+		 * These wore the "Computed" pill, because `computed` was the least-wrong
+		 * role available before `not-collected` existed. Least-wrong was still
+		 * wrong in the direction that matters: the badge asserted the engine had
+		 * worked the figure out, so an empty cell read as a computed nil rather
+		 * than as a question nobody was asked. On AT1 Schedule 1 line 015 that
+		 * empty cell was the base amount the entire small business deduction is
+		 * scaled by.
+		 */
+		const isNotCollected = role === "not-collected";
 		const fromDisplayLine = from?.line
 			? (parseAt1LineItemId(from.line)?.field ?? from.line)
 			: undefined;
 		const label = isCarriedIn
 			? sourceLabel || from?.form || "Carried in"
-			: role === "total"
-				? "Total"
-				: "Computed";
-		const tooltip = isCarriedIn
-			? [
-					from?.form &&
-						`From ${from.form}${fromDisplayLine ? ` line ${fromDisplayLine}` : ""}`,
-					from?.note,
-				]
-					.filter(Boolean)
-					.join(" — ") ||
-				sourceLabel ||
-				"Carried in from another schedule."
-			: [note, formula].filter(Boolean).join(" — ") ||
-				"Computed by the engine from this schedule's other lines.";
+			: isNotCollected
+				? "Not collected"
+				: role === "total"
+					? "Total"
+					: "Computed";
+		const tooltip = isNotCollected
+			? [sourceText, note].filter(Boolean).join(" — ") ||
+				"Printed on the form, but this product neither collects nor files it."
+			: isCarriedIn
+				? [
+						from?.form &&
+							`From ${from.form}${fromDisplayLine ? ` line ${fromDisplayLine}` : ""}`,
+						from?.note,
+					]
+						.filter(Boolean)
+						.join(" — ") ||
+					sourceLabel ||
+					"Carried in from another schedule."
+				: [note, formula].filter(Boolean).join(" — ") ||
+					"Computed by the engine from this schedule's other lines.";
 
 		return (
 			<TooltipWrapper content={tooltip} side="top">
 				<span className="inline-flex shrink-0">
 					<Pill
 						variant={isCarriedIn ? "secondary" : "outline"}
-						className="cursor-help text-[10px]"
+						className={
+							isNotCollected
+								? "cursor-help border-dashed text-[10px] text-muted-foreground"
+								: "cursor-help text-[10px]"
+						}
 					>
 						{label}
 					</Pill>
@@ -1001,10 +1023,21 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 					<TooltipWrapper
 						content={
 							formatReadOnly(kind, resolved.value) ||
-							"No value yet — compute the return, or this line has never been entered."
+							/*
+							 * "Compute the return" is the right advice for a line that
+							 * simply has no value YET. It is the wrong advice for a
+							 * `not-collected` one — computing will never fill it, because
+							 * nothing in this product produces it — and following it is how
+							 * a preparer concludes the figure is genuinely nil.
+							 */
+							(role === "not-collected"
+								? "Printed on the form; this product neither collects nor files it. Computing the return will not fill this in — see the note on the caption."
+								: "No value yet — compute the return, or this line has never been entered.")
 						}
 						side="top"
-						disabled={!formatReadOnly(kind, resolved.value)}
+						disabled={
+							!formatReadOnly(kind, resolved.value) && role !== "not-collected"
+						}
 					>
 						<span
 							className={cn(

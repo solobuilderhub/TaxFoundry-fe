@@ -85,6 +85,7 @@ import {
 	AT1_SCHEDULE_29_ALLOCATION_TOTALS_LABEL,
 	AT1_SCHEDULE_29_BLOCK_HEADINGS,
 	CO17_RETURN,
+	FORM_FIELD_ROLES,
 	type FormDefinition,
 	type FormField,
 	fieldsInSection,
@@ -369,8 +370,18 @@ function emitField(f: FormField): string {
 }
 
 function emitPaperTypes(out: string[]): void {
+	/*
+	 * Derived from ca-tax, NOT written out by hand.
+	 *
+	 * This union was a literal string here, so it silently drifted the moment
+	 * `FormFieldRole` gained a member: adding `not-collected` emitted layouts
+	 * that would not typecheck against the very type this same function had
+	 * just written above them. A role REMOVED upstream would have been worse —
+	 * nothing would have failed at all. `FORM_FIELD_ROLES` is the runtime
+	 * mirror of that union and is exhaustiveness-checked against it in ca-tax.
+	 */
 	out.push(
-		'export type PaperFieldRole = "input" | "computed" | "total" | "carried-in";',
+		`export type PaperFieldRole = ${FORM_FIELD_ROLES.map((r) => `"${r}"`).join(" | ")};`,
 	);
 	out.push(
 		'export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";',

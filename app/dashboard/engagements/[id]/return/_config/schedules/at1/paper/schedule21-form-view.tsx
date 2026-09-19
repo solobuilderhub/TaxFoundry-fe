@@ -27,6 +27,7 @@ import {
 	AT1_SCHEDULE_21_POOL_TABLE,
 } from "./generated/schedule21.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
+import { filedByFieldFor, valueAt } from "./resolve-line";
 
 const SCHEDULE_ID = "021";
 
@@ -70,69 +71,43 @@ const PART_1_OWN_SLOTS: Record<string, { name: string; label: string }> = {
 	"019": { name: "farmCurrentYearLoss", label: "federal Schedule 4 line 310" },
 };
 
-/** Part 1's deductions, summed into 013 — "Subtotal of lines 002 to 012". */
-const PART_1_DEDUCTIONS = ["002", "003", "005", "007", "011", "012"] as const;
-
-const valueAt = (ri: ReturnInput | undefined, path: string): number | undefined => {
-	let cur: unknown = ri;
-	for (const k of path.split(".")) cur = (cur as Record<string, unknown> | undefined)?.[k];
-	return typeof cur === "number" ? cur : undefined;
-};
-
 /**
  * One filed-payload lookup for the whole schedule — Part 1 and the continuity
  * grid's computed/carried-in rows.
  *
- * Part 1 gets three things the grid does not:
+ * Part 1 gets two things the grid does not:
  *
  *   linked T2 lines   005/007/011/012/017 (and 019, on this form) are shown
  *                     locked with a toggle — see `LinkedSlot`. Only when the
  *                     host can write the return (`writeInput`); without it the
  *                     line is plain read-only, never a box that cannot save.
- *   013 and 015       subtotals the form prints but the specification gives no
- *                     line code, so they are never filed and never arrive in
- *                     the payload. Worked here from the filed lines, with the
- *                     form's own arithmetic, so the printed shape reads through
- *                     — a view of what was filed, not a second calculation.
- *   the rest          001, 002, 003, 021 are computed by the engine and read
- *                     straight off the payload.
+ *   the rest          001, 002, 003, 013, 015, 021 are computed by the engine
+ *                     and read straight off the payload.
  */
 function buildResolveLine(
 	computed: ComputedReturn | undefined,
 	returnInput?: ReturnInput,
 	writeInput?: (path: string, value: number | undefined) => Promise<void>,
 ): ResolveLine {
-	const filed = computed?.schedulePayloads?.find(
-		(p) => p.scheduleId === SCHEDULE_ID,
+	const filedByField = filedByFieldFor(
+		computed,
+		SCHEDULE_ID,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
-		}),
-	);
-	const num = (field: string) => {
-		const v = filedByField.get(field);
-		return typeof v === "number" ? v : 0;
-	};
-	// Only once the schedule has actually been computed — before that there is
-	// nothing to sum, and a 0 would read as a computed nil.
-	const subtotal013 = filed
-		? PART_1_DEDUCTIONS.reduce((n, f) => n + num(f), 0)
-		: undefined;
-
+	/*
+	 * 013 and 015 used to be recomputed HERE, in the browser, because the
+	 * engine computed them and then dropped them: §3.2.3.21 gives neither a
+	 * line code, so neither reached `values` and this view had nothing to
+	 * read. It worked, and it was a second arithmetic for a figure the engine
+	 * already had — free to disagree with the return being filed, which is the
+	 * failure this codebase keeps meeting.
+	 *
+	 * They come off the engine's `display` channel now (see
+	 * `SCHEDULE_21_PART_1_PRINT_ONLY`), through `filedByFieldFor` like every
+	 * other line — no local summing here at all.
+	 */
 	return (line: string): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
-		if (field === "013") return { editable: false, value: subtotal013 };
-		if (field === "015") {
-			return {
-				editable: false,
-				value:
-					subtotal013 === undefined
-						? undefined
-						: Math.min(0, num("001") - subtotal013) + 0,
-			};
-		}
 		const value = filedByField.get(field) as string | number | undefined;
 		const t2 = PART_1_T2_SLOTS[field];
 		if (t2 && writeInput) {

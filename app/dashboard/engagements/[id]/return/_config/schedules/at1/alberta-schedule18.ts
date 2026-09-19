@@ -7,6 +7,7 @@ import {
 import { createElement } from "react";
 import type { AlbertaSchedule18Values } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
+import { YES_NO } from "../../options";
 import { defineSchedule } from "../shared/define";
 import { Schedule18View } from "./paper/schedule18-view";
 
@@ -38,6 +39,27 @@ const f = fieldsFor<AlbertaSchedule18Values>();
 
 export const albertaSchedule18Schema: FormSchema = defineSchema({
 	sections: [
+		section(
+			"election",
+			"Transfer election (line 001)",
+			[
+				f.radio(
+					"electingPropertyTransfer",
+					"Is the corporation electing to transfer property as stated under ACTA section 14.1(3), 14.2(3) or 16.1(3)?",
+					YES_NO,
+					{
+						description:
+							'Leave blank for No. This is the one AT1 yes/no where blank is safe: §3.2.3.19 supplies the default itself ("Otherwise, default to 2 (No)"), unlike the jacket questions where an unanswered box would answer for the corporation. Answering Yes also requires form AT107, AT108 or AT109 to be filed with the return — this product does not produce it, and the review will say so.',
+					},
+				),
+			],
+			{
+				variant: "card",
+				cols: 1,
+				description:
+					"Mandatory on the wire, and absent from every Schedule 18 this product filed until now.",
+			},
+		),
 		section(
 			"abil",
 			"Allowable business investment loss (line 082-094)",

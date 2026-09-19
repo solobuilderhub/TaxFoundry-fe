@@ -27,6 +27,7 @@ import {
 	type PaperField,
 } from "./generated/jacket.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
+import { filedByFieldFor } from "./resolve-line";
 
 /**
  * The AT1 jacket's own 3-digit line → this schedule's editable field. Only
@@ -250,14 +251,10 @@ function buildResolveLine(
 	returnInput: ReturnInput | undefined,
 ): ResolveLine {
 	const derived = derivedJacketLines(computed, returnInput);
-	const filed = computed?.schedulePayloads?.find(
-		(p) => p.scheduleId === JACKET_SCHEDULE_ID,
-	);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
-		}),
+	const filedByField = filedByFieldFor(
+		computed,
+		JACKET_SCHEDULE_ID,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
 
 	return (line: string): LineValue => {

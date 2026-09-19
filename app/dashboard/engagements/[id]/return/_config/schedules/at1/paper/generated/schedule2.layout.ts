@@ -10,7 +10,7 @@
  * form. The paper renderer, not this file, is responsible for keeping
  * computed/carried-in lines read-only.
  */
-export type PaperFieldRole = "input" | "computed" | "total" | "carried-in";
+export type PaperFieldRole = "input" | "computed" | "total" | "carried-in" | "not-collected";
 export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";
 
 export interface PaperField {
@@ -93,8 +93,8 @@ export const AT1_SCHEDULE_2_FIELDS: readonly PaperField[] = [
   { line: "002096001", caption: "Total port-call-tonnage in all provinces with permanent establishments", kind: "money", role: "input", section: "ship" },
   { line: "002098001", caption: "Total port-call-tonnage in Canada", kind: "money", role: "input", section: "ship" },
   { line: "002100001", caption: "Total port-call-tonnage in all countries", kind: "money", role: "input", section: "ship" },
-  { line: "002102001", caption: "(E/F) x (AT1 lines 062)", kind: "money", role: "computed", section: "ship", note: "Amount G — line 098 divided by line 100, times Alberta taxable income at AT1 line 062." },
-  { line: "002104001", caption: "(A/B) x [(AT1 lines 062) - G]", kind: "money", role: "computed", section: "ship", note: "Amount H — line 090 divided by line 092, times what is left of AT1 line 062 after amount G." },
+  { line: "002102001", caption: "(E/F) x (AT1 lines 062)", kind: "money", role: "not-collected", section: "ship", note: "Amount G — line 098 divided by line 100, times Alberta taxable income at AT1 line 062. NOT COLLECTED OR FILED: the Schedule 2 engine models the salaries-and-revenue allocation only (lines 001-008). The ITA Reg 402/403 SHIPPING basis this box belongs to is not implemented on either side, so nothing produces a figure for it and a corporation allocating on that basis cannot use this schedule." },
+  { line: "002104001", caption: "(A/B) x [(AT1 lines 062) - G]", kind: "money", role: "not-collected", section: "ship", note: "Amount H — line 090 divided by line 092, times what is left of AT1 line 062 after amount G. NOT COLLECTED OR FILED, for the same reason as line 102: the shipping allocation basis is not modelled." },
   { line: "002106001", caption: "Amount Taxable in Alberta", kind: "money", role: "input", section: "divided-businesses" },
   { line: "002108001", caption: "AT1 line 062", kind: "money", role: "carried-in", section: "divided-businesses", from: { form: "AT1", line: "000062001", note: "Printed as the caption itself — the divisor is Alberta taxable income off the jacket." } },
 ];

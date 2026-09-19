@@ -4,8 +4,8 @@ import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import type { ReactNode } from "react";
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import type { ReturnInput } from "../../../../_lib/return-input";
 import { cn } from "@/lib/utils";
+import type { ReturnInput } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	captionFormula,
@@ -23,6 +23,7 @@ import type {
 	PaperField,
 	PaperSectionDef,
 } from "./resolve-line";
+import { filedByFieldFor } from "./resolve-line";
 
 /** A line on a read-only schedule whose figure is really a T2 amount kept in the working return — see `LinkedSlot`. */
 export type LinkedLines = Record<string, { path: string; label: string }>;
@@ -144,20 +145,20 @@ function ReadOnlyRow({
 					control={control}
 				/>
 			) : (
-			<span className="flex w-36 shrink-0 items-center justify-end gap-1.5">
-				<TooltipWrapper content={display} side="top" disabled={!display}>
-					<span
-						className={cn(
-							"h-8 flex-1 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right text-sm tabular-nums leading-8",
-							isNegative
-								? "text-red-600 dark:text-red-400"
-								: "text-muted-foreground",
-						)}
-					>
-						{display || "—"}
-					</span>
-				</TooltipWrapper>
-			</span>
+				<span className="flex w-36 shrink-0 items-center justify-end gap-1.5">
+					<TooltipWrapper content={display} side="top" disabled={!display}>
+						<span
+							className={cn(
+								"h-8 flex-1 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right text-sm tabular-nums leading-8",
+								isNegative
+									? "text-red-600 dark:text-red-400"
+									: "text-muted-foreground",
+							)}
+						>
+							{display || "—"}
+						</span>
+					</TooltipWrapper>
+				</span>
 			)}
 			<ProvenanceBadge
 				role={field.role}
@@ -223,7 +224,11 @@ function SectionResultRow({
 				)}
 			</span>
 			{result.to && (
-				<TooltipWrapper content={result.to.note} side="top" disabled={!result.to.note}>
+				<TooltipWrapper
+					content={result.to.note}
+					side="top"
+					disabled={!result.to.note}
+				>
 					<span className="shrink-0 cursor-help rounded-md border px-1.5 py-0.5 text-[10px] text-muted-foreground">
 						{`→ ${result.to.form} line ${toLine}`}
 					</span>
@@ -327,9 +332,7 @@ export function ReadOnlyScheduleView({
 	 * renders as an ordinary row. Given the filed values so the block and the
 	 * rows read from one source.
 	 */
-	grids?: (
-		filedByField: ReadonlyMap<string, string | number>,
-	) => readonly {
+	grids?: (filedByField: ReadonlyMap<string, string | number>) => readonly {
 		anchor: string;
 		lines: readonly string[];
 		node: ReactNode;
@@ -360,7 +363,7 @@ export function ReadOnlyScheduleView({
 				formulaAsPrinted?: string;
 				note?: string;
 				to?: { form: string; line: string; note?: string };
-			}
+		  }
 		| undefined;
 	computed?: ComputedReturn;
 	stale?: boolean;
@@ -389,7 +392,8 @@ export function ReadOnlyScheduleView({
 	ownSlice?: string;
 }) {
 	const linkFor = (field: PaperField): LinkedSlot | undefined => {
-		const slot = linkedLines?.[parseAt1LineItemId(field.line)?.field ?? field.line];
+		const slot =
+			linkedLines?.[parseAt1LineItemId(field.line)?.field ?? field.line];
 		if (!slot) return undefined;
 		if (control && ownSlice && slot.path.startsWith(`${ownSlice}.`)) {
 			return {
@@ -410,14 +414,16 @@ export function ReadOnlyScheduleView({
 			write: (v) => writeInput(slot.path, v),
 		};
 	};
+	// The PAYLOAD, kept separately from the value map below: its presence answers
+	// "did this schedule file anything at all", which `emptyReason` needs and a
+	// map of values cannot distinguish from a schedule whose values are all nil.
 	const filed = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === scheduleId,
 	);
-	const filedByField = new Map(
-		(filed?.values ?? []).flatMap((v) => {
-			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[parsed.field, v.value] as const] : [];
-		}),
+	const filedByField = filedByFieldFor(
+		computed,
+		scheduleId,
+		(l) => parseAt1LineItemId(l)?.field,
 	);
 
 	// `computed` presence and `filed` presence answer two different questions —
@@ -477,8 +483,7 @@ export function ReadOnlyScheduleView({
 								const block = blocks.find((b) => b.anchor === line);
 								// The grid stands where its first line stood; the rest
 								// of its lines drop out of the list entirely.
-								if (block)
-									return <div key={f.line}>{block.node}</div>;
+								if (block) return <div key={f.line}>{block.node}</div>;
 								if (claimed.has(line)) return null;
 								const heading = blockHeadings?.find(
 									(h) => h.aboveLine === line,
