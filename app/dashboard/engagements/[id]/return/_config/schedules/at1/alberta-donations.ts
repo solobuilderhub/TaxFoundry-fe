@@ -49,20 +49,37 @@ export const albertaDonations = defineSchedule({
 				"charitable",
 				"Charitable donations — advanced adjustments (line 004-016)",
 				[
+					f.money(
+						"charitableCurrentYear",
+						"Charitable donations made in the year, if the T2 was prepared elsewhere",
+						{
+							description:
+								"Blank = the federal figure, which is the normal path. Fill it in when the federal return was prepared in another package, or when Alberta genuinely claims a different amount. The gifts continuity below has always had its own current-year box; charitable had none, so the one figure this schedule is mostly about could not be stated.",
+						},
+					),
 					f.money("charitableExpired", "Expired this year", {
 						description: "No federal equivalent — blank = nil",
 					}),
-					f.money("charitableTransferredIn", "Transfer on wind-up or amalgamation", {
-						description: "No federal equivalent — blank = nil",
-					}),
+					f.money(
+						"charitableTransferredIn",
+						"Transfer on wind-up or amalgamation",
+						{
+							description: "No federal equivalent — blank = nil",
+						},
+					),
 					f.money(
 						"charitableAcquisitionOfControlAdjustment",
 						"Adjustment for an acquisition of control",
 						{ description: "No federal equivalent — blank = nil" },
 					),
-					f.money("charitableApplied", "Amount applied against Alberta taxable income", {
-						description: "Blank = claim the maximum both ceilings (the pool, and 75% of Alberta net income) allow.",
-					}),
+					f.money(
+						"charitableApplied",
+						"Amount applied against Alberta taxable income",
+						{
+							description:
+								"Blank = claim the maximum both ceilings (the pool, and 75% of Alberta net income) allow.",
+						},
+					),
 				],
 				{
 					variant: "card",
@@ -77,14 +94,22 @@ export const albertaDonations = defineSchedule({
 				[
 					f.money("giftsOpening", "Opening balance"),
 					f.money("giftsCurrentYear", "Current year gifts", {
-						description: "Blank = federal cultural + ecological gifts for the year.",
+						description:
+							"Blank = federal cultural + ecological gifts for the year.",
 					}),
 					f.money("giftsExpired", "Expired this year"),
 					f.money("giftsTransferredIn", "Transfer on wind-up or amalgamation"),
-					f.money("giftsAcquisitionOfControlAdjustment", "Adjustment for an acquisition of control"),
-					f.money("giftsApplied", "Amount applied against Alberta taxable income", {
-						description: "Blank = claim the maximum both ceilings allow.",
-					}),
+					f.money(
+						"giftsAcquisitionOfControlAdjustment",
+						"Adjustment for an acquisition of control",
+					),
+					f.money(
+						"giftsApplied",
+						"Amount applied against Alberta taxable income",
+						{
+							description: "Blank = claim the maximum both ceilings allow.",
+						},
+					),
 				],
 				{
 					variant: "card",
@@ -97,10 +122,22 @@ export const albertaDonations = defineSchedule({
 				"maximum",
 				"Maximum deduction — gains on gifted capital property (line 032-040)",
 				[
-					f.money("taxableCapitalGainsOnGifts", "Taxable capital gains arising on gifts of capital property"),
-					f.money("deemedGiftGains", "Taxable capital gain on deemed gifts of non-qualifying securities"),
-					f.money("recaptureOnGifts", "Recapture of capital cost allowance on charitable gifts"),
-					f.money("proceedsNetOfOutlays", "Proceeds of disposition, less outlays and expenses"),
+					f.money(
+						"taxableCapitalGainsOnGifts",
+						"Taxable capital gains arising on gifts of capital property",
+					),
+					f.money(
+						"deemedGiftGains",
+						"Taxable capital gain on deemed gifts of non-qualifying securities",
+					),
+					f.money(
+						"recaptureOnGifts",
+						"Recapture of capital cost allowance on charitable gifts",
+					),
+					f.money(
+						"proceedsNetOfOutlays",
+						"Proceeds of disposition, less outlays and expenses",
+					),
 					f.money("capitalCost", "Capital cost of the gifted property"),
 				],
 				{
@@ -121,44 +158,40 @@ export const albertaDonations = defineSchedule({
 					 * from, and therefore what expires when. The page prints six
 					 * rows; each files as its own occurrence of 090-100.
 					 */
-					f.array(
-						"carryforwardRows",
-						"Years of origin",
-						[
-							field.date("yearOfOrigin", "Year of origin (line 090)", {
+					f.array("carryforwardRows", "Years of origin", [
+						field.date("yearOfOrigin", "Year of origin (line 090)", {
+							description:
+								"Mandatory for the row — a row without it is not filed at all.",
+						}),
+						money(
+							"charitable",
+							"Charitable donations available for carryforward (line 092)",
+							{
 								description:
-									"Mandatory for the row — a row without it is not filed at all.",
-							}),
-							money(
-								"charitable",
-								"Charitable donations available for carryforward (line 092)",
-								{
-									description:
-										"On the first row, blank = the charitable pool's own closing balance, above.",
-								},
-							),
-							money(
-								"toCanadaOrProvince",
-								"Gifts to Canada, a province or territory available for carryforward (line 094)",
-							),
-							money(
-								"culturalProperty",
-								"Gifts of certified cultural property available for carryforward (line 096)",
-							),
-							money(
-								"ecologicalLand",
-								"Gifts of certified ecologically sensitive land available for carryforward (line 098)",
-							),
-							money(
-								"medicine",
-								"Additional deduction for gifts of medicine available for carryforward (line 100)",
-								{
-									description:
-										"ITA s.110.1(1)(a.1) — not modelled anywhere else in this engine.",
-								},
-							),
-						],
-					),
+									"On the first row, blank = the charitable pool's own closing balance, above.",
+							},
+						),
+						money(
+							"toCanadaOrProvince",
+							"Gifts to Canada, a province or territory available for carryforward (line 094)",
+						),
+						money(
+							"culturalProperty",
+							"Gifts of certified cultural property available for carryforward (line 096)",
+						),
+						money(
+							"ecologicalLand",
+							"Gifts of certified ecologically sensitive land available for carryforward (line 098)",
+						),
+						money(
+							"medicine",
+							"Additional deduction for gifts of medicine available for carryforward (line 100)",
+							{
+								description:
+									"ITA s.110.1(1)(a.1) — not modelled anywhere else in this engine.",
+							},
+						),
+					]),
 				],
 				{
 					variant: "card",

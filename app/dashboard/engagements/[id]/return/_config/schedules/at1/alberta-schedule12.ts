@@ -54,6 +54,21 @@ const f = fieldsFor<AlbertaSchedule12Values>();
 export const albertaSchedule12Schema: FormSchema = defineSchema({
 	sections: [
 		section(
+			"area-a",
+			"Area A — the federal figure the reconciliation starts from",
+			[
+				money(
+					"federalNetIncomeForTax",
+					"Net income (loss) for federal purposes, if the T2 was prepared elsewhere (line 002)",
+					{
+						description:
+							"Blank = the net income this app computed, which is the normal path. Fill it in only when the federal return was prepared in another package: Area A works by adding and deducting Alberta differences from this figure, so with nothing to start from the whole reconciliation reads nil — and line 090, the Alberta taxable income that feeds jacket line 062, with it. Alberta net income at 054 is DERIVED from this plus the Area A differences; it is not a second figure to type.",
+					},
+				),
+			],
+			{ variant: "card", cols: 1 },
+		),
+		section(
 			"area-b",
 			"Area B — deductions taken from the federal T2",
 			[
@@ -73,14 +88,10 @@ export const albertaSchedule12Schema: FormSchema = defineSchema({
 							"Leave blank when Alberta claims the same amount as federal.",
 					},
 				),
-				money(
-					"partVI1TaxDeductible",
-					"Part VI.1 tax deduction (line 063)",
-					{
-						description:
-							"Federal T2 line 325. Leave blank to use the figure the engine computes from the T2 preferred-share schedules; enter it when the T2 was prepared outside this app and there is nothing to compute it from. Also AT1 Schedule 21 line 007.",
-					},
-				),
+				money("partVI1TaxDeductible", "Part VI.1 tax deduction (line 063)", {
+					description:
+						"Federal T2 line 325. Leave blank to use the figure the engine computes from the T2 preferred-share schedules; enter it when the T2 was prepared outside this app and there is nothing to compute it from. Also AT1 Schedule 21 line 007.",
+				}),
 				money(
 					"centralCreditUnionAllocation",
 					"Taxable capital gains or taxable dividends allocated from a central credit union (line 075)",
