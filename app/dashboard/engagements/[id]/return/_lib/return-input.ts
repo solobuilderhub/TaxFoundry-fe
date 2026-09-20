@@ -1178,8 +1178,8 @@ export type AlbertaContinuityValues = {
 	nonCapitalSection80Adjustment?: number;
 	nonCapitalOtherAdjustments?: number;
 	capitalApplied?: number;
-	capitalExpired?: number;
 	capitalWindUpTransfer?: number;
+	capitalAbilExpired?: number;
 	capitalSection80Adjustment?: number;
 	capitalOtherAdjustments?: number;
 	farmApplied?: number;

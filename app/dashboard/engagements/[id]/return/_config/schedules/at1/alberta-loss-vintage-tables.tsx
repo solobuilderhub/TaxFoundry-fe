@@ -3,7 +3,7 @@
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import type { FieldComponentProps } from "@classytic/formkit";
-import { Plus, TriangleAlert, Trash2 } from "lucide-react";
+import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import {
 	type Control,
 	Controller,

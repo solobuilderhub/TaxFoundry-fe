@@ -19,10 +19,13 @@ const f = fieldsFor<AlbertaContinuityValues>();
  * federal's own figure when left blank; wind-up transfer / s.80 adjustment /
  * other adjustments have no federal equivalent at all, so they default to
  * nil, not to a federal figure that doesn't exist.
+ *
+ * NOT capital — see `capitalAdjustmentFields` below. Net-capital losses have
+ * no "expired" line on the real form at all (they do not expire under the
+ * ITA, unlike the other three pools here), so this shared shape only fits
+ * the three pools that genuinely have that concept.
  */
-function poolAdjustmentFields(
-	prefix: "nonCapital" | "capital" | "farm" | "restrictedFarm",
-) {
+function poolAdjustmentFields(prefix: "nonCapital" | "farm" | "restrictedFarm") {
 	return [
 		f.money(
 			`${prefix}Applied` as keyof AlbertaContinuityValues,
@@ -53,6 +56,50 @@ function poolAdjustmentFields(
 			"Other adjustments",
 			{ description: "No federal equivalent — blank = nil" },
 		),
+	];
+}
+
+/**
+ * The net-capital pool's own advanced adjustments (line 055-065).
+ *
+ * Used to be `poolAdjustmentFields("capital")` — the same shared shape as
+ * non-capital/farm/restricted-farm, which offered an "Expired this year"
+ * box (`capitalExpired`) with no basis on the real form: net-capital losses
+ * do not expire under the ITA, so that field was silently corrupting the
+ * closing balance (069) whenever a preparer used it, with the value read
+ * straight into the generic deduction the OTHER three pools' expiry line
+ * genuinely needs. Line 059 — "Allowable business investment loss expired
+ * as non-capital loss × 4/3" — is capital's real, and very different,
+ * counterpart: an ADDITION (an expired ABIL becomes a net capital loss
+ * rather than vanishing), sourced by reading the raw figure off federal
+ * Schedule 4 line 220, not a deduction this pool shares with the others.
+ */
+function capitalAdjustmentFields() {
+	return [
+		f.money("capitalApplied", "Applied against current year capital gain", {
+			description: "Blank = same as federal",
+		}),
+		f.money(
+			"capitalWindUpTransfer",
+			"Transfer on wind-up or amalgamation",
+			{ description: "No federal equivalent — blank = nil" },
+		),
+		f.money(
+			"capitalAbilExpired",
+			"Allowable business investment loss expired as non-capital loss (line 059)",
+			{
+				description:
+					"Enter the RAW Alberta amount, as reported on federal Schedule 4 line 220 — the ×4/3 the form's own caption states is applied automatically. Blank = nil (no federal figure is modelled to default from).",
+			},
+		),
+		f.money(
+			"capitalSection80Adjustment",
+			"ITA section 80 adjustment",
+			{ description: "No federal equivalent — blank = nil" },
+		),
+		f.money("capitalOtherAdjustments", "Other adjustments", {
+			description: "No federal equivalent — blank = nil",
+		}),
 	];
 }
 
@@ -126,8 +173,8 @@ export const albertaContinuity = defineSchedule({
 			),
 			section(
 				"capitalAdjustments",
-				"Net-capital losses — advanced adjustments (line 057-067)",
-				poolAdjustmentFields("capital"),
+				"Net-capital losses — advanced adjustments (line 055-065)",
+				capitalAdjustmentFields(),
 				{ variant: "card", cols: 2 },
 			),
 			section(
