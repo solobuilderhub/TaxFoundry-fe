@@ -3,7 +3,7 @@
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
 import type { FieldComponentProps } from "@classytic/formkit";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, TriangleAlert, Trash2 } from "lucide-react";
 import {
 	type Control,
 	Controller,
@@ -202,10 +202,19 @@ function NumCell({
 	control,
 	name,
 	disabled,
+	invalid,
 }: {
 	control: Control<AlbertaContinuityValues>;
 	name: string;
 	disabled?: boolean;
+	/**
+	 * The typed value is out of bounds against a rule computed live from
+	 * OTHER fields on this same form (e.g. RIFE's 240 ≤ 350) — not an RHF
+	 * validation error, since nothing here is submitted for server-side
+	 * validation until save. A visible border, not just a tooltip: the
+	 * number itself still needs to be enterable and correctable in place.
+	 */
+	invalid?: boolean;
 }) {
 	return (
 		<Controller
@@ -218,10 +227,13 @@ function NumCell({
 					step="any"
 					disabled={disabled}
 					aria-label={name}
+					aria-invalid={invalid || undefined}
 					className={cn(
 						"h-8 w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none",
 						"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
 						"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
+						invalid &&
+							"border-amber-500/70 focus-visible:border-amber-500 focus-visible:ring-amber-500/50 dark:border-amber-400/70",
 					)}
 					value={(field.value as number | undefined) ?? ""}
 					onChange={(e) =>
@@ -564,6 +576,7 @@ function RifeFieldRow({
 	label,
 	help,
 	disabled,
+	warning,
 }: {
 	control: Control<AlbertaContinuityValues>;
 	name: string;
@@ -572,6 +585,14 @@ function RifeFieldRow({
 	label: string;
 	help?: string;
 	disabled?: boolean;
+	/**
+	 * A rule violated against OTHER fields on this same form — computed live,
+	 * not an entry error. Line 240 is the one row that needs this: the box
+	 * still shows what was typed, but the return files the capped figure at
+	 * 350 instead, and without this marker that gap was invisible anywhere
+	 * except by cross-checking 250 and AT1SCH21 line 002 by hand.
+	 */
+	warning?: string;
 }) {
 	const tooltip = rifeTooltip(field, help);
 	return (
@@ -590,7 +611,25 @@ function RifeFieldRow({
 					{label}
 				</span>
 			</TooltipWrapper>
-			<NumCell control={control} name={name} disabled={disabled} />
+			<span className="flex items-center gap-1.5">
+				{warning && (
+					<TooltipWrapper content={warning} side="top">
+						<span
+							className="inline-flex cursor-help items-center text-amber-600 dark:text-amber-400"
+							role="img"
+							aria-label="Warning"
+						>
+							<TriangleAlert className="size-4" />
+						</span>
+					</TooltipWrapper>
+				)}
+				<NumCell
+					control={control}
+					name={name}
+					disabled={disabled}
+					invalid={!!warning}
+				/>
+			</span>
 		</div>
 	);
 }
@@ -730,6 +769,11 @@ export function RifeContinuitySection({
 				label="RIFE deducted for the tax year"
 				help="Blank claims the maximum available automatically."
 				disabled={disabled}
+				warning={
+					requestedClaim != null && requestedClaim > maxDeductible
+						? `Line 240 must not exceed line 350. ${CURRENCY_FMT.format(requestedClaim)} was entered, but only ${CURRENCY_FMT.format(maxDeductible)} can be deducted this year — the return will file ${CURRENCY_FMT.format(deducted)} at this line, and the closing balance below already reflects that.`
+						: undefined
+				}
 			/>
 			<RifeSummaryRow
 				field="250"
