@@ -25,7 +25,9 @@ const f = fieldsFor<AlbertaContinuityValues>();
  * ITA, unlike the other three pools here), so this shared shape only fits
  * the three pools that genuinely have that concept.
  */
-function poolAdjustmentFields(prefix: "nonCapital" | "farm" | "restrictedFarm") {
+function poolAdjustmentFields(
+	prefix: "nonCapital" | "farm" | "restrictedFarm",
+) {
 	return [
 		f.money(
 			`${prefix}Applied` as keyof AlbertaContinuityValues,
@@ -79,11 +81,9 @@ function capitalAdjustmentFields() {
 		f.money("capitalApplied", "Applied against current year capital gain", {
 			description: "Blank = same as federal",
 		}),
-		f.money(
-			"capitalWindUpTransfer",
-			"Transfer on wind-up or amalgamation",
-			{ description: "No federal equivalent — blank = nil" },
-		),
+		f.money("capitalWindUpTransfer", "Transfer on wind-up or amalgamation", {
+			description: "No federal equivalent — blank = nil",
+		}),
 		f.money(
 			"capitalAbilExpired",
 			"Allowable business investment loss expired as non-capital loss (line 059)",
@@ -92,11 +92,9 @@ function capitalAdjustmentFields() {
 					"Enter the RAW Alberta amount, as reported on federal Schedule 4 line 220 — the ×4/3 the form's own caption states is applied automatically. Blank = nil (no federal figure is modelled to default from).",
 			},
 		),
-		f.money(
-			"capitalSection80Adjustment",
-			"ITA section 80 adjustment",
-			{ description: "No federal equivalent — blank = nil" },
-		),
+		f.money("capitalSection80Adjustment", "ITA section 80 adjustment", {
+			description: "No federal equivalent — blank = nil",
+		}),
 		f.money("capitalOtherAdjustments", "Other adjustments", {
 			description: "No federal equivalent — blank = nil",
 		}),
