@@ -1005,6 +1005,10 @@ export type AlbertaDonationsValues = {
 	 */
 	charitableCurrentYear?: number;
 	/**
+	 * 020002 — charitable pool opening balance on the ALBERTA side. Blank = the federal opening donation pool, which stays the default. The gifts pool beside it has had `giftsOpening` all along; charitable was pinned to the federal figure with no way to state an Alberta balance that had diverged — the same asymmetry `charitableCurrentYear` was added to close, one row up.
+	 */
+	charitableOpening?: number;
+	/**
 	 * 020004 — charitable gifts expired this year. No federal equivalent.
 	 */
 	charitableExpired?: number;
@@ -1648,6 +1652,58 @@ export type AlbertaSchedule18Values = {
 	 */
 	abilEntries?: AlbertaAbilEntry[];
 	/**
+	 * Alberta category totals, entered only where they differ from federal. A category with no row here files the federal figure.
+	 */
+	albertaCategories?: AlbertaDispositionCategoryRow[];
+	/**
+	 * 018060 — unapplied listed-personal-property losses from other years. The schedule caps this at the LPP gain, so an over-large figure cannot shelter ordinary gains.
+	 */
+	unappliedLppLosses?: number;
+	/**
+	 * 018064 — capital gains dividends (federal 006875).
+	 */
+	capitalGainsDividends?: number;
+	/**
+	 * 018066 — FEDERAL capital gain reserve opening balance (federal 006880).
+	 */
+	federalReserveOpening?: number;
+	/**
+	 * 018068 — FEDERAL capital gain reserve closing balance (federal 006885).
+	 */
+	federalReserveClosing?: number;
+	/**
+	 * 018066 — Alberta reserve opening balance, entered only when it differs.
+	 */
+	albertaReserveOpening?: number;
+	/**
+	 * 018068 — Alberta reserve closing balance, entered only when it differs.
+	 */
+	albertaReserveClosing?: number;
+	/**
+	 * 018071 — gain on the donation of listed securities (federal 006895).
+	 */
+	gainOnDonatedSecurities?: number;
+	/**
+	 * 018073 — gain on the donation of ecologically sensitive land (federal 006896).
+	 */
+	gainOnDonatedEcologicalLand?: number;
+	/**
+	 * 018077 — exemption threshold at the time of disposal (federal 006897).
+	 */
+	exemptionThreshold?: number;
+	/**
+	 * 018078 — total capital gains from the disposition of actual property (federal 006898).
+	 */
+	capitalGainsFromActualProperty?: number;
+	/**
+	 * 018096 — TAXABLE capital gains under s.34.2, from line 275 of federal Schedule 73. Enter the federal figure AS FILED: it is already at the ½ inclusion rate and the Alberta form grosses it back up ("line 275 … × 2"). Pre-doubling it here would count it twice.
+	 */
+	section342TaxableCapitalGains?: number;
+	/**
+	 * 018098 — ALLOWABLE capital losses under s.34.2, from line 285 of federal Schedule 73. Same treatment as 018096: enter the federal figure as filed; the form doubles it.
+	 */
+	section342AllowableCapitalLosses?: number;
+	/**
 	 * AT1 018001 — "Is the corporation electing to transfer property as stated under ACTA section 14.1(3), 14.2(3) or 16.1(3)?" MANDATORY on the wire, and §3.2.3.19 supplies its own default: Yes files 1, anything else files 2. Unlike the nine yes/no questions on the AT1 jacket — where the specification gives no default, so a silent No would answer for the corporation — leaving this blank is a No on the instruction of TRA itself. Answering Yes also obliges form AT107, AT108 or AT109 to be submitted with the RSI, which this product does not produce; the schedule raises that as a review issue.
 	 */
 	electingPropertyTransfer?: YesNo;
@@ -1677,6 +1733,20 @@ export type AlbertaAbilEntry = {
 	 * 018092 — C, outlays and expenses (re dispositions).
 	 */
 	outlays?: number;
+};
+export type AlbertaDispositionCategoryRow = {
+	/**
+	 * Which of the six categories this row overrides. Pairs to the federal total by category, not by position.
+	 */
+	category?: At1DispositionCategory;
+	/**
+	 * 018002-018012 — Alberta total proceeds of disposition. Blank = federal.
+	 */
+	proceeds?: number;
+	/**
+	 * 018022-018032 — Alberta total adjusted cost base. SIGNED: a negative ACB is possible. Blank = federal.
+	 */
+	acb?: number;
 };
 export type AlbertaResourceDeductions15Values = {
 	/**
@@ -2037,6 +2107,14 @@ export type AlbertaSred16Values = {
 	 * 016020 — SR&ED expenditure pool deduction claimed this year. Blank claims the WHOLE available pool; the claim is discretionary, so a corporation with no income to shelter would normally claim nil and carry the pool forward. Capped at line 018.
 	 */
 	amountClaimed?: number;
+	/**
+	 * The FEDERAL opening pool balance, for the form-required test — NOT a printed Alberta line. The specification makes this schedule required when the opening balance OR the claim differs from federal; with no federal figure to compare against, that test can never fire and the schedule cannot tell it is required. Blank = no comparison made.
+	 */
+	federalOpeningPoolBalance?: number;
+	/**
+	 * The FEDERAL pool deduction claimed, the other half of the form-required test above. Also not a printed Alberta line. Blank = no comparison made.
+	 */
+	federalAmountClaimed?: number;
 };
 export type AlbertaReserves17Values = {
 	rows?: AlbertaReserve17Row[];
@@ -2061,6 +2139,10 @@ export type AlbertaReserve17Row = {
 };
 export type AlbertaCca13Values = {
 	classes?: AlbertaCca13Row[];
+	/**
+	 * 013125 — the immediate expensing limit allocated to this corporation. Per RETURN, not per class. §3.2.3.14: relevant only where the corporation is associated with one or more eligible persons or partnerships (EPOPs), in which case it should equal fed 008125; left blank when not associated.
+	 */
+	immediateExpensingLimit?: number;
 };
 export type AlbertaCca13Row = {
 	/**
@@ -2072,9 +2154,33 @@ export type AlbertaCca13Row = {
 	 */
 	openingUCC?: number;
 	/**
+	 * 013005 — Alberta cost of acquisitions during the year. §3.2.3.14: "if the acquisitions for Alberta purposes differ from the federal acquisitions, enter the Alberta amount. Otherwise, enter the amount at fed 008203." Blank = federal.
+	 */
+	additions?: number;
+	/**
+	 * 013007 — Alberta net adjustments. SIGNED: this is the one column the specification marks "+/-", and the printed form shows negatives in brackets. §3.2.3.14 defaults it to fed 008205. Blank = federal.
+	 */
+	netAdjustments?: number;
+	/**
+	 * 013009 — Alberta proceeds of dispositions. §3.2.3.14 defaults it to fed 008207 and warns proceeds cannot exceed the original capital cost of the asset. Blank = federal.
+	 */
+	dispositions?: number;
+	/**
+	 * 013039 / 013045 — the Alberta designated immediate expensing property (DIEP) amount. The engine models the designation and the resulting claim as one figure, so this single entry drives both printed columns. Blank = federal.
+	 */
+	immediateExpensing?: number;
+	/**
+	 * 013029 — whether this class's acquisitions are accelerated investment incentive property or fall in Classes 54 to 56, which earns the enhanced first-year uplift. NOTE: the printed form asks for a DOLLAR amount in column 14; the engine models AIIP as a per-class flag, so this is a narrower capability than the form describes — it cannot yet express a class whose acquisitions are only PARTLY AIIP. Blank = federal.
+	 */
+	aiip?: boolean;
+	/**
 	 * 013019 — the Alberta discretionary claim. Blank = the same as federal; an explicit 0 claims nothing for Alberta, which is a real answer.
 	 */
 	claim?: number;
+	/**
+	 * The class held no assets at year-end, which is what turns a positive remaining UCC into the terminal loss at 013017. Not itself a printed line — it is the fact the form needs in order to compute one.
+	 */
+	classEmptied?: boolean;
 };
 export type EdiValues = {
 	/**

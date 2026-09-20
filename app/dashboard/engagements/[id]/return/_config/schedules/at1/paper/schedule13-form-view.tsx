@@ -2,7 +2,10 @@
 
 import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import type { AlbertaCca13Row, AlbertaCca13Values } from "../../../../_lib/return-input";
+import type {
+	AlbertaCca13Row,
+	AlbertaCca13Values,
+} from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
 import {
 	type ClassGridColumn,
@@ -20,18 +23,40 @@ import {
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 /**
- * The three fields THIS schedule collects, on its own `albertaCca13` slice.
+ * The per-class columns THIS schedule collects, on its own `albertaCca13` slice.
  *
- * They were `cca.classes[].albertaOpeningUCC` / `.albertaClaim` on the federal
- * slice, which is what kept this form from having a nav entry of its own.
- * Everything else on the page is federal or engine-computed and shown
- * read-only.
+ * §3.2.3.14 gives acquisitions, net adjustments, dispositions and the DIEP
+ * figure the same "if the Alberta amount differs from federal, enter it;
+ * otherwise take fed 0082xx" rule that opening UCC and the claim have always
+ * had, and the engine has accepted all of them as overrides from the start —
+ * only the contract and this map were narrower, so four columns the preparer
+ * was entitled to state rendered as read-only federal figures.
+ *
+ * Two collected fields are deliberately NOT here, because neither fits a
+ * money column in this grid:
+ *
+ *   aiip          column 14 (013029) prints a DOLLAR amount; the engine models
+ *                 the AIIP designation as a per-class boolean, so there is no
+ *                 figure to put in the box. Collected in the guided editor.
+ *   classEmptied  not a printed column at all — it is the fact behind the
+ *                 terminal loss at 017, which the form shows as the computed
+ *                 result. Also guided-only.
+ *
+ * 013045 (immediate expensing) is bound nowhere for the same reason it has no
+ * separate field: one entry at 039 drives both printed columns.
  */
 const FIELD_NAME: Partial<Record<string, keyof AlbertaCca13Row>> = {
 	"013001001": "ccaClass",
 	"013003001": "openingUCC",
+	"013005001": "additions",
+	"013007001": "netAdjustments",
+	"013009001": "dispositions",
+	"013039001": "immediateExpensing",
 	"013019001": "claim",
 };
+
+/** 013125 — per RETURN, so it is a single row above the grid, not a column in it. */
+const LIMIT_LINE = "013125001";
 
 const SCHEDULE_ID = "013";
 
@@ -56,8 +81,10 @@ function buildTotalsResolveLine(
  * here, across all TWENTY-FOUR printed columns (nineteen numbered, five the
  * page shows as arithmetic and does not number).
  *
- * Only class number, Alberta opening UCC and the Alberta claim override are
- * editable; the rest is read from the last computed return, matching the same
+ * The columns §3.2.3.14 lets Alberta state for itself are editable — class
+ * number, opening UCC, acquisitions, net adjustments, dispositions, the DIEP
+ * figure and the claim — plus the per-return immediate expensing limit above
+ * the grid. The rest is read from the last computed return, matching the same
  * "don't render a computed figure as a box" rule the card editor's generator
  * enforces.
  *
@@ -106,6 +133,19 @@ export function Schedule13FormView({
 		(f) => f.section === "totals",
 	);
 
+	/*
+	 * 013125 rendered nowhere at all until now: it is tagged `section: "grid"`
+	 * but is a per-RETURN field rather than one of the grid's columns, so the
+	 * column list below never picked it up and the `section === "totals"` filter
+	 * above excluded it too. It fell through the only two collections this view
+	 * renders.
+	 */
+	const limitField = AT1_SCHEDULE_13_FIELDS.find((f) => f.line === LIMIT_LINE);
+	const resolveLimitLine: ResolveLine = () => ({
+		editable: true,
+		name: "immediateExpensingLimit",
+	});
+
 	const rows: ClassGridRow[] = classes.map((c, i) => ({
 		key: `class-${i}`,
 		label: c?.ccaClass ? `Class ${c.ccaClass}` : `Row ${i + 1}`,
@@ -138,9 +178,25 @@ export function Schedule13FormView({
 
 	return (
 		<div className="space-y-4">
+			{limitField && (
+				<PaperSection title="Immediate expensing limit" formId="AT1SCH13">
+					<PaperLeaderRow
+						line={parseAt1LineItemId(limitField.line)?.field ?? limitField.line}
+						caption={limitField.caption}
+						kind={limitField.kind}
+						role={limitField.role}
+						note={limitField.note}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+						control={ccaControl}
+						resolveLine={resolveLimitLine}
+						disabled={disabled}
+					/>
+				</PaperSection>
+			)}
 			<PaperSection
 				title="Alberta capital cost allowance by class"
-				description="One row per class. Class number, Alberta opening UCC, and the Alberta claim override are editable; the rest is assumed equal to federal — see the last computed return where available."
+				description="One row per class. The Alberta columns the specification lets you state — opening UCC, acquisitions, net adjustments, dispositions, DIEP and the claim — are editable; the rest is computed or assumed equal to federal. The AIIP designation and 'class emptied' are collected in Guided view, since neither fits a money column here."
 				formId="AT1SCH13"
 			>
 				<div className="p-2">

@@ -129,6 +129,34 @@ export const albertaSred16 = defineSchedule({
 						"The subtotal (016), the available pool (018) and the carry-forward balance (022) are computed from the above — see Form View.",
 				},
 			),
+			section(
+				"federalComparison",
+				"The federal figures this schedule is tested against",
+				[
+					f.money(
+						"federalOpeningPoolBalance",
+						"Federal unclaimed pool balance from the previous year",
+						{
+							description:
+								"The federal counterpart of line 012. Not a printed Alberta line — leave blank when the two agree.",
+						},
+					),
+					f.money(
+						"federalAmountClaimed",
+						"Federal pool deduction claimed this year",
+						{
+							description:
+								"The federal counterpart of line 020. Not a printed Alberta line — leave blank when the two agree.",
+						},
+					),
+				],
+				{
+					variant: "card",
+					cols: 2,
+					description:
+						"The specification makes this schedule REQUIRED when the opening balance or the claim differs from federal. With no federal figure to compare against, that test has nothing to fire on — so where either Alberta figure above diverges, state the federal one here and the return can tell the schedule is required.",
+				},
+			),
 		],
 	}),
 });

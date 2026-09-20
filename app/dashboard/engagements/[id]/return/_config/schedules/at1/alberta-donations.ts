@@ -57,6 +57,14 @@ export const albertaDonations = defineSchedule({
 								"Blank = the federal figure, which is the normal path. Fill it in when the federal return was prepared in another package, or when Alberta genuinely claims a different amount. The gifts continuity below has always had its own current-year box; charitable had none, so the one figure this schedule is mostly about could not be stated.",
 						},
 					),
+					f.money(
+						"charitableOpening",
+						"Charitable pool opening balance (line 002)",
+						{
+							description:
+								"Blank = the federal opening donation pool, which is the normal path. The gifts continuity below has always had its own opening box; charitable was pinned to the federal figure, so an Alberta balance that had diverged could not be stated.",
+						},
+					),
 					f.money("charitableExpired", "Expired this year", {
 						description: "No federal equivalent — blank = nil",
 					}),
