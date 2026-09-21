@@ -200,7 +200,24 @@ function fieldName(poolKey: string, rowKind: string): string | undefined {
 			if (isLpp) return "lppCurrentYearLoss";
 			if (poolKey === "farm" || poolKey === "restricted-farm")
 				return `${p}CurrentYearLoss`;
-			return undefined; // non-capital/capital derive this automatically — see alberta-continuity.ts's module doc comment
+			/*
+			 * Non-capital and capital are both derived here, for different reasons.
+			 *
+			 * Capital has no override at all — the composer feeds it
+			 * `federal.losses.netCapital.currentYearLoss` and TRA's own test-case
+			 * text confirms Alberta always equals federal.
+			 *
+			 * Non-capital DOES have a field that looks like a fit,
+			 * `nonCapitalCurrentYearLoss`, and it must not be bound here.
+			 * That field belongs to SCHEDULE 10: it exists so a carry-back can be
+			 * requested when the T2 was prepared elsewhere and the current-year
+			 * loss would otherwise read nil and refuse the request. This row is
+			 * Schedule 21's 037, which the form derives from Schedule 12 line 054
+			 * ("Net Income (loss) per AB Sched. 12 line 054"). Binding the two
+			 * together would put a carry-back gate's figure into the continuity's
+			 * additions and foot anyway.
+			 */
+			return undefined;
 		case "appliedAgainstIncome":
 			return isLpp ? "lppApplied" : `${p}Applied`;
 		case "section80Adjustment":
@@ -209,23 +226,23 @@ function fieldName(poolKey: string, rowKind: string): string | undefined {
 			return `${p}OtherAdjustments`;
 		/**
 		 * Capital's line 059 — an allowable business investment loss that has
-		 * expired and so becomes a net capital loss. Deliberately unbound: the
-		 * row renders (the page prints it, so this view prints it) but reads
-		 * "not collected", because there is no field for it to bind to.
+		 * expired and so becomes a net capital loss.
 		 *
-		 * It must NOT be bound to `capitalExpired`, the one field whose name
-		 * looks like a fit. 059 is an ADDITION — it sits in the "Add:" block
-		 * above the Subtotal rule and grows the pool — while `capitalExpired`
-		 * is fed to the engine as the continuity's `expired`, which DEDUCTS.
-		 * Wiring the two together would file the preparer's figure with the
-		 * sign reversed and still foot, which is the failure mode this
-		 * schedule can least afford. Collecting it properly needs a new
-		 * additive input on the contract AND on the engine's
-		 * `LossContinuityInput` (whose only ADDS-to-pool slot today is
-		 * `windUpTransfer`) — a ca-tax change, not an app-side one.
+		 * It is NOT `capitalExpired`, the one field whose name looks like a fit.
+		 * 059 is an ADDITION: it sits in the "Add:" block above the Subtotal
+		 * rule and GROWS the pool, where an `expired` figure DEDUCTS. Binding
+		 * the two together would file the preparer's figure with its sign
+		 * reversed and still foot — the failure mode this schedule can least
+		 * afford. (There is no `capitalExpired` any more: capital losses do not
+		 * expire, and the box that collected one was removed.)
+		 *
+		 * The engine grew its own additive slot for this — `abilExpired` on
+		 * `LossContinuityInput`, alongside `windUpTransfer` — so the figure now
+		 * has somewhere real to go. The preparer enters the RAW Alberta amount;
+		 * §3.2.3.21's own ×4/3 is applied by the engine, not here.
 		 */
 		case "abilExpired":
-			return undefined;
+			return isLpp || poolKey !== "capital" ? undefined : "capitalAbilExpired";
 		default:
 			return undefined; // "opening" (033-style), "carryBack", "closing" — not a simple per-pool field in this app
 	}

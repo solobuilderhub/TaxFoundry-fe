@@ -738,7 +738,26 @@ function ScheduleForm({
 }) {
 	const meta = SCHEDULE_TREE.find((s) => s.key === schedule)!;
 	const formView = formViewFor(schedule);
-	const [viewMode, setViewMode] = useState<"guided" | "form">("guided");
+	/*
+	 * Land on the printed form where a schedule has one.
+	 *
+	 * A preparer reconciling against the paper return should not have to find
+	 * the view that looks like it. Guided stays one click away and is NOT
+	 * redundant: several schedules collect fields the paper grid has no column
+	 * for — Schedule 12's reconciliation, Schedule 21's loss carry-backs,
+	 * Schedule 29's project detail, and the straight-line classes 13 and 14 on
+	 * Schedule 13 — so this changes the default, never the availability.
+	 */
+	const [viewMode, setViewMode] = useState<"guided" | "form">(
+		formView ? "form" : "guided",
+	);
+	/*
+	 * Only schedules that HAVE a paper view can be in it. The state above is
+	 * seeded once, so a preparer who leaves Form View open and moves to a
+	 * schedule without one would otherwise keep a mode that hides the guided
+	 * form and renders nothing in its place — a blank editor.
+	 */
+	const activeView = formView ? viewMode : "guided";
 
 	return (
 		<div className="space-y-4">
@@ -754,7 +773,7 @@ function ScheduleForm({
 				</div>
 				{formView && (
 					<ToggleGroup
-						value={[viewMode]}
+						value={[activeView]}
 						onValueChange={(v) => {
 							const next = v[0];
 							if (next === "guided" || next === "form") setViewMode(next);
@@ -779,7 +798,7 @@ function ScheduleForm({
 			 */}
 			<div
 				className={
-					viewMode === "form" ? "[&_[data-formkit-root]]:hidden" : undefined
+					activeView === "form" ? "[&_[data-formkit-root]]:hidden" : undefined
 				}
 			>
 				<SchemaForm
@@ -791,7 +810,7 @@ function ScheduleForm({
 					{(form) => (
 						<>
 							{formView && (
-								<div className={viewMode === "guided" ? "hidden" : "mt-4"}>
+								<div className={activeView === "guided" ? "hidden" : "mt-4"}>
 									{formView({
 										control: form.control,
 										disabled: saving,
