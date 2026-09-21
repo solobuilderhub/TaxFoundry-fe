@@ -81,30 +81,71 @@ export const albertaCca13 = defineSchedule({
 						money("additions", "Cost of acquisitions (line 005)", {
 							description: "Blank = the same as federal.",
 						}),
+						money(
+							"diepAcquisitions",
+							"Of which designated immediate expensing property (line 039)",
+							{
+								description:
+									"A subset of line 005, not an addition to it. Blank = the same as federal.",
+							},
+						),
 						money("netAdjustments", "Net adjustments (line 007)", {
 							description:
 								"Signed — a negative is entered with a minus sign and prints in brackets. Blank = the same as federal.",
 						}),
+						money(
+							"assistanceReceived",
+							"Of which assistance received after disposition (line 031)",
+							{
+								description:
+									"A BREAKDOWN of line 007, not a further movement of the pool — enter the net adjustment at 007 as well. Shown separately because the AIIP arithmetic needs it broken out.",
+							},
+						),
+						money(
+							"assistanceRepaid",
+							"Of which assistance repaid after disposition (line 033)",
+							{
+								description: "Also a breakdown of line 007, on the same terms.",
+							},
+						),
 						money("dispositions", "Proceeds of dispositions (line 009)", {
 							description:
 								"Cannot exceed the asset's original capital cost. Blank = the same as federal.",
 						}),
 						money(
-							"immediateExpensing",
-							"Immediate expensing / DIEP (lines 039, 045)",
+							"diepProceeds",
+							"Of which proceeds of disposition of the DIEP (line 041)",
 							{
 								description:
-									"One figure drives both printed columns — the designated property and the resulting claim. Blank = the same as federal.",
+									"A subset of line 009. Blank = the same as federal.",
 							},
 						),
-						field.switch("aiip", "AIIP or class 54-56 acquisitions (line 029)"),
+						money("diepUcc", "UCC of the DIEP (line 043)", {
+							description: "Blank = the same as federal.",
+						}),
+						money("immediateExpensing", "Immediate expensing (line 045)", {
+							description:
+								"The amount actually claimed at 100%. Capped at the pool. Blank = the same as federal.",
+						}),
+						money(
+							"aiipAcquisitions",
+							"Of which AIIP or class 54-56 acquisitions (line 029)",
+							{
+								description:
+									"A dollar amount, so a class whose acquisitions are only PARTLY accelerated is stated exactly. Blank = the same as federal.",
+							},
+						),
+						field.number("rate", "CCA rate % (line 013)", {
+							description:
+								"A PERCENT, as the form prints it — enter 20 for 20%, 10.5 for 10.5%. Blank takes the class's statutory rate; enter one only where the rate is elective.",
+						}),
 						money("claim", "Alberta CCA claim (line 019)", {
 							description:
-								"Blank = the same as federal; an explicit 0 claims nothing for Alberta, which is a real answer.",
+								"Blank claims the maximum the grid allows; an explicit 0 claims nothing for Alberta, which is a real answer. A claim above the maximum is refused rather than quietly reduced.",
 						}),
 						field.switch(
 							"classEmptied",
-							"Class emptied — no assets left (drives line 017)",
+							"Class emptied — no assets left at year-end",
 						),
 					]),
 				],
@@ -112,7 +153,75 @@ export const albertaCca13 = defineSchedule({
 					variant: "card",
 					cols: 1,
 					description:
-						"Add a row only for a class whose Alberta figures DIFFER from federal — anything omitted takes the federal figure. The remaining printed columns are computed from these or taken from federal; see Form View for the whole grid.",
+						"Add a row only for a class whose Alberta figures DIFFER from federal — anything omitted takes the federal figure. Terminal loss (017) is not entered: it is the residual balance of an emptied class, so the switch above is what states it and the amount is computed. The remaining printed columns are arithmetic on these; see Form View for the whole grid.",
+				},
+			),
+			section(
+				"class13",
+				"Class 13 — leasehold interests",
+				[
+					f.money("class13OpeningUCC", "Opening UCC", {
+						description:
+							"Needed only when the T2 was prepared elsewhere — blank takes the federal figure.",
+					}),
+					f.money("class13Claim", "Alberta claim", {
+						description:
+							"Blank = the same as the federal claim, or the computed maximum where there is no federal Schedule 8.",
+					}),
+					f.array("class13Layers", "Leasehold layers added this year", [
+						field.text("description", "Description"),
+						money("capitalCost", "Capital cost"),
+						field.date("leaseEnd", "Lease end date", {
+							description:
+								"The 12-month period count the calculation needs is derived from this and the tax year start — it is not typed in.",
+						}),
+						field.date("firstRenewalEnd", "First renewal end date", {
+							description:
+								"Where the lease grants renewal rights. Replaces the lease end date for the period count.",
+						}),
+						money("claimedToDate", "CCA already claimed in prior years"),
+						money("proceeds", "Disposition proceeds for this layer"),
+						field.switch("isFirstYear", "This is the layer's first tax year"),
+						field.switch("aiip", "Accelerated investment incentive property"),
+					]),
+				],
+				{
+					variant: "card",
+					cols: 2,
+					description:
+						"Straight-line, so class 13 is not a row of the grid above — no rate, no half-year rule, no AIIP uplift, no immediate expensing. Alberta cannot lease a different term on the same property, so the layers are shared with federal; enter them here only when there is no federal Schedule 8 to read them from.",
+				},
+			),
+			section(
+				"class14",
+				"Class 14 — limited-life intangibles",
+				[
+					f.money("class14OpeningUCC", "Opening UCC", {
+						description:
+							"Needed only when the T2 was prepared elsewhere — blank takes the federal figure.",
+					}),
+					f.money("class14Claim", "Alberta claim", {
+						description:
+							"Blank = the same as the federal claim, or the computed maximum where there is no federal Schedule 8.",
+					}),
+					f.array("class14Properties", "Properties added this year", [
+						field.text("description", "Description"),
+						money("capitalCost", "Capital cost"),
+						field.number(
+							"lifeDaysAtAcquisition",
+							"Days of life remaining at acquisition",
+							{
+								description:
+									"Days the property had REMAINING when the cost was incurred — not its total life, and not the days left today.",
+							},
+						),
+					]),
+				],
+				{
+					variant: "card",
+					cols: 2,
+					description:
+						"Also straight-line, and prorated per property by the life it had left when acquired.",
 				},
 			),
 		],

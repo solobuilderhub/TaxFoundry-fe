@@ -2143,6 +2143,30 @@ export type AlbertaCca13Values = {
 	 * 013125 — the immediate expensing limit allocated to this corporation. Per RETURN, not per class. §3.2.3.14: relevant only where the corporation is associated with one or more eligible persons or partnerships (EPOPs), in which case it should equal fed 008125; left blank when not associated.
 	 */
 	immediateExpensingLimit?: number;
+	/**
+	 * Alberta's class 13 (leasehold interests) claim. Blank = the same as the federal claim, or the computed maximum where there is no federal Schedule 8.
+	 */
+	class13Claim?: number;
+	/**
+	 * Class 13 undepreciated capital cost before this year’s deduction. Needed only when the federal Schedule 8 is absent; blank takes the federal figure.
+	 */
+	class13OpeningUCC?: number;
+	/**
+	 * Class 13 leasehold layers added this tax year. Shared with federal — supply them here only when the T2 was prepared in another package.
+	 */
+	class13Layers?: Class13LeaseholdLayer[];
+	/**
+	 * Alberta's class 14 (limited-life intangibles) claim. Blank = the same as the federal claim, or the computed maximum where there is no federal Schedule 8.
+	 */
+	class14Claim?: number;
+	/**
+	 * Class 14 undepreciated capital cost before this year’s deduction. Needed only when the federal Schedule 8 is absent; blank takes the federal figure.
+	 */
+	class14OpeningUCC?: number;
+	/**
+	 * Class 14 limited-life properties added this tax year. Shared with federal — supply them here only when the T2 was prepared in another package.
+	 */
+	class14Properties?: Class14LimitedLifeProperty[];
 };
 export type AlbertaCca13Row = {
 	/**
@@ -2170,9 +2194,37 @@ export type AlbertaCca13Row = {
 	 */
 	immediateExpensing?: number;
 	/**
-	 * 013029 — whether this class's acquisitions are accelerated investment incentive property or fall in Classes 54 to 56, which earns the enhanced first-year uplift. NOTE: the printed form asks for a DOLLAR amount in column 14; the engine models AIIP as a per-class flag, so this is a narrower capability than the form describes — it cannot yet express a class whose acquisitions are only PARTLY AIIP. Blank = federal.
+	 * 013029 (column 14) — the acquisitions that are accelerated investment incentive property or fall in Classes 54 to 56, as the DOLLAR amount the form prints. A class whose acquisitions are only PARTLY accelerated is stated exactly. Blank = federal.
+	 */
+	aiipAcquisitions?: number;
+	/**
+	 * Whole-class AIIP flag — "all of the acquisitions are accelerated". Kept for returns entered before column 14 took an amount; `aiipAcquisitions` states the same fact the way the form asks and wins when both are present. Blank = federal.
 	 */
 	aiip?: boolean;
+	/**
+	 * 013039 (column 4) — the part of the acquisitions designated immediate expensing property. A subset of column 3, not an addition to it. Blank = federal.
+	 */
+	diepAcquisitions?: number;
+	/**
+	 * 013041 (column 9) — proceeds of disposition of the DIEP. A subset of column 8. Blank = federal.
+	 */
+	diepProceeds?: number;
+	/**
+	 * 013043 (column 11) — the UCC amount that relates to the DIEP. Blank = federal.
+	 */
+	diepUcc?: number;
+	/**
+	 * 013031 (column 6) — assistance received or receivable for a property after its disposition. The form captions this "Amount FROM column 5", so it is a BREAKDOWN of the net adjustments at 013007, NOT a further movement of the pool — enter the net adjustment at 007 as well. It is disclosed separately because the AIIP arithmetic in columns 16 and 19 is written in terms of it. Blank = federal.
+	 */
+	assistanceReceived?: number;
+	/**
+	 * 013033 (column 7) — assistance REPAID after disposition. Also a breakdown of 013007, on the same terms as 013031. Blank = federal.
+	 */
+	assistanceRepaid?: number;
+	/**
+	 * 013013 (column 20) — the CCA rate as a PERCENT, the way the form prints it and the specification transmits it: enter 20 for 20%, 10.5 for 10.5%. §3.2.3.14 allows input "for classes where the rate is elective". Blank takes the class's statutory rate.
+	 */
+	rate?: number;
 	/**
 	 * 013019 — the Alberta discretionary claim. Blank = the same as federal; an explicit 0 claims nothing for Alberta, which is a real answer.
 	 */

@@ -23,35 +23,41 @@ import {
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
 /**
- * The per-class columns THIS schedule collects, on its own `albertaCca13` slice.
+ * Every column of the printed grid that a preparer fills in, bound to the field
+ * behind it. Fourteen of the twenty-four; the other ten are arithmetic the form
+ * states in terms of these.
  *
- * §3.2.3.14 gives acquisitions, net adjustments, dispositions and the DIEP
- * figure the same "if the Alberta amount differs from federal, enter it;
- * otherwise take fed 0082xx" rule that opening UCC and the claim have always
- * had, and the engine has accepted all of them as overrides from the start —
- * only the contract and this map were narrower, so four columns the preparer
- * was entitled to state rendered as read-only federal figures.
+ * This map held THREE for a long time, which is why the grid read as mostly
+ * greyed-out: a column with no binding renders read-only regardless of whether
+ * the specification lets Alberta state it. §3.2.3.14 gives acquisitions, net
+ * adjustments, dispositions, the DIEP figures, the assistance breakdown and the
+ * AIIP amount the same "if the Alberta amount differs from federal, enter it;
+ * otherwise take fed 0082xx" rule that opening UCC and the claim always had.
  *
- * Two collected fields are deliberately NOT here, because neither fits a
- * money column in this grid:
+ * Two fields the schedule collects are not columns of this grid and so are not
+ * here — both live in the guided editor:
  *
- *   aiip          column 14 (013029) prints a DOLLAR amount; the engine models
- *                 the AIIP designation as a per-class boolean, so there is no
- *                 figure to put in the box. Collected in the guided editor.
- *   classEmptied  not a printed column at all — it is the fact behind the
- *                 terminal loss at 017, which the form shows as the computed
- *                 result. Also guided-only.
- *
- * 013045 (immediate expensing) is bound nowhere for the same reason it has no
- * separate field: one entry at 039 drives both printed columns.
+ *   classEmptied   not printed at all. It is the FACT behind the terminal loss
+ *                  at 017, which the form itself shows as a computed result: a
+ *                  terminal loss is definitionally the residual balance of an
+ *                  emptied class, so there is nothing to choose.
+ *   class13/14     straight-line classes, with layers and properties rather
+ *                  than a row of pool movements.
  */
 const FIELD_NAME: Partial<Record<string, keyof AlbertaCca13Row>> = {
 	"013001001": "ccaClass",
 	"013003001": "openingUCC",
 	"013005001": "additions",
+	"013039001": "diepAcquisitions",
 	"013007001": "netAdjustments",
+	"013031001": "assistanceReceived",
+	"013033001": "assistanceRepaid",
 	"013009001": "dispositions",
-	"013039001": "immediateExpensing",
+	"013041001": "diepProceeds",
+	"013043001": "diepUcc",
+	"013045001": "immediateExpensing",
+	"013029001": "aiipAcquisitions",
+	"013013001": "rate",
 	"013019001": "claim",
 };
 
@@ -81,12 +87,11 @@ function buildTotalsResolveLine(
  * here, across all TWENTY-FOUR printed columns (nineteen numbered, five the
  * page shows as arithmetic and does not number).
  *
- * The columns §3.2.3.14 lets Alberta state for itself are editable — class
- * number, opening UCC, acquisitions, net adjustments, dispositions, the DIEP
- * figure and the claim — plus the per-return immediate expensing limit above
- * the grid. The rest is read from the last computed return, matching the same
- * "don't render a computed figure as a box" rule the card editor's generator
- * enforces.
+ * All fourteen columns §3.2.3.14 lets Alberta state for itself are editable,
+ * plus the per-return immediate expensing limit above the grid. The remaining
+ * ten are arithmetic the form states in terms of them and are read from the
+ * last computed return, matching the same "don't render a computed figure as a
+ * box" rule the card editor's generator enforces.
  *
  * Its own nav entry now, at num "013" (`at1/alberta-cca13.ts`). The Alberta
  * columns used to live on the FEDERAL `cca.classes` slice, and the registry
@@ -120,8 +125,17 @@ export function Schedule13FormView({
 	const filed = computed?.schedulePayloads?.find(
 		(p) => p.scheduleId === SCHEDULE_ID,
 	);
+	/*
+	 * `display` first, then `values`, so a transmitted figure always wins.
+	 *
+	 * The five columns the form numbers nowhere (10, 13, 15-17) arrive on the
+	 * display channel under a synthetic `9nn` field keyed by column number —
+	 * they are arithmetic the page prints but does not transmit, and rendering
+	 * a dash where the form shows a figure is what made this grid read as
+	 * unimplemented.
+	 */
 	const filedByFieldOccurrence = new Map(
-		(filed?.values ?? []).flatMap((v) => {
+		[...(filed?.display ?? []), ...(filed?.values ?? [])].flatMap((v) => {
 			const parsed = parseAt1LineItemId(v.lineItemId);
 			return parsed
 				? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const]
@@ -167,9 +181,18 @@ export function Schedule13FormView({
 	 * this view can honestly show, and they are what was absent.
 	 */
 	const columns: ClassGridColumn[] = AT1_SCHEDULE_13_GRID_COLUMNS.map((c) => ({
-		// The printed three-digit number, or the column number in parentheses
-		// where the page gives none — never a blank header cell.
+		/*
+		 * The printed three-digit number, or the column number in parentheses
+		 * where the page gives none — never a blank header cell.
+		 *
+		 * `resolveCell` looks a cell up by this string, so an unnumbered column
+		 * must resolve to the synthetic `9nn` field the engine puts its computed
+		 * value on, not to the "(10)" label a preparer reads.
+		 */
 		line: c.line ? c.line.slice(3, 6) : `(${c.column})`,
+		lookup: c.line
+			? c.line.slice(3, 6)
+			: `9${String(c.column).padStart(2, "0")}`,
 		caption: c.caption,
 		kind: c.kind,
 		fieldName: c.line ? FIELD_NAME[c.line] : undefined,
@@ -196,7 +219,7 @@ export function Schedule13FormView({
 			)}
 			<PaperSection
 				title="Alberta capital cost allowance by class"
-				description="One row per class. The Alberta columns the specification lets you state — opening UCC, acquisitions, net adjustments, dispositions, DIEP and the claim — are editable; the rest is computed or assumed equal to federal. The AIIP designation and 'class emptied' are collected in Guided view, since neither fits a money column here."
+				description="One row per class. Every column the specification lets Alberta state is editable here; the remaining ten are arithmetic on them, shown from the last computed return. 'Class emptied' and the straight-line classes 13 and 14 are collected in Guided view — neither is a column of this grid."
 				formId="AT1SCH13"
 			>
 				<div className="p-2">
@@ -223,13 +246,11 @@ export function Schedule13FormView({
 						onRemove={(i) => remove(i)}
 						addLabel="+ Add a CCA class"
 						resolveCell={(row, col) => {
-							// column.line was rewritten to the bare field above; re-derive the
-							// full occurrence-scoped lookup key (CCA classes file with
-							// occurrence = array index + 1, the convention this engine uses
-							// elsewhere for repeating schedule rows).
+							// CCA classes file with occurrence = array index + 1, the
+							// convention this engine uses for repeating schedule rows.
 							if (row.arrayIndex === undefined) return undefined;
 							return filedByFieldOccurrence.get(
-								`${col.line}-${row.arrayIndex + 1}`,
+								`${col.lookup ?? col.line}-${row.arrayIndex + 1}`,
 							) as string | number | undefined;
 						}}
 					/>

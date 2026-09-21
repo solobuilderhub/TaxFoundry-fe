@@ -1509,6 +1509,13 @@ export function PaperContinuityGrid<T extends Record<string, unknown>>({
 
 /** One column of a class/type grid — a fixed field position every row shares. */
 export interface ClassGridColumn {
+	/**
+	 * The key `resolveCell` looks this column's value up by, when it differs
+	 * from the printed label in `line`. A column the form numbers nowhere prints
+	 * as "(10)" but resolves against the synthetic field the engine publishes
+	 * its computed value on.
+	 */
+	lookup?: string;
 	line: string;
 	caption: string;
 	kind: PaperFieldKind;
@@ -1692,8 +1699,23 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 															step="any"
 															disabled={disabled}
 															aria-label={`${row.label} — ${col.caption}`}
+															/*
+															 * What the engine actually used, shown as the
+															 * placeholder while the box is empty.
+															 *
+															 * Most of these columns mean "blank = take the
+															 * computed default", so an empty box hid the figure
+															 * that will be FILED: a class claiming the maximum
+															 * showed nothing at the CCA column and nothing at
+															 * the rate, and the only evidence of either was the
+															 * closing balance further along the row. Typing
+															 * still overrides — this stops a default being
+															 * invisible.
+															 */
+															placeholder={readOnlyText || undefined}
 															className={cn(
 																"h-8 w-full min-w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm tabular-nums outline-none",
+																"placeholder:italic placeholder:text-muted-foreground/70",
 																col.kind === "date" || isTextKind(col.kind)
 																	? "text-left"
 																	: "text-right",
