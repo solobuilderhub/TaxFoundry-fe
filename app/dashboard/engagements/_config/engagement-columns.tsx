@@ -1,4 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
+import type { FluidColumnDef } from "@classytic/fluid/client/table";
 import { ArrowUpRight, MoreHorizontal, Pencil } from "lucide-react";
 import type { EngagementStatus, EngagementYear } from "@/api/engagements";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ export function createEngagementColumns(opts: {
 	clientName: (id: string) => string;
 	onOpen: (row: EngagementYear) => void;
 	onEdit: (row: EngagementYear) => void;
-}): ColumnDef<EngagementYear>[] {
+}): FluidColumnDef<EngagementYear>[] {
 	return [
 		{
 			accessorKey: "clientId",

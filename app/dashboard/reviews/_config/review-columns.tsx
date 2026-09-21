@@ -1,4 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
+import type { FluidColumnDef } from "@classytic/fluid/client/table";
 import { CheckCircle2, MoreHorizontal } from "lucide-react";
 import type { FlagSeverity, ReviewMemo } from "@/api/review-memos";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ export function createReviewColumns(opts: {
 	engagementLabel: (id: string) => string;
 	onSignOff: (row: ReviewMemo) => void;
 	signingId?: string | null;
-}): ColumnDef<ReviewMemo>[] {
+}): FluidColumnDef<ReviewMemo>[] {
 	return [
 		{
 			accessorKey: "engagementYearId",

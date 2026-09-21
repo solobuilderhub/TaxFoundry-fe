@@ -1,4 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
+import type { FluidColumnDef } from "@classytic/fluid/client/table";
 import type { Client } from "@/api/clients";
 import { Badge } from "@/components/ui/badge";
 
@@ -39,7 +39,7 @@ export function clientReadiness(c: Client): {
 }
 
 /** ColumnDef[] for fluid's ResourceDashboard (TanStack Table under the hood). */
-export const clientColumns: ColumnDef<Client>[] = [
+export const clientColumns: FluidColumnDef<Client>[] = [
 	{
 		accessorKey: "name",
 		header: "Client",
