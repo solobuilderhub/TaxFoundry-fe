@@ -3,44 +3,51 @@ import "./globals.css";
 import Providers from "@/components/providers/Providers";
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+	variable: "--font-geist-sans",
+	subsets: ["latin"],
 });
 
-export const viewport = {
-  maximumScale: 1, // Disable auto-zoom on mobile Safari
-};
-
+/*
+ * No `maximumScale`. It was set to 1 to stop mobile Safari auto-zooming when a
+ * field is focused, but that also forbids a reader from pinch-zooming at all —
+ * axe flags it, and on a form of dense numeric grids the people most likely to
+ * need zoom are exactly the ones it was taken from.
+ *
+ * Safari only auto-zooms when the focused control's font is under 16px, so the
+ * fix for that belongs in the input styles, not in a page-wide zoom lock.
+ */
+export const viewport = {};
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+	variable: "--font-geist-mono",
+	subsets: ["latin"],
 });
 
 export const metadata = {
-  // Required for the file-convention `opengraph-image`/`icon` routes to resolve
-  // to absolute URLs — without it Next falls back to http://localhost:3000 and
-  // warns on every prerendered page.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://taxfoundry.ca'),
-  title: {
-    default: 'TaxFoundry',
-    template: '%s | Agentic Canadian corporate tax filing',
-  },
-  description:
-    'TaxFoundry prepares, reviews, and files Canadian federal T2 and Alberta AT1 corporate tax returns. Agentic, accountant-grade, and built to CRA/TRA certification requirements.',
-  openGraph: {
-    title: 'TaxFoundry',
-    description:
-      'Agentic Canadian corporate tax filing. Federal T2 and Alberta AT1, prepared and reviewed with an accountant-grade engine.',
-  },
-  twitter: {
-    card: 'summary_large_image',
-  },
+	// Required for the file-convention `opengraph-image`/`icon` routes to resolve
+	// to absolute URLs — without it Next falls back to http://localhost:3000 and
+	// warns on every prerendered page.
+	metadataBase: new URL(
+		process.env.NEXT_PUBLIC_SITE_URL ?? "https://taxfoundry.ca",
+	),
+	title: {
+		default: "TaxFoundry",
+		template: "%s | Agentic Canadian corporate tax filing",
+	},
+	description:
+		"TaxFoundry prepares, reviews, and files Canadian federal T2 and Alberta AT1 corporate tax returns. Agentic, accountant-grade, and built to CRA/TRA certification requirements.",
+	openGraph: {
+		title: "TaxFoundry",
+		description:
+			"Agentic Canadian corporate tax filing. Federal T2 and Alberta AT1, prepared and reviewed with an accountant-grade engine.",
+	},
+	twitter: {
+		card: "summary_large_image",
+	},
 };
 
-
-const LIGHT_THEME_COLOR = 'hsl(0 0% 100%)';
-const DARK_THEME_COLOR = 'hsl(240deg 10% 3.92%)';
+const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
+const DARK_THEME_COLOR = "hsl(240deg 10% 3.92%)";
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;
@@ -59,22 +66,21 @@ const THEME_COLOR_SCRIPT = `\
   updateThemeColor();
 })();`;
 
-
 export default function RootLayout({ children }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* <script
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<head>
+				{/* <script
           dangerouslySetInnerHTML={{
             __html: THEME_COLOR_SCRIPT,
           }}
         /> */}
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Providers>{children}</Providers>
-      </body>
-    </html>
-  );
+			</head>
+			<body
+				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+			>
+				<Providers>{children}</Providers>
+			</body>
+		</html>
+	);
 }

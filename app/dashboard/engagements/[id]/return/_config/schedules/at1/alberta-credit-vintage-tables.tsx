@@ -22,10 +22,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { AlbertaOtherCredits3Values } from "../../../_lib/return-input";
 import {
-	albertaVintageRowLabel,
 	AT1_SCHEDULE_3_FOOTNOTES,
 	AT1_SCHEDULE_3_VINTAGE_TABLES,
 	AT1_SCHEDULE_3_VINTAGE_TOTALS_LABEL,
+	albertaVintageRowLabel,
 	type Schedule3VintageColumn,
 } from "./paper/generated/schedule3.layout";
 
@@ -324,7 +324,9 @@ function VintageTable({
 	disabled?: boolean;
 	footnoteSymbol: (mark: number) => string | undefined;
 }) {
-	const table = AT1_SCHEDULE_3_VINTAGE_TABLES.find((t) => t.section === section);
+	const table = AT1_SCHEDULE_3_VINTAGE_TABLES.find(
+		(t) => t.section === section,
+	);
 	const arrayName = ARRAY_NAME[section] ?? "vintages.investorTaxCredit";
 	const { fields, append, remove } = useFieldArray({
 		control,
@@ -338,7 +340,9 @@ function VintageTable({
 	const [yearColumn, ...rest] = table.columns;
 	const dataColumns = rest;
 	const taken = new Set(
-		rows.flatMap((r) => (typeof r?.yearIndex === "number" ? [r.yearIndex] : [])),
+		rows.flatMap((r) =>
+			typeof r?.yearIndex === "number" ? [r.yearIndex] : [],
+		),
 	);
 
 	/**
@@ -372,7 +376,9 @@ function VintageTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead className="w-8" />
+							<TableHead className="w-8">
+								<span className="sr-only">Row actions</span>
+							</TableHead>
 							{yearColumn && (
 								<VintageHead
 									column={yearColumn}
@@ -386,7 +392,9 @@ function VintageTable({
 									footnoteSymbol={footnoteSymbol}
 								/>
 							))}
-							<TableHead className="w-10" />
+							<TableHead className="w-10">
+								<span className="sr-only">Row actions</span>
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>

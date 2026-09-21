@@ -462,7 +462,9 @@ export function LimitedPartnershipTable({
 							>
 								Closing balance
 							</HeadWithLine>
-							<TableHead className="w-10" />
+							<TableHead className="w-10">
+								<span className="sr-only">Row actions</span>
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -905,7 +907,9 @@ export function NonCapitalVintageTable({
 							<HeadWithLine lineId={line("169")} align="right">
 								Balance at end of year 155 + 157 + 159 - 165 - 167
 							</HeadWithLine>
-							<TableHead className="w-10" />
+							<TableHead className="w-10">
+								<span className="sr-only">Row actions</span>
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -1105,7 +1109,9 @@ export function OtherLossVintageTable({
 							<HeadWithLine lineId={line("187")} align="right">
 								Listed personal property losses
 							</HeadWithLine>
-							<TableHead className="w-10" />
+							<TableHead className="w-10">
+								<span className="sr-only">Row actions</span>
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>

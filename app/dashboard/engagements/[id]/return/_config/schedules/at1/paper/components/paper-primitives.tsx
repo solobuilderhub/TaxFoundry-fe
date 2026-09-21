@@ -1426,12 +1426,23 @@ export function PaperContinuityGrid<T extends Record<string, unknown>>({
 }) {
 	const footnoteSymbols = buildFootnoteSymbolMap(pools, rowOrder);
 	return (
-		<div className="overflow-x-auto rounded-lg border bg-card">
+		<div
+			/*
+			 * The grid scrolls sideways — twenty-four columns on Schedule 13 — and a
+			 * scrollable region that nothing can focus is unreachable without a
+			 * mouse. `tabIndex` makes it a tab stop so the arrow keys can pan it;
+			 * the group role and label say what the reader has landed on.
+			 */
+			tabIndex={0}
+			role="group"
+			aria-label="Scrollable table — use the arrow keys to move across the columns"
+			className="overflow-x-auto rounded-lg border bg-card focus-visible:outline-2 focus-visible:outline-ring"
+		>
 			<table className="w-full border-collapse text-sm">
 				<thead>
 					<tr className="border-b bg-muted/40">
 						<th className="sticky left-0 min-w-[14rem] bg-muted/40 px-3 py-2 text-left font-medium">
-							&nbsp;
+							<span className="sr-only">Line</span>
 						</th>
 						{pools.map((p) => (
 							<th
@@ -1616,12 +1627,23 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	const growable = !!onAppend && !!onRemove;
 	return (
 		<div className="space-y-2">
-			<div className="overflow-x-auto rounded-lg border bg-card">
+			<div
+				/*
+				 * The grid scrolls sideways — twenty-four columns on Schedule 13 — and a
+				 * scrollable region that nothing can focus is unreachable without a
+				 * mouse. `tabIndex` makes it a tab stop so the arrow keys can pan it;
+				 * the group role and label say what the reader has landed on.
+				 */
+				tabIndex={0}
+				role="group"
+				aria-label="Scrollable table — use the arrow keys to move across the columns"
+				className="overflow-x-auto rounded-lg border bg-card focus-visible:outline-2 focus-visible:outline-ring"
+			>
 				<table className="w-full border-collapse text-xs">
 					<thead>
 						<tr className="border-b bg-muted/40">
 							<th className="sticky left-0 min-w-[10rem] bg-muted/40 px-3 py-2 text-left font-medium">
-								&nbsp;
+								<span className="sr-only">Line</span>
 							</th>
 							{columns.map((c, i) => (
 								<th
