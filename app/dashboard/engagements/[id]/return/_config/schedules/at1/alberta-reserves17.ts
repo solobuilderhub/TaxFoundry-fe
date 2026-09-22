@@ -63,14 +63,17 @@ export const albertaReserves17 = defineSchedule({
 							"transfer",
 							"Transfer on amalgamation or wind-up of subsidiary",
 						),
-						money("closing", "Balance at the end of the year"),
+						money("closing", "Balance at the end of the year", {
+							description:
+								"NOT derived from opening + transfer — a tax reserve is a fresh discretionary claim each year (s.20(1)), so its closing balance is its own figure, not a continuity total. Blank = the federal Schedule 13 closing balance for this reserve kind.",
+						}),
 					]),
 				],
 				{
 					variant: "card",
 					cols: 1,
 					description:
-						"Add a row only for a reserve kind whose Alberta figures DIFFER from federal — a kind omitted here takes the federal figure, which is what the form's own \"required if the opening balance or the claim differs\" instruction means. An explicit 0 is a real answer. Bank reserves and insurance policy reserves have no federal equivalent at all, so for those this is the only source. The totals (021/051/081) and line 091 are computed; see Form View.",
+						"Add a row only for a reserve kind whose Alberta figures DIFFER from federal — a kind omitted here takes the federal figure, which is what the form's own \"required if the opening balance or the claim differs\" instruction means. An explicit 0 is a real answer. Bank reserves and insurance policy reserves have no federal equivalent at all, so for those this is the only source. The totals (021/051/081) SUM the entered-or-federal-defaulted rows — 081 does not derive from 021 + 051; the closing column is its own independent figure per row (see above), never opening plus transfer. Line 091 IS 021 + 051 (last year's reserve reversed into income), which is the one place addition applies here.",
 				},
 			),
 		],
