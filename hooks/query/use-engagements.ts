@@ -62,9 +62,29 @@ export function useEngagementActions() {
 		// until a full page reload forced a fresh query — a preparer could recompute,
 		// navigate to a schedule, and see stale figures with no indication they were
 		// stale (found via live QA on Schedule 12 right after this fix's own build-out).
-		onSuccess: () => {
-			invalidate();
-			qc.invalidateQueries({ queryKey: ["computed-returns"] });
+		/*
+		 * `invalidateQueries` marks a query stale and KICKS OFF a background
+		 * refetch — it does not wait for that refetch to land unless its own
+		 * promise is awaited. This callback used to fire both calls and return,
+		 * so `mutateAsync` resolved (and the caller could navigate) before the
+		 * refetch had actually completed. `runCompute` navigates away from the
+		 * current schedule the moment `mutateAsync` resolves; if a preparer then
+		 * navigated straight back before that background refetch landed, the
+		 * schedule remounted with the engagement query's PRE-recompute data —
+		 * a genuine timing race, reproducing as "the guided form shows blank
+		 * after recompute" on however fast the network happened to be
+		 * (TF_DEV_BUG_LIST_2026-09-18.md, BUG-109/BUG-115 — the "environment/
+		 * ordering-dependent" framing in that report is exactly this: the same
+		 * repro landing differently across two accounts is what an unawaited
+		 * race looks like). Awaiting both here means `mutateAsync` does not
+		 * resolve — and `runCompute` does not navigate — until both the
+		 * engagement and the computed-return are provably fresh.
+		 */
+		onSuccess: async () => {
+			await Promise.all([
+				invalidate(),
+				qc.invalidateQueries({ queryKey: ["computed-returns"] }),
+			]);
 		},
 	});
 	const prepare = useMutation({
