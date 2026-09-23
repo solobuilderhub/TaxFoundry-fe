@@ -196,11 +196,26 @@ export function ReturnEditor({ id }: { id: string }) {
 			? tree.filter((s) => isProgramSpecific(s, engagement.program))
 			: tree;
 
+	/*
+	 * Built on `latestRi.current`, not the render's `seeded` — matching
+	 * `writeInput` below, and for the same reason: `seeded` is a closure
+	 * variable captured at render time, so two saves fired in quick
+	 * succession (a schedule save racing a paper-view `writeInput`, or two
+	 * schedule saves before the first's response re-renders this component)
+	 * can each build their `next` from the SAME stale snapshot. Whichever
+	 * request's response lands second then persists a `returnInput` that is
+	 * missing whatever the other one wrote — reported as a successful save
+	 * whose values are gone on reopen (TF_DEV_BUG_LIST_2026-09-18.md,
+	 * BUG-107). `latestRi.current` is a ref, updated synchronously the
+	 * instant either function runs, so the second save in a race always
+	 * builds on the first's result rather than overwriting it.
+	 */
 	const saveSlice = async (
 		key: ScheduleKey,
 		values: Record<string, unknown>,
 	) => {
-		const next: ReturnInput = { ...seeded, [key]: values };
+		const next: ReturnInput = { ...latestRi.current, [key]: values };
+		latestRi.current = next;
 		setRi(next);
 		try {
 			await saveInput.mutateAsync({ id, returnInput: next });
