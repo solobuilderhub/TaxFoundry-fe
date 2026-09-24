@@ -46,6 +46,8 @@ export const albertaReserves17 = defineSchedule({
 	hint: "Eight reserve kinds — overrides where Alberta differs from federal",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule17FormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

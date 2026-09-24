@@ -9,6 +9,7 @@ import {
 	PaperLeaderRow,
 	PaperSection,
 } from "./components/paper-primitives";
+import { WorksheetMoneyField } from "./components/worksheet-table";
 import {
 	AT1_SCHEDULE_16_FIELDS,
 	AT1_SCHEDULE_16_FOOTNOTES,
@@ -136,6 +137,31 @@ export function Schedule16FormView({
 					</PaperSection>
 				);
 			})}
+			{/*
+			 * Not printed: the federal side of the two lines Alberta may vary.
+			 * The schedule is required only when 012 or 020 differs from federal,
+			 * and this product models no T661, so the federal figures are stated
+			 * here. Leave blank when the two agree.
+			 */}
+			<PaperSection
+				title="Federal comparison (not printed on the form)"
+				description="Schedule 16 is required only when Alberta's opening pool (012) or claim (020) differs from federal. Enter the federal figures only when they differ."
+			>
+				<WorksheetMoneyField
+					control={s16Control}
+					name="federalOpeningPoolBalance"
+					label="Federal unclaimed pool balance from the previous year"
+					hint="The federal counterpart of line 012."
+					disabled={disabled}
+				/>
+				<WorksheetMoneyField
+					control={s16Control}
+					name="federalAmountClaimed"
+					label="Federal pool deduction claimed this year"
+					hint="The federal counterpart of line 020."
+					disabled={disabled}
+				/>
+			</PaperSection>
 			<PaperFootnotes notes={AT1_SCHEDULE_16_FOOTNOTES} />
 		</div>
 	);

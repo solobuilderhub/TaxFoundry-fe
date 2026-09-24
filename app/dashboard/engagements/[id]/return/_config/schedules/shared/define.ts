@@ -25,52 +25,64 @@ export type ScheduleProgram = "T2" | "AT1" | "CO17";
 export type NavigateToLine = (form: string, line: string) => void;
 
 export type ScheduleDef<K extends keyof ReturnInput = keyof ReturnInput> = {
-  /** The `ReturnInput` slice this schedule reads and writes. */
-  key: K;
-  /** CRA schedule / jacket line number — the mono chip in the schedule tree. */
-  num: string;
-  label: string;
-  hint: string;
-  schema: FormSchema;
-  /**
-   * Programs this schedule appears for. Omitted = every program (the federal
-   * schedules a provincial return still consumes). A program-specific schedule
-   * (e.g. the Québec CO-17 block) lists only its own program.
-   */
-  programs?: readonly ScheduleProgram[];
-  /**
-   * A paper-exact "Form View" — a second, switchable rendering of the SAME
-   * `control` the guided card editor uses (see `return-editor.tsx`'s
-   * `ScheduleForm`, which passes `form.control` from `SchemaForm`'s
-   * `children(form)` render-prop so both views share one form-state instance
-   * and switching between them never drops an in-progress edit). Omitted for
-   * every schedule that doesn't have one yet — the toggle only shows when
-   * this is defined.
-   */
-  formView?: (props: {
-    control: Control<Record<string, unknown>>;
-    disabled?: boolean;
-    computed?: ComputedReturn;
-    engagement?: EngagementYear;
-    client?: Client;
-    /** Jump to another schedule and highlight one of its lines — undefined when the host hasn't wired navigation (falls back to an inert badge). */
-    onNavigate?: NavigateToLine;
-    /** The line to scroll to and briefly highlight on THIS schedule, when navigation just landed here. */
-    highlightLine?: string;
-    /**
-     * The whole working return, for a figure this schedule displays but
-     * another schedule's slice owns — a T2 amount a Schedule 21 box reads from
-     * Schedule 12's slice, say. Read-only here; write through `writeInput`.
-     */
-    returnInput?: ReturnInput;
-    /**
-     * Persist one value into ANOTHER schedule's slice of the working return,
-     * immediately. Not for this schedule's own fields — bind those through
-     * `control`, or this schedule's next save overwrites the write.
-     */
-    writeInput?: (path: string, value: number | undefined) => Promise<void>;
-  }) => ReactNode;
+	/** The `ReturnInput` slice this schedule reads and writes. */
+	key: K;
+	/** CRA schedule / jacket line number — the mono chip in the schedule tree. */
+	num: string;
+	label: string;
+	hint: string;
+	schema: FormSchema;
+	/**
+	 * Programs this schedule appears for. Omitted = every program (the federal
+	 * schedules a provincial return still consumes). A program-specific schedule
+	 * (e.g. the Québec CO-17 block) lists only its own program.
+	 */
+	programs?: readonly ScheduleProgram[];
+	/**
+	 * A paper-exact "Form View" — a second, switchable rendering of the SAME
+	 * `control` the guided card editor uses (see `return-editor.tsx`'s
+	 * `ScheduleForm`, which passes `form.control` from `SchemaForm`'s
+	 * `children(form)` render-prop so both views share one form-state instance
+	 * and switching between them never drops an in-progress edit). Omitted for
+	 * every schedule that doesn't have one yet — the toggle only shows when
+	 * this is defined.
+	 */
+	formView?: (props: {
+		control: Control<Record<string, unknown>>;
+		disabled?: boolean;
+		computed?: ComputedReturn;
+		engagement?: EngagementYear;
+		client?: Client;
+		/** Jump to another schedule and highlight one of its lines — undefined when the host hasn't wired navigation (falls back to an inert badge). */
+		onNavigate?: NavigateToLine;
+		/** The line to scroll to and briefly highlight on THIS schedule, when navigation just landed here. */
+		highlightLine?: string;
+		/**
+		 * The whole working return, for a figure this schedule displays but
+		 * another schedule's slice owns — a T2 amount a Schedule 21 box reads from
+		 * Schedule 12's slice, say. Read-only here; write through `writeInput`.
+		 */
+		returnInput?: ReturnInput;
+		/**
+		 * Persist one value into ANOTHER schedule's slice of the working return,
+		 * immediately. Not for this schedule's own fields — bind those through
+		 * `control`, or this schedule's next save overwrites the write.
+		 */
+		writeInput?: (path: string, value: unknown) => Promise<void>;
+	}) => ReactNode;
+	/**
+	 * The printed form is the ONLY view — no Guided toggle.
+	 *
+	 * Set only when every field in `schema` is editable in `formView`. Two views
+	 * of one form let a field exist in one and not the other: Schedule 1's
+	 * eligibility question lived only in Guided, so from Form View the schedule
+	 * was never filed. Setting this on a schedule whose Form View is missing a
+	 * field makes that field unreachable — check it field by field first.
+	 */
+	formOnly?: boolean;
 };
 
 /** Identity helper — infers `key` as a literal so the registry can derive `ScheduleKey`. */
-export const defineSchedule = <K extends keyof ReturnInput>(d: ScheduleDef<K>): ScheduleDef<K> => d;
+export const defineSchedule = <K extends keyof ReturnInput>(
+	d: ScheduleDef<K>,
+): ScheduleDef<K> => d;

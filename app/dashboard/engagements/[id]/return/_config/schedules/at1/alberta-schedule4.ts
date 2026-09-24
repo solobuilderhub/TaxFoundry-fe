@@ -112,5 +112,7 @@ export const albertaForeignInvestment4 = defineSchedule({
 	hint: "Foreign non-business income tax credit",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule4FormView, props),
+	// Every field is on the form — the country grid and its column E working.
+	formOnly: true,
 	schema: albertaSchedule4Schema,
 });

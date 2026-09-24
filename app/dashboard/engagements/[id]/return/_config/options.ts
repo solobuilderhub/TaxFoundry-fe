@@ -65,17 +65,6 @@ export const PROVINCE_OPTIONS = [
 	{ value: "YT", label: "Yukon" },
 ];
 
-/** AT1 Schedule 1 eligibility — only the first two may claim the small business deduction. */
-export const CORPORATION_STATUS_OPTIONS = [
-	{ value: "ccpc", label: "Canadian-controlled private corporation" },
-	{
-		value: "albertaCoopOrCreditUnion",
-		label: "Alberta co-operative or credit union",
-	},
-	{ value: "section149Exempt", label: "Section 149 exempt" },
-	{ value: "other", label: "Other" },
-];
-
 /** Schedule 8 class picker — label/value only; the rate lives in `_lib/cca-rates`. */
 export const CCA_CLASS_OPTIONS = CCA_CLASSES.map((c) => ({
 	value: c.value,
@@ -128,7 +117,10 @@ export const EIFEL_COUNTERPARTY_OPTIONS = [
 	{ value: "canadian-arm-length", label: "Canadian, arm's length" },
 	{ value: "canadian-non-arm-length", label: "Canadian, non-arm's length" },
 	{ value: "non-resident-arm-length", label: "Non-resident, arm's length" },
-	{ value: "non-resident-non-arm-length", label: "Non-resident, non-arm's length" },
+	{
+		value: "non-resident-non-arm-length",
+		label: "Non-resident, non-arm's length",
+	},
 ];
 
 /** T2 Schedule 130 Part 2C — the ten resource pools, in the form's own row order. */

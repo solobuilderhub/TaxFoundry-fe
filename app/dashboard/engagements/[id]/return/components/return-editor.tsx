@@ -1,5 +1,6 @@
 "use client";
 
+import { useDebounce } from "@classytic/fluid/client/hooks";
 import { ResponsiveSplitLayout } from "@classytic/fluid/client/responsive-split-layout";
 import { SchemaForm } from "@classytic/fluid/formkit";
 import {
@@ -13,11 +14,17 @@ import {
 	ScrollText,
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { type Control, useWatch } from "react-hook-form";
+import { useEffect, useRef, useState } from "react";
+import {
+	type Control,
+	type UseFormReturn,
+	useForm,
+	useWatch,
+} from "react-hook-form";
 import { toast } from "sonner";
 import type { Client } from "@/api/clients";
-import type { EngagementYear } from "@/api/engagements";
+import type { ReturnPreview } from "@/api/computed-returns";
+import { type EngagementYear, engagementsApi } from "@/api/engagements";
 import type { GifiImportResult } from "@/api/gifi";
 import { FORM_COMPONENTS } from "@/components/form/money-field";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +45,7 @@ import {
 } from "../_config/line-labels";
 import {
 	formViewFor,
+	isFormOnly,
 	isProgramSpecific,
 	SCHEDULE_TREE,
 	type ScheduleKey,
@@ -46,13 +54,18 @@ import {
 } from "../_config/registry";
 import { Schedule2View } from "../_config/schedules/at1/paper/schedule2-view";
 import { Schedule10View } from "../_config/schedules/at1/paper/schedule10-view";
-import { Schedule12View } from "../_config/schedules/at1/paper/schedule12-view";
 import type { NavigateToLine } from "../_config/schedules/shared/define";
 import { bookNetIncomeOf } from "../_lib/calc";
 import type { CcaClass, ReturnInput } from "../_lib/return-input";
+import {
+	normalizeSchedule2,
+	normalizeSchedule10,
+	withoutNulls,
+} from "../_lib/save-normalize";
 import { useCcaPreviewTotal } from "../_lib/use-cca-preview";
 import { AutoFillDialog } from "./auto-fill-dialog";
 import { GifiImportDialog } from "./gifi-import-dialog";
+import { GoToLine } from "./go-to-line";
 import { ScheduleFiledValues } from "./schedule-filed-values";
 
 const money = (n: number) =>
@@ -63,35 +76,74 @@ const money = (n: number) =>
 	}).format(n);
 
 /**
- * AT1 schedules with no `ScheduleDef`/editable side at all — each is fully
- * computed from OTHER schedules' fields (Schedule 12), or has no dedicated
- * `ReturnInput` slice to write to (Schedules 2 and 10). Special-cased nav
- * entries, the same pattern already used for "Tax Summary (jacket)", rather
- * than the normal registry (which requires a real `ReturnInput` key).
+ * AT1 forms with no `ReturnInput` slice of their own (Schedules 2 and 10).
+ * Each edits a slice another form owns — Schedule 2's Area A lives on the
+ * jacket's `alberta` slice, Schedule 10's requests on Schedule 21's
+ * `albertaContinuity` — so they sit outside the registry, which pins one nav
+ * entry per slice, and are bound to that slice here.
  */
-const READ_ONLY_SCHEDULES = [
+const SLICE_SCHEDULES = [
 	{
 		key: "schedule2" as const,
 		num: "002",
 		label: "Alberta Income Allocation Factor (S2)",
-		hint: "Read-only — Area A only, carried in from federal Schedule 5",
-		View: Schedule2View,
+		hint: "Area A or your industry's Area B formula",
+		slice: "alberta" as const,
 	},
 	{
 		key: "schedule10" as const,
 		num: "010",
 		label: "Alberta Loss Carry-Back Application (S10)",
-		hint: "Read-only — non-capital and capital carrybacks, as filed",
-		View: Schedule10View,
-	},
-	{
-		key: "schedule12" as const,
-		num: "012",
-		label: "Alberta Income/Loss Reconciliation (S12)",
-		hint: "Read-only — computed from the Alberta-override fields on CCA, Reserves, Dispositions and Loss Continuity",
-		View: Schedule12View,
+		hint: "Carry a loss back to the three preceding years",
+		slice: "albertaContinuity" as const,
 	},
 ];
+
+/** One schedule in the sidebar: its form-number chip, name, hint and "has data" dot. */
+function NavItem({
+	num,
+	label,
+	hint,
+	active,
+	hasData,
+	onClick,
+}: {
+	num: string;
+	label: string;
+	hint: string;
+	active: boolean;
+	hasData: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={cn(
+				"flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
+				active && "bg-accent",
+			)}
+		>
+			<span className="mt-0.5 inline-flex w-9 shrink-0 justify-center rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-muted-foreground">
+				{num}
+			</span>
+			<span className="min-w-0 flex-1">
+				<span className="flex items-center gap-1.5">
+					<span className="truncate font-medium">{label}</span>
+					{hasData && (
+						<span
+							className="size-1.5 shrink-0 rounded-full bg-primary"
+							title="Has entered data"
+						/>
+					)}
+				</span>
+				<span className="block truncate text-xs text-muted-foreground">
+					{hint}
+				</span>
+			</span>
+		</button>
+	);
+}
 
 /** True if a schedule slice carries any entered value (drives the nav "has data" dot). */
 const hasData = (v: unknown): boolean =>
@@ -135,9 +187,11 @@ export function ReturnEditor({ id }: { id: string }) {
 	const { latest: computed } = useLatestComputedReturn(id);
 	const { data: client } = useClient(engagement?.clientId);
 
-	const [active, setActive] = useState<
-		ScheduleKey | "summary" | "schedule12" | "schedule2" | "schedule10"
-	>("incomeStatement");
+	// `null` until the preparer picks one — the landing schedule depends on the
+	// program, which is not known until the engagement loads (see `active`).
+	const [chosen, setActive] = useState<
+		ScheduleKey | "summary" | "schedule2" | "schedule10" | null
+	>(null);
 	// The line to scroll to and briefly highlight after a paper Form View's
 	// cross-reference badge switches `active` to another schedule — cleared on
 	// a timer so clicking the same badge again re-triggers the highlight (a
@@ -153,7 +207,8 @@ export function ReturnEditor({ id }: { id: string }) {
 		setHighlightLine(line);
 		setTimeout(() => setHighlightLine(undefined), 2500);
 	};
-	const [onlyProgramSpecific, setOnlyProgramSpecific] = useState(false);
+	// The collapsed "Federal figures" group: `null` = follow the active schedule.
+	const [federalOpenChoice, setFederalOpen] = useState<boolean | null>(null);
 	const [ri, setRi] = useState<ReturnInput | null>(null);
 	// Inputs edited since the last compute → the summary is stale until recomputed.
 	const [dirty, setDirty] = useState(false);
@@ -164,6 +219,43 @@ export function ReturnEditor({ id }: { id: string }) {
 	const [formVersion, setFormVersion] = useState(0);
 	// The newest working return, for `writeInput` — see its doc comment.
 	const latestRi = useRef<ReturnInput>({});
+	/*
+	 * Live recalculation. Every save returns the engine's figures for the
+	 * return as saved (`save-input`), and opening the return asks for them once
+	 * (`preview`) — so the forms fill in as the preparer types, like every tax
+	 * package, instead of staying blank until Compute. Nothing is recorded:
+	 * Compute is still what records the return and runs review.
+	 */
+	const [preview, setPreview] = useState<ReturnPreview | null>(null);
+	const [saveState, setSaveState] = useState<
+		"idle" | "saving" | "saved" | "error"
+	>("idle");
+	const saveSeq = useRef(0);
+	const inflight = useRef(0);
+	const [previewError, setPreviewError] = useState<string | null>(null);
+	const takePreview = (res: unknown) => {
+		const r = res as
+			| { preview?: ReturnPreview; previewError?: string }
+			| undefined;
+		if (r?.preview) {
+			setPreview(r.preview);
+			setPreviewError(null);
+		} else if (r?.previewError) {
+			setPreviewError(r.previewError);
+		}
+	};
+	const refreshPreview = () =>
+		engagementsApi
+			.dispatchAction({ id, action: "preview", data: {} })
+			.then(takePreview)
+			.catch(() => undefined);
+	const previewedFor = useRef<string | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once per engagement, not per render
+	useEffect(() => {
+		if (!engagement || previewedFor.current === id) return;
+		previewedFor.current = id;
+		void refreshPreview();
+	}, [engagement, id]);
 
 	// Seed local working copy from the persisted returnInput once loaded.
 	const seeded =
@@ -179,22 +271,43 @@ export function ReturnEditor({ id }: { id: string }) {
 		return <div className="text-muted-foreground">Loading return…</div>;
 	}
 
+	// An AT1 opens on its jacket, like every other tax package; T2 and CO-17 on
+	// the income statement.
+	const active =
+		chosen ?? (engagement.program === "AT1" ? "alberta" : "incomeStatement");
+
 	// Only the schedules that apply to this engagement's program (CO17 shows the
 	// Québec block; T2/AT1 hide it).
 	const tree = scheduleTreeFor(engagement.program);
-	// Schedules the PROGRAM ITSELF owns (e.g. AT1's own jacket/loss-continuity/IEG
-	// blocks) vs shared federal ones the program also needs as input (CCA, SR&ED,
-	// …). Filtering to "this program only" is offered only when it would narrow
-	// anything — an engagement whose whole tree is program-specific already (or
-	// has none) gets no filter row.
-	const specificCount = tree.filter((s) =>
-		isProgramSpecific(s, engagement.program),
-	).length;
-	const showProgramFilter = specificCount > 0 && specificCount < tree.length;
-	const visibleTree =
-		onlyProgramSpecific && showProgramFilter
-			? tree.filter((s) => isProgramSpecific(s, engagement.program))
-			: tree;
+	/*
+	 * The return's OWN forms vs the federal schedules a provincial return reads
+	 * figures from. A T2 is all its own. A provincial return lists its own
+	 * forms — including the read-only AT1 schedules — in form-number order
+	 * (000 first, the EDI transmitter record last), and the federal inputs in a
+	 * collapsed group of their own.
+	 */
+	const isProvincial = engagement.program !== "T2";
+	const formOrder = (num: string) =>
+		/^\d+$/.test(num) ? Number(num) : Number.POSITIVE_INFINITY;
+	const ownForms = [
+		...tree
+			.filter((s) => !isProvincial || isProgramSpecific(s, engagement.program))
+			.map((s) => ({ ...s, editable: true })),
+		...(engagement.program === "AT1"
+			? SLICE_SCHEDULES.map((s) => ({
+					key: s.key,
+					num: s.num,
+					label: s.label,
+					hint: s.hint,
+					editable: false,
+				}))
+			: []),
+	].sort((a, b) => (isProvincial ? formOrder(a.num) - formOrder(b.num) : 0));
+	const federalForms = isProvincial
+		? tree.filter((s) => !isProgramSpecific(s, engagement.program))
+		: [];
+	const federalOpen =
+		federalOpenChoice ?? federalForms.some((s) => s.key === active);
 
 	/*
 	 * Built on `latestRi.current`, not the render's `seeded` — matching
@@ -210,20 +323,48 @@ export function ReturnEditor({ id }: { id: string }) {
 	 * instant either function runs, so the second save in a race always
 	 * builds on the first's result rather than overwriting it.
 	 */
+	/*
+	 * Every save goes through here — the forms save themselves as the preparer
+	 * types, like every tax package, so there is no Save button and no pop-up
+	 * per save; the header shows one quiet status instead.
+	 *
+	 * Saves can overlap, so each is numbered and only the NEWEST response's
+	 * live figures are shown: an older response landing late must not replace
+	 * figures computed from a later return.
+	 */
+	const persist = async (next: ReturnInput) => {
+		const seq = ++saveSeq.current;
+		inflight.current += 1;
+		setSaveState("saving");
+		let failed = false;
+		try {
+			const res = await saveInput.mutateAsync({ id, returnInput: next });
+			if (seq === saveSeq.current) takePreview(res);
+			setDirty(true);
+		} catch (err) {
+			failed = true;
+			setSaveState("error");
+			toast.error(
+				"Could not save your last change — check your connection and try again.",
+			);
+			throw err;
+		} finally {
+			inflight.current -= 1;
+			if (!failed && inflight.current === 0) setSaveState("saved");
+		}
+	};
+
 	const saveSlice = async (
 		key: ScheduleKey,
 		values: Record<string, unknown>,
 	) => {
-		const next: ReturnInput = { ...latestRi.current, [key]: values };
+		const next: ReturnInput = {
+			...latestRi.current,
+			[key]: withoutNulls(values) as Record<string, unknown>,
+		};
 		latestRi.current = next;
 		setRi(next);
-		try {
-			await saveInput.mutateAsync({ id, returnInput: next });
-			setDirty(true);
-			toast.success("Saved");
-		} catch {
-			toast.error("Save failed");
-		}
+		await persist(next).catch(() => undefined);
 	};
 
 	/**
@@ -242,18 +383,11 @@ export function ReturnEditor({ id }: { id: string }) {
 	 * dropping the first.
 	 */
 	latestRi.current = seeded;
-	const writeInput = async (path: string, value: number | undefined) => {
+	const writeInput = async (path: string, value: unknown) => {
 		const next = withValueAt(latestRi.current, path, value);
 		latestRi.current = next;
 		setRi(next);
-		try {
-			await saveInput.mutateAsync({ id, returnInput: next });
-			setDirty(true);
-			toast.success("Saved");
-		} catch (err) {
-			toast.error("Save failed");
-			throw err; // keep the box open, so the typed figure is not lost
-		}
+		await persist(next); // rethrows, so a box can keep the typed figure
 	};
 
 	// Apply a GIFI import: populate the income statement + balance sheet slices
@@ -266,12 +400,11 @@ export function ReturnEditor({ id }: { id: string }) {
 		};
 		setRi(next);
 		try {
-			await saveInput.mutateAsync({ id, returnInput: next });
-			setDirty(true);
+			await persist(next);
 			setFormVersion((v) => v + 1); // remount the form to show imported values
 			setActive("incomeStatement");
 		} catch {
-			toast.error("Save failed");
+			// `persist` already reported it.
 		}
 	};
 
@@ -290,8 +423,28 @@ export function ReturnEditor({ id }: { id: string }) {
 	};
 
 	const bookNI = bookNetIncomeOf(seeded);
-	// Computed once, but inputs have changed since → the shown numbers are stale.
-	const stale = !!computed && dirty;
+	/*
+	 * What the forms show: the live preview when there is one, else the last
+	 * recorded compute. `stale` is now only true when neither is current — a
+	 * save whose preview failed — because a live preview IS the current figures.
+	 * `unrecorded` is the different, honest statement: figures are current but
+	 * Compute has not recorded them for review yet.
+	 */
+	const live: typeof computed = preview
+		? ({
+				...(computed ?? {
+					_id: "preview",
+					engagementYearId: id,
+					program: engagement.program,
+					engineVersion: "preview",
+				}),
+				fields: preview.fields,
+				schedulePayloads: preview.schedulePayloads ?? null,
+				issues: preview.issues ?? null,
+			} as NonNullable<typeof computed>)
+		: computed;
+	const stale = !!computed && dirty && !preview;
+	const unrecorded = !!preview && (dirty || !computed);
 	// `cca` (from `useCcaPreviewTotal`) is a pre-compute LIVE PREVIEW that only
 	// covers the ordinary declining-balance "CCA classes" array — it deliberately
 	// does not model a new class 13 leasehold layer or class 14 property (see
@@ -299,7 +452,7 @@ export function ReturnEditor({ id }: { id: string }) {
 	// one of those is entered. Once a fresh (non-stale) compute exists, its own
 	// `ccaClaimed` field is the real combined total (ordinary + class 13/14 +
 	// the class 14.1 transitional allowance) — prefer that instead.
-	const computedCcaField = computed?.fields?.find(
+	const computedCcaField = live?.fields?.find(
 		(f) => f.line === "ccaClaimed",
 	)?.value;
 	const ccaDisplay =
@@ -330,6 +483,43 @@ export function ReturnEditor({ id }: { id: string }) {
 						<Badge variant="secondary" className="gap-1">
 							<AlertTriangle className="size-3.5" /> Recompute needed
 						</Badge>
+					)}
+					<span
+						className={cn(
+							"text-xs",
+							saveState === "error"
+								? "font-medium text-destructive"
+								: "text-muted-foreground",
+						)}
+						aria-live="polite"
+					>
+						{saveState === "saving"
+							? "Saving…"
+							: saveState === "saved"
+								? "All changes saved"
+								: saveState === "error"
+									? "Not saved"
+									: ""}
+					</span>
+					{previewError ? (
+						<Badge
+							variant="secondary"
+							className="max-w-80 gap-1 truncate"
+							title={previewError}
+						>
+							<AlertTriangle className="size-3.5 shrink-0" /> Can't calculate
+							yet: {previewError}
+						</Badge>
+					) : (
+						unrecorded && (
+							<Badge
+								variant="outline"
+								className="gap-1"
+								title="Figures on every form are live. Compute records this version of the return and runs review."
+							>
+								Live figures — not yet recorded
+							</Badge>
+						)
 					)}
 					<Button variant="outline" onClick={() => setAfrOpen(true)}>
 						<CloudDownload className="size-4" />
@@ -377,6 +567,7 @@ export function ReturnEditor({ id }: { id: string }) {
 					setRi(null);
 					setDirty(true);
 					setFormVersion((v) => v + 1);
+					void refreshPreview();
 				}}
 			/>
 
@@ -390,151 +581,84 @@ export function ReturnEditor({ id }: { id: string }) {
 						title: "Schedules",
 						content: (
 							<nav className="space-y-1 p-2">
-								<div className="flex items-center justify-between px-2 py-1">
-									<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-										Schedules
-									</p>
-									{showProgramFilter && (
-										<div className="flex gap-0.5 rounded-md bg-muted p-0.5 text-[11px]">
-											<button
-												type="button"
-												onClick={() => setOnlyProgramSpecific(false)}
-												className={cn(
-													"rounded px-1.5 py-0.5 font-medium transition-colors",
-													!onlyProgramSpecific
-														? "bg-background shadow-sm"
-														: "text-muted-foreground",
-												)}
-											>
-												All
-											</button>
-											<button
-												type="button"
-												onClick={() => setOnlyProgramSpecific(true)}
-												className={cn(
-													"rounded px-1.5 py-0.5 font-medium transition-colors",
-													onlyProgramSpecific
-														? "bg-background shadow-sm"
-														: "text-muted-foreground",
-												)}
-												title={`Hide the shared federal schedules — show only ${engagement.program}'s own`}
-											>
-												{engagement.program} only
-											</button>
-										</div>
-									)}
-								</div>
 								{/*
-								 * Why a provincial engagement shows the federal schedules.
-								 *
-								 * It is the single most confusing thing about this screen:
-								 * you open an Alberta return and are asked for Schedule 8,
-								 * Schedule 4, the GIFI. The reason is that Alberta taxes the
-								 * federal taxable income allocated to the province, so the
-								 * server computes the whole federal return first and derives
-								 * Alberta from it. Those schedules are INPUTS here, not a
-								 * federal filing — the federal return is its own engagement,
-								 * offered from the Export screen with these figures copied
-								 * across. Saying so once costs a line and saves the question.
+								 * One return, one list. A provincial return shows ITS OWN forms
+								 * first, in form-number order, like the printed return — the
+								 * federal schedules it reads figures from are a separate,
+								 * collapsed group below, because they are inputs to this return
+								 * and not forms of it. The old "All / AT1 only" toggle mixed the
+								 * two into one long list and then hid half of it.
 								 */}
-								{showProgramFilter && !onlyProgramSpecific && (
-									<p className="px-2 pb-2 text-[11px] leading-snug text-muted-foreground">
-										{engagement.program} is computed from the federal figures,
-										so the federal schedules are collected here as inputs. The
-										federal return itself is a separate engagement.
+								{engagement.program === "AT1" && (
+									<div className="pb-2">
+										<GoToLine onGo={onNavigate} />
+									</div>
+								)}
+								{isProvincial && (
+									<p className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+										{engagement.program} return
 									</p>
 								)}
-								{/*
-								 * The same note, in the mode that needs it MORE.
-								 *
-								 * It used to render only when the filter was OFF, so it
-								 * vanished the moment a preparer switched to "AT1 only" —
-								 * and "AT1 only" reads as "the only schedules that belong
-								 * to this return" rather than "the AT1-specific ones".
-								 *
-								 * That reading has a cost. A bench run adopted a strict
-								 * AT1-only protocol on the strength of it and reported the
-								 * income basis, the CCA chain and the loss carry-back as
-								 * blocked — all three are enterable, on the federal input
-								 * schedules this filter had just hidden.
-								 */}
-								{showProgramFilter && onlyProgramSpecific && (
-									<p className="px-2 pb-2 text-[11px] leading-snug text-muted-foreground">
-										{tree.length - visibleTree.length} federal schedule(s)
-										hidden. They are INPUTS to this {engagement.program} —
-										income, CCA and losses are entered there and flow through —
-										not a separate return to file.
-									</p>
-								)}
-								{onlyProgramSpecific && visibleTree.length === 0 && (
-									<p className="px-2 py-1 text-xs text-muted-foreground">
-										No {engagement.program}-only schedules on this return yet.
-									</p>
-								)}
-								{visibleTree.map((s) => (
-									<button
-										type="button"
+								{ownForms.map((s) => (
+									<NavItem
 										key={s.key}
+										num={s.num}
+										label={s.label}
+										hint={s.hint}
+										active={active === s.key}
+										hasData={
+											s.editable && hasData(seeded[s.key as ScheduleKey])
+										}
 										onClick={() => setActive(s.key)}
-										className={cn(
-											"flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
-											active === s.key && "bg-accent",
-										)}
-									>
-										<span className="mt-0.5 inline-flex w-9 shrink-0 justify-center rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-muted-foreground">
-											{s.num}
-										</span>
-										<span className="min-w-0 flex-1">
-											<span className="flex items-center gap-1.5">
-												<span className="truncate font-medium">{s.label}</span>
-												{hasData(seeded[s.key]) && (
-													<span
-														className="size-1.5 shrink-0 rounded-full bg-primary"
-														title="Has entered data"
-													/>
-												)}
-											</span>
-											<span className="block truncate text-xs text-muted-foreground">
-												{s.hint}
-											</span>
-										</span>
-									</button>
+									/>
 								))}
-								{engagement.program === "AT1" &&
-									READ_ONLY_SCHEDULES.map((s) => (
-										<button
-											type="button"
-											key={s.key}
-											onClick={() => setActive(s.key)}
-											className={cn(
-												"flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
-												active === s.key && "bg-accent",
-											)}
-										>
-											<span className="mt-0.5 inline-flex w-9 shrink-0 justify-center rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-muted-foreground">
-												{s.num}
-											</span>
-											<span className="min-w-0 flex-1">
-												<span className="truncate font-medium">{s.label}</span>
-												<span className="block truncate text-xs text-muted-foreground">
-													Read-only — as filed
-												</span>
-											</span>
-										</button>
-									))}
-								<button
-									type="button"
+								<NavItem
+									num="∑"
+									label="Tax summary"
+									hint={
+										isProvincial
+											? `${engagement.program} totals`
+											: "T2 jacket page 9"
+									}
+									active={active === "summary"}
+									hasData={false}
 									onClick={() => setActive("summary")}
-									className={cn(
-										"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent",
-										active === "summary" && "bg-accent",
-									)}
-								>
-									<span className="inline-flex w-9 shrink-0 justify-center rounded bg-primary/10 px-1 py-0.5 font-mono text-[11px] text-primary">
-										9
-									</span>
-									<span className="font-medium">Tax Summary (jacket)</span>
-								</button>
+								/>
+								{federalForms.length > 0 && (
+									<details
+										className="group pt-2"
+										open={federalOpen}
+										onToggle={(e) =>
+											setFederalOpen(
+												(e.currentTarget as HTMLDetailsElement).open,
+											)
+										}
+									>
+										<summary className="cursor-pointer list-none rounded-md px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:bg-accent">
+											<span className="mr-1 inline-block transition-transform group-open:rotate-90">
+												›
+											</span>
+											Federal figures ({federalForms.length})
+										</summary>
+										<p className="px-2 pb-2 text-[11px] leading-snug text-muted-foreground">
+											Inputs this {engagement.program} reads federal amounts
+											from. Not a return to file — leave them empty if the T2
+											was prepared elsewhere and type the figures on the{" "}
+											{engagement.program} forms above.
+										</p>
+										{federalForms.map((s) => (
+											<NavItem
+												key={s.key}
+												num={s.num}
+												label={s.label}
+												hint={s.hint}
+												active={active === s.key}
+												hasData={hasData(seeded[s.key])}
+												onClick={() => setActive(s.key)}
+											/>
+										))}
+									</details>
+								)}
 							</nav>
 						),
 					}}
@@ -545,7 +669,7 @@ export function ReturnEditor({ id }: { id: string }) {
 								{active === "summary" ? (
 									<TaxSummary
 										program={engagement.program}
-										computed={computed}
+										computed={live}
 										stale={stale}
 										bookNI={bookNI}
 										cca={ccaDisplay}
@@ -553,12 +677,9 @@ export function ReturnEditor({ id }: { id: string }) {
 										computeLabel={computeLabel}
 										computing={compute.isPending}
 									/>
-								) : READ_ONLY_SCHEDULES.some((s) => s.key === active) ? (
+								) : SLICE_SCHEDULES.some((s) => s.key === active) ? (
 									(() => {
-										const meta = READ_ONLY_SCHEDULES.find(
-											(s) => s.key === active,
-										)!;
-										const View = meta.View;
+										const meta = SLICE_SCHEDULES.find((s) => s.key === active)!;
 										return (
 											<div className="space-y-4">
 												<div>
@@ -574,16 +695,42 @@ export function ReturnEditor({ id }: { id: string }) {
 														{meta.hint}
 													</p>
 												</div>
-												<View
-													computed={computed}
-													stale={stale}
-													onNavigate={onNavigate}
-													highlightLine={
-														active === meta.key ? highlightLine : undefined
+												<SliceForm
+													key={`${meta.key}-${formVersion}`}
+													value={
+														(seeded[meta.slice] as Record<string, unknown>) ??
+														{}
 													}
-													returnInput={seeded}
-													writeInput={writeInput}
-												/>
+													onSave={(v) =>
+														saveSlice(
+															meta.slice,
+															meta.key === "schedule10"
+																? normalizeSchedule10(v)
+																: normalizeSchedule2(v),
+														)
+													}
+												>
+													{(form) =>
+														meta.key === "schedule10" ? (
+															<Schedule10View
+																control={form.control}
+																setValue={(name, value, options) =>
+																	form.setValue(name, value, options)
+																}
+																computed={live}
+																engagement={engagement}
+															/>
+														) : (
+															<Schedule2View
+																control={form.control}
+																computed={live}
+																stale={stale}
+																onNavigate={onNavigate}
+																highlightLine={highlightLine}
+															/>
+														)
+													}
+												</SliceForm>
 											</div>
 										);
 									})()
@@ -597,9 +744,8 @@ export function ReturnEditor({ id }: { id: string }) {
 												unknown
 											>) ?? {}
 										}
-										saving={saveInput.isPending}
 										onSave={(v) => saveSlice(active as ScheduleKey, v)}
-										computed={computed}
+										computed={live}
 										stale={stale}
 										engagement={engagement}
 										client={client}
@@ -717,7 +863,6 @@ function LiveCcaFooter({
 function ScheduleForm({
 	schedule,
 	value,
-	saving,
 	onSave,
 	footer,
 	computed,
@@ -731,7 +876,6 @@ function ScheduleForm({
 }: {
 	schedule: ScheduleKey;
 	value: Record<string, unknown>;
-	saving: boolean;
 	onSave: (v: Record<string, unknown>) => void;
 	/**
 	 * A summary line beside the save button. Pass a FUNCTION to read the live
@@ -749,7 +893,7 @@ function ScheduleForm({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 	returnInput?: ReturnInput;
-	writeInput?: (path: string, value: number | undefined) => Promise<void>;
+	writeInput?: (path: string, value: unknown) => Promise<void>;
 }) {
 	const meta = SCHEDULE_TREE.find((s) => s.key === schedule)!;
 	const formView = formViewFor(schedule);
@@ -772,7 +916,8 @@ function ScheduleForm({
 	 * schedule without one would otherwise keep a mode that hides the guided
 	 * form and renders nothing in its place — a blank editor.
 	 */
-	const activeView = formView ? viewMode : "guided";
+	const formOnly = isFormOnly(schedule);
+	const activeView = formOnly ? "form" : formView ? viewMode : "guided";
 
 	return (
 		<div className="space-y-4">
@@ -786,7 +931,7 @@ function ScheduleForm({
 					</div>
 					<p className="text-sm text-muted-foreground">{meta.hint}</p>
 				</div>
-				{formView && (
+				{formView && !formOnly && (
 					<ToggleGroup
 						value={[activeView]}
 						onValueChange={(v) => {
@@ -816,11 +961,11 @@ function ScheduleForm({
 					activeView === "form" ? "[&_[data-formkit-root]]:hidden" : undefined
 				}
 			>
-				<SchemaForm
-					schema={schemaFor(schedule)}
-					defaultValues={value}
-					components={FORM_COMPONENTS}
-					onSubmit={(v: Record<string, unknown>) => onSave(v)}
+				<FormHost
+					formOnly={formOnly}
+					schedule={schedule}
+					value={value}
+					onSave={onSave}
 				>
 					{(form) => (
 						<>
@@ -828,7 +973,9 @@ function ScheduleForm({
 								<div className={activeView === "guided" ? "hidden" : "mt-4"}>
 									{formView({
 										control: form.control,
-										disabled: saving,
+										// Never locked while saving: the form saves as the
+										// preparer types, so a lock would freeze typing mid-save.
+										disabled: false,
 										computed,
 										engagement,
 										client,
@@ -839,17 +986,33 @@ function ScheduleForm({
 									})}
 								</div>
 							)}
-							<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-								{(typeof footer === "function"
-									? footer(form as unknown as { control: Control<never> })
-									: footer) ?? <span />}
-								<Button type="submit" disabled={saving}>
-									{saving ? "Saving…" : "Save schedule"}
-								</Button>
-							</div>
+							<AutoSave
+								control={
+									form.control as unknown as Control<Record<string, unknown>>
+								}
+								getValues={() =>
+									(
+										form as unknown as {
+											getValues: () => Record<string, unknown>;
+										}
+									).getValues()
+								}
+								onSave={onSave}
+							/>
+							{(() => {
+								const f =
+									typeof footer === "function"
+										? footer(form as unknown as { control: Control<never> })
+										: footer;
+								return f ? (
+									<div className="mt-8 flex flex-wrap items-center gap-3 border-t pt-4">
+										{f}
+									</div>
+								) : null;
+							})()}
 						</>
 					)}
-				</SchemaForm>
+				</FormHost>
 			</div>
 			<ScheduleFiledValues
 				computed={computed}
@@ -858,6 +1021,128 @@ function ScheduleForm({
 			/>
 		</div>
 	);
+}
+
+/**
+ * The form behind a schedule.
+ *
+ * A form-only schedule gets a plain react-hook-form instance. The guided
+ * SchemaForm always mounts its own field set, so rendering it hidden behind
+ * the printed form put every box on the page twice — two elements per field
+ * with the same id, the hidden one first, so a label click could focus the
+ * box nobody can see.
+ */
+function FormHost({
+	formOnly,
+	schedule,
+	value,
+	onSave,
+	children,
+}: {
+	formOnly: boolean;
+	schedule: ScheduleKey;
+	value: Record<string, unknown>;
+	onSave: (v: Record<string, unknown>) => void;
+	children: (form: {
+		control: Control<Record<string, unknown>>;
+	}) => React.ReactNode;
+}) {
+	const plain = useForm<Record<string, unknown>>({ defaultValues: value });
+	if (formOnly) {
+		return (
+			<form onSubmit={plain.handleSubmit((v) => onSave(v))}>
+				{children(plain)}
+			</form>
+		);
+	}
+	return (
+		<SchemaForm
+			schema={schemaFor(schedule)}
+			defaultValues={value}
+			components={FORM_COMPONENTS}
+			onSubmit={(v: Record<string, unknown>) => onSave(v)}
+		>
+			{(form) =>
+				children(
+					form as unknown as { control: Control<Record<string, unknown>> },
+				)
+			}
+		</SchemaForm>
+	);
+}
+
+/**
+ * A form over one working-return slice, for the AT1 forms that edit a slice
+ * another form owns (see `SLICE_SCHEDULES`). Same plain form and the same
+ * automatic save as every form-only schedule.
+ */
+function SliceForm({
+	value,
+	onSave,
+	children,
+}: {
+	value: Record<string, unknown>;
+	onSave: (v: Record<string, unknown>) => void;
+	children: (form: UseFormReturn<Record<string, unknown>>) => React.ReactNode;
+}) {
+	const form = useForm<Record<string, unknown>>({ defaultValues: value });
+	return (
+		<form onSubmit={(e) => e.preventDefault()}>
+			{children(form)}
+			<AutoSave
+				control={form.control}
+				getValues={form.getValues}
+				onSave={onSave}
+			/>
+		</form>
+	);
+}
+
+/**
+ * Saves the schedule as the preparer types — about 0.8 s after the last
+ * change — and once more on the way out if a change is still pending, so
+ * switching schedules mid-sentence never loses it.
+ *
+ * Compares serialized values, so re-renders that change nothing do not save,
+ * and the values the form opened with are never re-saved.
+ */
+function AutoSave({
+	control,
+	getValues,
+	onSave,
+}: {
+	control: Control<Record<string, unknown>>;
+	getValues: () => Record<string, unknown>;
+	onSave: (v: Record<string, unknown>) => void;
+}) {
+	const values = useWatch({ control });
+	const serialized = JSON.stringify(values ?? {});
+	const debounced = useDebounce(serialized, 800);
+	const saved = useRef<string | null>(null);
+	const latest = useRef({ getValues, onSave });
+	latest.current = { getValues, onSave };
+
+	useEffect(() => {
+		// The first value seen is what the form opened with — nothing to save.
+		if (saved.current === null) {
+			saved.current = debounced;
+			return;
+		}
+		if (debounced === saved.current) return;
+		saved.current = debounced;
+		latest.current.onSave(JSON.parse(debounced) as Record<string, unknown>);
+	}, [debounced]);
+
+	useEffect(
+		() => () => {
+			const now = JSON.stringify(latest.current.getValues() ?? {});
+			if (saved.current !== null && now !== saved.current) {
+				latest.current.onSave(JSON.parse(now) as Record<string, unknown>);
+			}
+		},
+		[],
+	);
+	return null;
 }
 
 const SUMMARY_TITLE: Record<string, string> = {

@@ -11,7 +11,7 @@
  * computed/carried-in lines read-only.
  */
 export type PaperFieldRole = "input" | "computed" | "total" | "carried-in" | "not-collected";
-export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";
+export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code" | "count";
 
 export interface PaperField {
   line: string;
@@ -41,16 +41,16 @@ export interface PaperSectionDef {
 export const AT1_SCHEDULE_2_SECTIONS: readonly PaperSectionDef[] = [
   { id: "gate", title: "Which formula applies", description: "Answered \"No\", the corporation completes Area A. Answered \"Yes\", it completes the one line in Area B for its own type of operation instead — and where more than one applies, only Divided Businesses." },
   { id: "general", title: "Area A — General Allocation Formula (ITA Reg 402)", description: "The common case, taken straight from the federal Schedule 5." },
-  { id: "bus-truck", title: "Area B — Bus and Truck Operators (ITA Reg 409)", description: "Not computed by this engine." },
-  { id: "grain-elevator", title: "Area B — Grain Elevator Operators (ITA Reg 408)", description: "Not computed by this engine." },
-  { id: "pipeline", title: "Area B — Pipeline Operators (ITA Reg 411)", description: "Not computed by this engine." },
-  { id: "insurance", title: "Area B — Insurance Corporations (ITA Reg 403)", description: "Columns A and B are shaded out on the page — this formula has two inputs, not four. Not computed by this engine." },
-  { id: "chartered-banks", title: "Area B — Chartered Banks (ITA Reg 404)", description: "Loans and deposits weigh double in this formula. Not computed by this engine." },
-  { id: "trust-loan", title: "Area B — Trust & Loan Corporations (ITA Reg 405)", description: "Columns A and B are shaded out on the page. Not computed by this engine." },
-  { id: "airline", title: "Area B — Airline Corporations (ITA Reg 407)", description: "Revenue plane miles weigh triple in this formula. Not computed by this engine." },
-  { id: "railway", title: "Area B — Railway Corporations (ITA Reg 406)", description: "Not computed by this engine." },
-  { id: "ship", title: "Area B — Ship Operators (ITA Reg 410)", description: "Eight lines, not four: G and H are computed on the page from the other six and the jacket's line 062. Not computed by this engine." },
-  { id: "divided-businesses", title: "Area B — Divided Businesses (ITA Reg 412)", description: "Where more than one special formula applies to a corporation, the page says to complete ONLY this one. Not computed by this engine." },
+  { id: "bus-truck", title: "Area B — Bus and Truck Operators (ITA Reg 409)", description: "Salaries and kilometres travelled, weighted equally." },
+  { id: "grain-elevator", title: "Area B — Grain Elevator Operators (ITA Reg 408)", description: "Salaries and bushels of grain received, weighted equally." },
+  { id: "pipeline", title: "Area B — Pipeline Operators (ITA Reg 411)", description: "Salaries and miles of pipeline, weighted equally." },
+  { id: "insurance", title: "Area B — Insurance Corporations (ITA Reg 403)", description: "Columns A and B are shaded out on the page — this formula has two inputs, not four." },
+  { id: "chartered-banks", title: "Area B — Chartered Banks (ITA Reg 404)", description: "Loans and deposits weigh double in this formula." },
+  { id: "trust-loan", title: "Area B — Trust & Loan Corporations (ITA Reg 405)", description: "Columns A and B are shaded out on the page." },
+  { id: "airline", title: "Area B — Airline Corporations (ITA Reg 407)", description: "Revenue plane miles weigh triple in this formula." },
+  { id: "railway", title: "Area B — Railway Corporations (ITA Reg 406)", description: "Equated track miles and gross ton miles, weighted equally." },
+  { id: "ship", title: "Area B — Ship Operators (ITA Reg 410)", description: "Eight lines, not four: G and H are computed from the other six and Alberta taxable income (AT1 line 062 less line 064)." },
+  { id: "divided-businesses", title: "Area B — Divided Businesses (ITA Reg 412)", description: "Where more than one special formula applies to a corporation, the page says to complete ONLY this one." },
 ];
 
 export const AT1_SCHEDULE_2_FIELDS: readonly PaperField[] = [
@@ -61,16 +61,16 @@ export const AT1_SCHEDULE_2_FIELDS: readonly PaperField[] = [
   { line: "002008001", caption: "Gross revenue in all jurisdictions", kind: "money", role: "carried-in", section: "general", requirement: "mandatory", from: { form: "T2SCH5", line: "", note: "Every jurisdiction's row, summed." } },
   { line: "002012001", caption: "Salaries & wages paid in Alberta", kind: "money", role: "input", section: "bus-truck" },
   { line: "002014001", caption: "Total salaries & wages paid", kind: "money", role: "input", section: "bus-truck" },
-  { line: "002016001", caption: "Kilometres traveled in Alberta", kind: "money", role: "input", section: "bus-truck" },
-  { line: "002018001", caption: "Total kilometres traveled in jurisdictions where corporation has permanent establishment", kind: "money", role: "input", section: "bus-truck" },
+  { line: "002016001", caption: "Kilometres traveled in Alberta", kind: "count", role: "input", section: "bus-truck" },
+  { line: "002018001", caption: "Total kilometres traveled in jurisdictions where corporation has permanent establishment", kind: "count", role: "input", section: "bus-truck" },
   { line: "002022001", caption: "Salaries & wages paid in Alberta", kind: "money", role: "input", section: "grain-elevator" },
   { line: "002024001", caption: "Total salaries & wages paid", kind: "money", role: "input", section: "grain-elevator" },
-  { line: "002026001", caption: "Bushels of grain received at Alberta elevators", kind: "money", role: "input", section: "grain-elevator" },
-  { line: "002028001", caption: "Bushels of grain received at all elevators", kind: "money", role: "input", section: "grain-elevator" },
+  { line: "002026001", caption: "Bushels of grain received at Alberta elevators", kind: "count", role: "input", section: "grain-elevator" },
+  { line: "002028001", caption: "Bushels of grain received at all elevators", kind: "count", role: "input", section: "grain-elevator" },
   { line: "002032001", caption: "Salaries & wages paid in Alberta", kind: "money", role: "input", section: "pipeline" },
   { line: "002034001", caption: "Total salaries & wages paid", kind: "money", role: "input", section: "pipeline" },
-  { line: "002036001", caption: "Miles of pipeline in Alberta", kind: "money", role: "input", section: "pipeline" },
-  { line: "002038001", caption: "Total miles of pipeline in provinces where corporation has permanent establishment", kind: "money", role: "input", section: "pipeline" },
+  { line: "002036001", caption: "Miles of pipeline in Alberta", kind: "count", role: "input", section: "pipeline" },
+  { line: "002038001", caption: "Total miles of pipeline in provinces where corporation has permanent establishment", kind: "count", role: "input", section: "pipeline" },
   { line: "002046001", caption: "Net premiums in Alberta", kind: "money", role: "input", section: "insurance" },
   { line: "002048001", caption: "Total net premiums earned", kind: "money", role: "input", section: "insurance" },
   { line: "002052001", caption: "Salaries and wages paid in Alberta", kind: "money", role: "input", section: "chartered-banks" },
@@ -81,22 +81,22 @@ export const AT1_SCHEDULE_2_FIELDS: readonly PaperField[] = [
   { line: "002068001", caption: "Total gross revenue", kind: "money", role: "input", section: "trust-loan" },
   { line: "002072001", caption: "Fixed asset cost (other than aircraft) in Alberta", kind: "money", role: "input", section: "airline" },
   { line: "002074001", caption: "Fixed asset cost (other than aircraft) in Canada", kind: "money", role: "input", section: "airline" },
-  { line: "002076001", caption: "Revenue plane miles flown in Alberta", kind: "money", role: "input", section: "airline" },
-  { line: "002078001", caption: "Revenue plane miles flown in Canada where the corporation has permanent establishment", kind: "money", role: "input", section: "airline" },
-  { line: "002082001", caption: "Equated track miles in Alberta", kind: "money", role: "input", section: "railway" },
-  { line: "002084001", caption: "Total equated track miles in Canada", kind: "money", role: "input", section: "railway" },
-  { line: "002086001", caption: "Gross ton miles in Alberta", kind: "money", role: "input", section: "railway" },
-  { line: "002088001", caption: "Total gross ton miles in Canada", kind: "money", role: "input", section: "railway" },
+  { line: "002076001", caption: "Revenue plane miles flown in Alberta", kind: "count", role: "input", section: "airline" },
+  { line: "002078001", caption: "Revenue plane miles flown in Canada where the corporation has permanent establishment", kind: "count", role: "input", section: "airline" },
+  { line: "002082001", caption: "Equated track miles in Alberta", kind: "count", role: "input", section: "railway" },
+  { line: "002084001", caption: "Total equated track miles in Canada", kind: "count", role: "input", section: "railway" },
+  { line: "002086001", caption: "Gross ton miles in Alberta", kind: "count", role: "input", section: "railway" },
+  { line: "002088001", caption: "Total gross ton miles in Canada", kind: "count", role: "input", section: "railway" },
   { line: "002090001", caption: "Salaries and wages paid in Alberta", kind: "money", role: "input", section: "ship" },
   { line: "002092001", caption: "Total salaries and wages paid in Canada", kind: "money", role: "input", section: "ship", note: "The page marks this with an asterisk: \"Salaries & wages paid by the corporation to employees of its permanent establishments (other than ships) in Canada.\"" },
-  { line: "002094001", caption: "Port-call-tonnage in Alberta", kind: "money", role: "input", section: "ship" },
-  { line: "002096001", caption: "Total port-call-tonnage in all provinces with permanent establishments", kind: "money", role: "input", section: "ship" },
-  { line: "002098001", caption: "Total port-call-tonnage in Canada", kind: "money", role: "input", section: "ship" },
-  { line: "002100001", caption: "Total port-call-tonnage in all countries", kind: "money", role: "input", section: "ship" },
-  { line: "002102001", caption: "(E/F) x (AT1 lines 062)", kind: "money", role: "not-collected", section: "ship", note: "Amount G — line 098 divided by line 100, times Alberta taxable income at AT1 line 062. NOT COLLECTED OR FILED: the Schedule 2 engine models the salaries-and-revenue allocation only (lines 001-008). The ITA Reg 402/403 SHIPPING basis this box belongs to is not implemented on either side, so nothing produces a figure for it and a corporation allocating on that basis cannot use this schedule." },
-  { line: "002104001", caption: "(A/B) x [(AT1 lines 062) - G]", kind: "money", role: "not-collected", section: "ship", note: "Amount H — line 090 divided by line 092, times what is left of AT1 line 062 after amount G. NOT COLLECTED OR FILED, for the same reason as line 102: the shipping allocation basis is not modelled." },
+  { line: "002094001", caption: "Port-call-tonnage in Alberta", kind: "count", role: "input", section: "ship" },
+  { line: "002096001", caption: "Total port-call-tonnage in all provinces with permanent establishments", kind: "count", role: "input", section: "ship" },
+  { line: "002098001", caption: "Total port-call-tonnage in Canada", kind: "count", role: "input", section: "ship" },
+  { line: "002100001", caption: "Total port-call-tonnage in all countries", kind: "count", role: "input", section: "ship" },
+  { line: "002102001", caption: "(E/F) x (AT1 lines 062)", kind: "money", role: "computed", section: "ship", note: "Amount G — line 098 divided by line 100, times Alberta taxable income. §3.2.3.3: \"Value = 002098 / 002100 X (000062 - 000064)\" — the page prints only 062; the specification deducts the royalty tax deduction at 064 too." },
+  { line: "002104001", caption: "(A/B) x [(AT1 lines 062) - G]", kind: "money", role: "computed", section: "ship", note: "Amount H — line 090 divided by line 092, times what is left of Alberta taxable income after amount G. §3.2.3.3: \"002090/002092 X [(000062 - 000064) - 002102]\"." },
   { line: "002106001", caption: "Amount Taxable in Alberta", kind: "money", role: "input", section: "divided-businesses" },
-  { line: "002108001", caption: "AT1 line 062", kind: "money", role: "carried-in", section: "divided-businesses", from: { form: "AT1", line: "000062001", note: "Printed as the caption itself — the divisor is Alberta taxable income off the jacket." } },
+  { line: "002108001", caption: "AT1 line 062", kind: "money", role: "computed", section: "divided-businesses", from: { form: "AT1", line: "000062001", note: "Printed as the caption itself. §3.2.3.3: \"If 002106 exists, then value = 000062 - 000064\" — Alberta taxable income less the royalty tax deduction." } },
 ];
 
 export const AT1_SCHEDULE_2_FOOTNOTES: readonly string[] = [

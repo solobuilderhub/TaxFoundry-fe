@@ -48,6 +48,9 @@ export const albertaCca13 = defineSchedule({
 	hint: "Per-class overrides where Alberta's CCA figures differ from federal, plus the immediate expensing limit",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule13FormView, props),
+	// Every field is on the form: the grid, the class-emptied ticks and the
+	// class 13/14 worksheets beneath it.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

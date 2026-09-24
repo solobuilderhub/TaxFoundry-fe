@@ -2,7 +2,6 @@ import { defineSchema, field, section } from "@classytic/formkit/server";
 import { createElement } from "react";
 import type { AlbertaSbdValues } from "../../../_lib/return-input";
 import { fieldsFor, money } from "../../fields";
-import { CORPORATION_STATUS_OPTIONS, YES_NO } from "../../options";
 import { defineSchedule } from "../shared/define";
 import { Schedule1FormView } from "./paper/schedule1-form-view";
 
@@ -12,46 +11,29 @@ const AGREEMENT_DESCRIPTION =
 const f = fieldsFor<AlbertaSbdValues>();
 
 /**
- * AT1 Schedule 1 — Alberta Small Business Deduction eligibility.
+ * AT1 Schedule 1 — Alberta Small Business Deduction.
  *
- * Split out of the jacket schedule into its own nav entry: everything else
- * Schedule 1 needs (active business income, Alberta taxable income) is
- * already derived from the federal return and the allocation factor. These
- * three eligibility answers cannot be derived from anywhere else, and this
- * schedule exists so they have a proper "Schedule 01" entry in the nav
- * instead of being buried inside the jacket's own required-fields block.
+ * Who may claim it is NOT asked here: TRA decides it from the jacket (029 type
+ * of corporation, 030 special status — §3.2.3.2), and the server reads it from
+ * there (`albertaSbdEligibility`). A separate "corporation status" question
+ * used to live here, in the guided view only; Form View never showed it, so
+ * Schedule 1 was never filed from there.
  */
 export const albertaSbd = defineSchedule({
 	key: "albertaSbd",
 	num: "001",
 	label: "Small Business Deduction (S1)",
-	hint: "Eligibility — the deduction itself is computed from federal figures",
+	hint: "Computed from line 003, the jacket's 062 and the business limit",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule1FormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(
 				"eligibility",
-				"Eligibility",
+				"Royalty tax deduction",
 				[
-					field.select(
-						"corporationStatus",
-						"Corporation status",
-						CORPORATION_STATUS_OPTIONS,
-						{
-							description:
-								"Only the first two may claim the deduction at all; a section 149 exempt corporation is barred outright.",
-						},
-					),
-					f.radio(
-						"wasCcpcThroughoutYear",
-						"Was CCPC status held THROUGHOUT the taxation year?",
-						YES_NO,
-						{
-							description:
-								"Only consulted when the status above is CCPC. A mid-year change bars the claim for the year.",
-						},
-					),
 					money(
 						"royaltyTaxDeduction",
 						"Royalty Tax Deduction for the year (Schedule 5, line 021)",
@@ -65,7 +47,7 @@ export const albertaSbd = defineSchedule({
 					variant: "card",
 					cols: 2,
 					description:
-						"Everything else Schedule 1 needs (active business income, Alberta taxable income) comes from the federal return and the allocation factor. These three cannot be derived from anywhere else.",
+						"Eligibility comes from the AT1 Jacket's line 029 (type of corporation) and 030 (special status), as TRA defines it.",
 				},
 			),
 			section(

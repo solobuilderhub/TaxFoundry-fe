@@ -1,8 +1,9 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import { type Control, Controller, useWatch } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
 import type { EdiValues } from "../../../../_lib/return-input";
+import { PaperSelect, PaperText } from "./components/paper-inputs";
 import { PaperSection } from "./components/paper-primitives";
 
 /**
@@ -131,9 +132,6 @@ const ADDRESS: readonly EdiRow[] = [
  * absence.
  */
 
-const CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
-
 /**
  * The EDI schedule — Net File transmitter / software identity.
  *
@@ -184,10 +182,7 @@ export function EdiFormView({
 
 	const rows = (block: readonly EdiRow[]) =>
 		block.map((row) => (
-			<div
-				key={row.line}
-				className="flex items-center gap-3 px-4 py-2 text-sm"
-			>
+			<div key={row.line} className="flex items-center gap-3 px-4 py-2 text-sm">
 				<span className="w-12 shrink-0 rounded bg-muted px-1.5 py-0.5 text-center font-mono text-[11px] text-muted-foreground">
 					{row.line}
 				</span>
@@ -202,40 +197,23 @@ export function EdiFormView({
 					)}
 				</span>
 				<div className="w-72 shrink-0">
-					<Controller
-						control={c}
-						name={row.name}
-						render={({ field }) =>
-							row.options ? (
-								<select
-									disabled={disabled}
-									aria-label={row.label}
-									className={CELL}
-									value={(field.value as string | undefined) ?? ""}
-									onChange={(e) => field.onChange(e.target.value || undefined)}
-									onBlur={field.onBlur}
-								>
-									<option value="">— not answered —</option>
-									{row.options.map((o) => (
-										<option key={o.value} value={o.value}>
-											{o.label}
-										</option>
-									))}
-								</select>
-							) : (
-								<input
-									type="text"
-									disabled={disabled}
-									aria-label={row.label}
-									className={CELL}
-
-									value={(field.value as string | undefined) ?? ""}
-									onChange={(e) => field.onChange(e.target.value || undefined)}
-									onBlur={field.onBlur}
-								/>
-							)
-						}
-					/>
+					{row.options ? (
+						<PaperSelect
+							control={c}
+							name={row.name}
+							label={row.label}
+							options={row.options}
+							blankLabel="— not answered —"
+							disabled={disabled}
+						/>
+					) : (
+						<PaperText
+							control={c}
+							name={row.name}
+							label={row.label}
+							disabled={disabled}
+						/>
+					)}
 				</div>
 			</div>
 		));
@@ -327,7 +305,6 @@ export function EdiFormView({
 					</p>
 				</div>
 			</div>
-
 		</div>
 	);
 }

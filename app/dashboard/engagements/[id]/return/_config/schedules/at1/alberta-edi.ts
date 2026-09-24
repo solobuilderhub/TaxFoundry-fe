@@ -69,6 +69,8 @@ export const albertaEdi = defineSchedule({
 	hint: "Who transmits the return, and with what software — required before it can be filed",
 	programs: ["AT1"],
 	formView: (props) => createElement(EdiFormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

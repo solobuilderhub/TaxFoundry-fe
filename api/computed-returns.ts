@@ -38,6 +38,36 @@ export interface ComputedSchedulePayload {
 	 * Read for DISPLAY only. `values` is what is filed.
 	 */
 	display?: ComputedScheduleValue[];
+	/** PRINT-ONLY tables with unnumbered cells — AT1 Schedule 1's calculation table. */
+	tables?: { sbdCalculation?: AlbertaSbdCalculationTable };
+}
+
+/** AT1 Schedule 1 "Calculation of the Alberta Small Business Deduction", as ca-tax computes it. */
+export interface AlbertaSbdCalculationTable {
+	rows: {
+		label: string;
+		days: number;
+		percentage: number;
+		threshold?: number;
+		least?: number;
+		allocated?: number;
+		sbdRate: number;
+		deduction?: number;
+	}[];
+	totalDays: number;
+	line031: number;
+}
+
+/**
+ * The engine's figures for the working return as saved — the same shape the
+ * forms read from a computed return, but recorded nowhere. Returned by every
+ * save (`save-input`) and by the `preview` action.
+ */
+export interface ReturnPreview {
+	fields: ComputedField[];
+	schedulePayloads?: ComputedSchedulePayload[];
+	issues?: string[];
+	totals: { totalOwing: number };
 }
 
 /** Immutable fold of the fact-log through the engine (a cache, never authoritative). */

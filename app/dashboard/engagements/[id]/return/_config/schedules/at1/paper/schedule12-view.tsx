@@ -1,13 +1,16 @@
 "use client";
 
+import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
+import type { ReturnInput } from "../../../../_lib/return-input";
 import {
 	AT1_SCHEDULE_12_FIELDS,
 	AT1_SCHEDULE_12_SECTIONS,
 } from "./generated/schedule12.layout";
-import type { Control } from "react-hook-form";
-import type { ReturnInput } from "../../../../_lib/return-input";
-import { type LinkedLines, ReadOnlyScheduleView } from "./read-only-schedule-view";
+import {
+	type LinkedLines,
+	ReadOnlyScheduleView,
+} from "./read-only-schedule-view";
 import type { NavigateToLine } from "./resolve-line";
 
 /**
@@ -22,16 +25,69 @@ import type { NavigateToLine } from "./resolve-line";
  * both places.
  */
 const T2_LINKED_LINES: LinkedLines = {
-	"061": { path: "albertaSchedule12.taxableDividendsDeductible", label: "T2 line 320" },
-	"063": { path: "albertaSchedule12.partVI1TaxDeductible", label: "T2 line 325" },
+	"061": {
+		path: "albertaSchedule12.taxableDividendsDeductible",
+		label: "T2 line 320",
+	},
+	"063": {
+		path: "albertaSchedule12.partVI1TaxDeductible",
+		label: "T2 line 325",
+	},
 	"079": { path: "albertaSchedule12.prospectorsShares", label: "T2 line 350" },
-	"141": { path: "albertaSchedule12.nonQualifiedSecuritiesDeduction", label: "T2 line 352" },
-	"083": { path: "albertaSchedule12.section110_5Additions", label: "T2 line 355" },
+	"141": {
+		path: "albertaSchedule12.nonQualifiedSecuritiesDeduction",
+		label: "T2 line 352",
+	},
+	"083": {
+		path: "albertaSchedule12.section110_5Additions",
+		label: "T2 line 355",
+	},
 	"082": {
 		path: "albertaSchedule12.albertaSection110_5Additions",
 		label: "Alberta s.110.5 additions (defaults to T2 line 355)",
 	},
+	/*
+	 * The rest of the lines this schedule collects. They were in the guided
+	 * view only, so a preparer on the printed form could not reach them: the
+	 * federal net income when the T2 was prepared elsewhere, the Alberta side
+	 * of four reconciling pairs, and the ABI reconciliation at 102/104.
+	 */
+	"002": {
+		path: "albertaSchedule12.federalNetIncomeForTax",
+		label: "T2 line 300 — enter it when the T2 was prepared elsewhere",
+	},
+	"060": {
+		path: "albertaSchedule12.albertaTaxableDividendsDeductible",
+		label: "Alberta amount (defaults to T2 line 320)",
+	},
+	"075": {
+		path: "albertaSchedule12.centralCreditUnionAllocation",
+		label: "T2 line 340",
+	},
+	"074": {
+		path: "albertaSchedule12.albertaCentralCreditUnionAllocation",
+		label: "Alberta amount (defaults to T2 line 340)",
+	},
+	"078": {
+		path: "albertaSchedule12.albertaProspectorsShares",
+		label: "Alberta amount (defaults to T2 line 350)",
+	},
+	"140": {
+		path: "albertaSchedule12.albertaNonQualifiedSecuritiesDeduction",
+		label: "Alberta amount (defaults to T2 line 352)",
+	},
+	"102": {
+		path: "albertaSchedule12.abiFederalAmount",
+		label: "federal active business income (Schedule 7)",
+	},
+	"104": {
+		path: "albertaSchedule12.abiDiscretionaryAdjustment",
+		label: "adjustment for discretionary items",
+	},
 };
+
+/** Line 100 is a yes/no question on this schedule's own slice. */
+const OWN_FIELDS = { "100": "abiDiffersFromFederal" } as const;
 
 /**
  * AT1 Schedule 12 — read-only, always. There is no editable side because
@@ -84,6 +140,7 @@ export function Schedule12View({
 			writeInput={writeInput}
 			control={control}
 			ownSlice={control ? "albertaSchedule12" : undefined}
+			ownFields={OWN_FIELDS}
 			notComputedMessage="Not yet computed — the form below is Schedule 12 as TRA prints it; its figures appear once you compute the return."
 			nothingToReportMessage="Computed, and Schedule 12 has nothing to reconcile — Alberta and federal figures agree on Schedules 13, 17, 18 and 21 this filing. That's a real result, not a gap: the form itself says only to report a pair where the amounts differ."
 		/>

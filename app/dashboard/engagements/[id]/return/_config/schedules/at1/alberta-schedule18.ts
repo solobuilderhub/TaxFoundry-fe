@@ -210,5 +210,7 @@ export const albertaSchedule18Abil = defineSchedule({
 	// from the federal dispositions already entered on S6, and a preparer
 	// checking Schedule 18 before filing needs to see all of it.
 	formView: (props) => createElement(Schedule18View, props),
+	// Every field is on the form or its worksheets.
+	formOnly: true,
 	schema: albertaSchedule18Schema,
 });

@@ -15,17 +15,17 @@
  */
 import type { ReturnInput } from "../_lib/return-input";
 import { alberta } from "./schedules/at1/alberta";
-import { albertaEdi } from "./schedules/at1/alberta-edi";
+import { albertaCca13 } from "./schedules/at1/alberta-cca13";
 import { albertaContinuity } from "./schedules/at1/alberta-continuity";
 import { albertaDonations } from "./schedules/at1/alberta-donations";
+import { albertaEdi } from "./schedules/at1/alberta-edi";
 import { albertaIeg } from "./schedules/at1/alberta-ieg";
+import { albertaReserves17 } from "./schedules/at1/alberta-reserves17";
 import { albertaSbd } from "./schedules/at1/alberta-sbd";
 import { albertaOtherCredits3 } from "./schedules/at1/alberta-schedule3";
 import { albertaForeignInvestment4 } from "./schedules/at1/alberta-schedule4";
 import { albertaSchedule12 } from "./schedules/at1/alberta-schedule12";
 import { albertaResourceDeductions15 } from "./schedules/at1/alberta-schedule15";
-import { albertaCca13 } from "./schedules/at1/alberta-cca13";
-import { albertaReserves17 } from "./schedules/at1/alberta-reserves17";
 import { albertaSred16 } from "./schedules/at1/alberta-schedule16";
 import { albertaSchedule18Abil } from "./schedules/at1/alberta-schedule18";
 import { quebec } from "./schedules/co17/quebec";
@@ -55,6 +55,9 @@ import { shareholders } from "./schedules/t2/shareholders";
 
 /** In return order — this is the order the preparer sees in the schedule tree. */
 export const SCHEDULES = [
+	// AT1-only, so first only on an AT1 return: the jacket is where every
+	// preparer expects to start.
+	alberta,
 	identification,
 	balanceSheet,
 	incomeStatement,
@@ -74,7 +77,6 @@ export const SCHEDULES = [
 	foreign,
 	provincialAllocation,
 	quebec,
-	alberta,
 	albertaEdi,
 	albertaSbd,
 	albertaDonations,
@@ -161,3 +163,6 @@ export const schemaFor = (key: ScheduleKey) => BY_KEY[key].schema;
 
 /** `undefined` when the schedule has no paper Form View yet — drives whether the editor shows the Guided/Form View toggle at all. */
 export const formViewFor = (key: ScheduleKey) => BY_KEY[key].formView;
+/** True when the printed form is this schedule's only view — see `ScheduleDef.formOnly`. */
+export const isFormOnly = (key: ScheduleKey) =>
+	!!BY_KEY[key].formOnly && !!BY_KEY[key].formView;

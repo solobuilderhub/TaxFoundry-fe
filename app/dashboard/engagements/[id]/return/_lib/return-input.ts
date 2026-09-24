@@ -887,6 +887,66 @@ export type QuebecValues = {
 };
 export type AlbertaValues = {
 	/**
+	 * 000010 — legal name of the corporation.
+	 */
+	legalName?: string;
+	/**
+	 * 000011 — operating name, where it differs from the legal name.
+	 */
+	operatingName?: string;
+	/**
+	 * 000012 — mailing address, line 1.
+	 */
+	addressStreet?: string;
+	/**
+	 * 000013 — mailing address, line 2.
+	 */
+	addressLine2?: string;
+	/**
+	 * 000014 — city/town.
+	 */
+	addressCity?: string;
+	/**
+	 * 000015 — province/state.
+	 */
+	addressProvince?: string;
+	/**
+	 * 000016 — country code, only when other than Canada (e.g. US).
+	 */
+	addressCountry?: string;
+	/**
+	 * 000017 — postal/ZIP code.
+	 */
+	addressPostalCode?: string;
+	/**
+	 * 000025 — contact person to discuss the return.
+	 */
+	contactPerson?: string;
+	/**
+	 * 000026 — contact person’s telephone number, 10 digits.
+	 */
+	contactTelephone?: string;
+	/**
+	 * 000028 — nature of business, a 4-digit SIC code.
+	 */
+	natureOfBusiness?: string;
+	/**
+	 * 000029 — type of corporation, a 1-digit code (1-5).
+	 */
+	typeOfCorporation?: string;
+	/**
+	 * 000034 — Alberta corporate account number (CAN).
+	 */
+	corporateAccountNumber?: string;
+	/**
+	 * 000035 — federal Business Number (BN).
+	 */
+	businessNumber?: string;
+	/**
+	 * 000105 — email address TRA sends corporate income tax notices to.
+	 */
+	authorizedEmail?: string;
+	/**
 	 * 000047 — gross revenue per the financial statements.
 	 */
 	grossRevenue?: number;
@@ -966,6 +1026,42 @@ export type AlbertaValues = {
 	 * 000053 — date operations ceased, required when 000051 = 5 (dissolution).
 	 */
 	dateOperationsCeased?: string;
+	/**
+	 * 002002 — salaries and wages paid in Alberta.
+	 */
+	allocationAlbertaSalaries?: number;
+	/**
+	 * 002004 — total salaries and wages paid in all jurisdictions.
+	 */
+	allocationTotalSalaries?: number;
+	/**
+	 * 002006 — gross revenue in Alberta.
+	 */
+	allocationAlbertaRevenue?: number;
+	/**
+	 * 002008 — gross revenue in all jurisdictions.
+	 */
+	allocationTotalRevenue?: number;
+	/**
+	 * 002001 answered Yes — the ONE Area B formula (ITA Reg 403-412) the corporation uses. Where more than one would apply, the page directs it to divided-businesses. Absent = Area A, the general formula.
+	 */
+	specialAllocationFormula?:
+		| "bus-truck"
+		| "grain-elevator"
+		| "pipeline"
+		| "insurance"
+		| "chartered-banks"
+		| "trust-loan"
+		| "airline"
+		| "railway"
+		| "ship"
+		| "divided-businesses";
+	/**
+	 * Area B amounts keyed by printed line with an `l` prefix (`l012`, `l014`, …) — only the chosen formula’s lines are read. Kilometres, bushels, miles and tonnage are counts, not dollars. G/H (102/104) and 108 are computed, never entered.
+	 */
+	allocationAreaB?: {
+		[k: string]: number;
+	};
 };
 export type AlbertaSbdValues = {
 	/**
@@ -1111,6 +1207,10 @@ export type AlbertaContinuityValues = {
 	 * Blank = same as federal. Unlike non-capital (whose current-year loss is derived automatically from Schedule 12’s Alberta reconciliation), no federal input in this engine breaks losses down by farm/non-farm activity, so a genuine Alberta-federal divergence here can only be stated directly.
 	 */
 	farmCurrentYearLoss?: number;
+	/**
+	 * Gross current-year capital loss (Schedule 10 line 042; Schedule 21’s capital current-year row), as a POSITIVE amount. Blank = the federal figure — TRA confirms the two are the same, so this is not a divergence. It exists because with no T2 in this app there is no federal figure to take, and a capital carry-back had nothing to draw on.
+	 */
+	capitalCurrentYearLoss?: number;
 	restrictedFarmOpening?: number;
 	/**
 	 * Blank = same as federal — see `farmCurrentYearLoss`.

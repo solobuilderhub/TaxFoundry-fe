@@ -43,6 +43,8 @@ export const albertaDonations = defineSchedule({
 	hint: "Two continuities — charitable, and gifts to Canada/cultural/ecological",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule20FormView, props),
+	// Every field is on the form — 002/010 through their edit buttons.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

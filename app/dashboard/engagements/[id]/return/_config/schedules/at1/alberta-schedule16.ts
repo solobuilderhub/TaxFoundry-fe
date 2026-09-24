@@ -49,6 +49,8 @@ export const albertaSred16 = defineSchedule({
 	hint: "SR&ED expenditure POOL — the deduction, not the ITC or the IEG",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule16FormView, props),
+	// Every field is on the form, the two federal comparison figures included.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

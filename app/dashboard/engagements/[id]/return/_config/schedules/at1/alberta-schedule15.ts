@@ -1201,5 +1201,8 @@ export const albertaResourceDeductions15 = defineSchedule({
 	hint: "Eight resource-expense pool continuities",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule15FormView, props),
+	// Every field is on the form: each reconciled line with its federal figure,
+	// and the two unprinted figures in their own box.
+	formOnly: true,
 	schema: albertaSchedule15Schema,
 });

@@ -30,10 +30,11 @@ import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 import { filedByFieldFor } from "./resolve-line";
 
 /**
- * The AT1 jacket's own 3-digit line → this schedule's editable field. Only
- * 11 of the jacket's 75 lines are collected here at all — the identification
- * block (010-037) is entered at client/engagement creation, everything else
- * is computed or carried in from another schedule. Line 001 (associated with
+ * The AT1 jacket's own 3-digit line → this schedule's editable field: the
+ * identification block (typed here, client profile as fallback), the yes/no
+ * questions and the figures only the preparer knows. The tax year (036/037) is
+ * the engagement's; 005 and 082 write their own slices (`DIRECT_PATH`);
+ * everything else is computed or carried in. Line 001 (associated with
  * one or more CCPCs) IS asked here, genuinely, despite not appearing in the
  * generated `jacket.captions.ts` (it's hand-authored onto the jacket's own
  * `FormDefinition` — see `jacket.ts`'s `LINE_001` and its doc comment for why
@@ -57,6 +58,24 @@ import { filedByFieldFor } from "./resolve-line";
  * removed from Schedule 3 two sessions ago.
  */
 const OWN_FIELD: Partial<Record<string, keyof AlbertaValues>> = {
+	// Identification — typed here, as on every tax package's jacket. Blank
+	// files the client profile's value (shown as the placeholder).
+	"010": "legalName",
+	"011": "operatingName",
+	"012": "addressStreet",
+	"013": "addressLine2",
+	"014": "addressCity",
+	"015": "addressProvince",
+	// "Only if other than Canada" — blank is Canada, and a typed CA is not filed.
+	"016": "addressCountry",
+	"017": "addressPostalCode",
+	"025": "contactPerson",
+	"026": "contactTelephone",
+	"028": "natureOfBusiness",
+	"029": "typeOfCorporation",
+	"034": "corporateAccountNumber",
+	"035": "businessNumber",
+	"105": "authorizedEmail",
 	"001": "associatedWithCcpcs",
 	"030": "specialCorporationStatus",
 	"031": "windUpOfSubsidiary",
@@ -77,52 +96,78 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaValues>> = {
 };
 
 /**
- * The identification/certification lines this product collects at
- * client/engagement creation, not in this schedule — read-only here with a
- * tag pointing at where they're actually edited, never a second editable
- * copy of the same fact (that would let the two silently drift).
+ * The client profile's value for an identification line — what files when the
+ * jacket box is left blank (the server applies the same fallback, in
+ * `at1-identity.ts`), so it is shown as the box's placeholder.
  */
-function fromClientOrEngagement(
+function clientFallback(
+	field: string,
+	client: Client | undefined,
+): string | undefined {
+	const v = (() => {
+		switch (field) {
+			case "010":
+				return client?.name;
+			case "012":
+				return client?.address?.street;
+			case "014":
+				return client?.address?.city;
+			case "015":
+				return client?.address?.province;
+			case "017":
+				return client?.address?.postalCode;
+			case "025":
+				return client?.contactPerson;
+			case "026":
+				return client?.contactTelephone;
+			case "028":
+				return client?.natureOfBusiness;
+			case "029":
+				return client?.typeOfCorporation;
+			case "034":
+				return client?.corporateAccountNumber;
+			case "035":
+				return client?.businessNumber;
+			case "105":
+				return client?.authorizedEmail;
+			default:
+				return undefined;
+		}
+	})();
+	return v == null || String(v).trim() === "" ? undefined : String(v);
+}
+
+/**
+ * The tax year (036/037) IS the engagement — which return this is — so it is
+ * set when the engagement is opened, not retyped per jacket.
+ */
+function fromEngagement(
 	field: string,
 	engagement: EngagementYear | undefined,
-	client: Client | undefined,
 ): LineValue | undefined {
-	const c = (v: string | number | undefined) =>
-		({ editable: false, value: v, sourceLabel: "client profile" }) as const;
 	const e = (v: string | number | undefined) =>
 		({ editable: false, value: v, sourceLabel: "engagement" }) as const;
-	switch (field) {
-		case "010":
-			return c(client?.name);
-		case "012":
-			return c(client?.address?.street);
-		case "014":
-			return c(client?.address?.city);
-		case "015":
-			return c(client?.address?.province);
-		case "017":
-			return c(client?.address?.postalCode);
-		case "025":
-			return c(client?.contactPerson);
-		case "026":
-			return c(client?.contactTelephone);
-		case "028":
-			return c(client?.natureOfBusiness);
-		case "029":
-			return c(client?.typeOfCorporation);
-		case "034":
-			return c(client?.corporateAccountNumber);
-		case "035":
-			return c(client?.businessNumber);
-		case "105":
-			return c(client?.authorizedEmail);
-		case "036":
-			return e(engagement?.taxYearStart);
-		case "037":
-			return e(engagement?.taxYearEnd);
-		default:
-			return undefined;
+	if (field === "036") return e(engagement?.taxYearStart);
+	if (field === "037") return e(engagement?.taxYearEnd);
+	return undefined;
+}
+
+/**
+ * Jacket lines printed as ordinary entries whose value lives in another slice:
+ * 005 is the EDI schedule's certification code (the two must name the same
+ * software — `resolveTransmitter`), 082 is the Payments schedule's instalments.
+ */
+const DIRECT_PATH: Partial<Record<string, string>> = {
+	"005": "edi.softwareCertCode",
+	"082": "payments.instalmentsPaid",
+};
+
+function storedAt(ri: ReturnInput | undefined, path: string) {
+	let cur: unknown = ri;
+	for (const key of path.split(".")) {
+		cur = (cur as Record<string, unknown> | undefined)?.[key];
 	}
+	return typeof cur === "string" || typeof cur === "number" ? cur : undefined;
 }
 
 /** The jacket's real TRA schedule id ('000') — NOT the nav chip ("AT1"), which `schedulePayloads` never uses. */
@@ -249,6 +294,9 @@ function buildResolveLine(
 	engagement: EngagementYear | undefined,
 	client: Client | undefined,
 	returnInput: ReturnInput | undefined,
+	writeInput:
+		| ((path: string, value: string | number | undefined) => Promise<void>)
+		| undefined,
 ): ResolveLine {
 	const derived = derivedJacketLines(computed, returnInput);
 	const filedByField = filedByFieldFor(
@@ -261,17 +309,32 @@ function buildResolveLine(
 		const field = printed(line);
 
 		const ownName = OWN_FIELD[field];
-		if (ownName)
+		if (ownName) {
+			const fallback = clientFallback(field, client);
 			return {
 				editable: true,
 				name: ownName,
 				// Present only for the coded lines; a money or date box gets none
 				// and renders as an ordinary input.
 				options: AT1_JACKET_CODE_OPTIONS[field],
+				...(fallback ? { placeholder: fallback } : {}),
 			};
+		}
 
-		const fromClient = fromClientOrEngagement(field, engagement, client);
-		if (fromClient) return fromClient;
+		const directPath = DIRECT_PATH[field];
+		if (directPath && writeInput) {
+			return {
+				editable: false,
+				value: undefined,
+				direct: {
+					stored: storedAt(returnInput, directPath),
+					write: (v) => writeInput(directPath, v),
+				},
+			};
+		}
+
+		const fromEng = fromEngagement(field, engagement);
+		if (fromEng) return fromEng;
 
 		// The engine's own figure for this line, where it publishes one.
 		const slug = COMPUTED_FIELD[field];
@@ -281,12 +344,11 @@ function buildResolveLine(
 			/*
 			 * 062 shows the computed figure AND can be overridden.
 			 *
-			 * Not a plain editable box: on the normal path this is derived
-			 * (federal taxable income × the allocation factor) and the preparer
-			 * needs to SEE it — replacing that with an empty field would hide
-			 * the number on the one page meant for checking numbers.
+			 * A plain box whose placeholder is the derived figure: on the normal
+			 * path it is derived (federal taxable income × the allocation factor)
+			 * and the preparer still SEES it, greyed, until they type over it.
 			 *
-			 * The unlock is what makes an AT1 preparable when the T2 was done in
+			 * Typing is what makes an AT1 preparable when the T2 was done in
 			 * another package: there is nothing to derive from, every line under
 			 * 062 reads $0, and this is the box TRA's own jacket provides for
 			 * saying so. Overriding writes the same slice the engine reads, so
@@ -367,6 +429,7 @@ export function JacketFormView({
 	onNavigate,
 	highlightLine,
 	returnInput,
+	writeInput,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
@@ -376,12 +439,17 @@ export function JacketFormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 	returnInput?: ReturnInput;
+	writeInput?: (
+		path: string,
+		value: string | number | undefined,
+	) => Promise<void>;
 }) {
 	const resolveLine = buildResolveLine(
 		computed,
 		engagement,
 		client,
 		returnInput,
+		writeInput,
 	);
 	const albertaControl = control as unknown as Control<AlbertaValues>;
 	const footnotes = readFootnotePlacement(

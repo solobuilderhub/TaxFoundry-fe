@@ -212,5 +212,8 @@ export const albertaSchedule12 = defineSchedule({
 	hint: "Area B items taken from the federal T2",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule12View, props),
+	// Every field is on the printed form — the linked T2 amounts, the Alberta
+	// side of each pair, and the ABI reconciliation at 100-104.
+	formOnly: true,
 	schema: albertaSchedule12Schema,
 });

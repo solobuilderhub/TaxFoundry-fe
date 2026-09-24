@@ -74,13 +74,65 @@ const whenFinalReturn = {
  */
 export const alberta = defineSchedule({
 	key: "alberta",
-	num: "AT1",
-	label: "Alberta AT1 — required fields",
-	hint: "Not the full return — see the Jacket button above",
+	num: "000",
+	label: "AT1 Jacket (Schedule 000)",
+	hint: "Identification, questions, tax and balance — the AT1 itself",
 	programs: ["AT1"],
 	formView: (props) => createElement(JacketFormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
+			/*
+			 * Identification, typed on the return — as every tax package does it.
+			 * A blank box files the client profile's value, so a client that
+			 * already holds these needs nothing re-entered.
+			 */
+			section(
+				"identification",
+				"Identification",
+				[
+					f.text("legalName", "Legal name of corporation (line 010)"),
+					f.text("businessNumber", "Business Number (BN) (line 035)", {
+						placeholder: "9 digits",
+					}),
+					f.text(
+						"corporateAccountNumber",
+						"Alberta Corporate Account Number (CAN) (line 034)",
+					),
+					f.text("addressStreet", "Mailing address (line 012)"),
+					f.text("addressCity", "City/Town (line 014)"),
+					f.text("addressProvince", "Province/State (line 015)", {
+						placeholder: "AB",
+					}),
+					f.text("addressPostalCode", "Postal/ZIP code (line 017)"),
+					f.text(
+						"contactPerson",
+						"Contact person to discuss return (line 025)",
+					),
+					f.text("contactTelephone", "Contact person's telephone (line 026)", {
+						placeholder: "10 digits",
+					}),
+					f.text("authorizedEmail", "CIT authorized email (line 105)"),
+					f.text(
+						"natureOfBusiness",
+						"Nature of business — SIC code (line 028)",
+						{
+							placeholder: "4 digits, e.g. 0198",
+						},
+					),
+					f.select(
+						"typeOfCorporation",
+						"Type of corporation (line 029)",
+						codeOptions("029"),
+					),
+				],
+				{
+					variant: "card",
+					cols: 2,
+					description: "Leave a box blank to use the client profile's value.",
+				},
+			),
 			section(
 				"financials",
 				"Financial statement figures",
@@ -149,7 +201,7 @@ export const alberta = defineSchedule({
 					variant: "card",
 					cols: 2,
 					description:
-						"This schedule is only the handful of Alberta-specific answers nothing else on the return supplies — not the full AT1 return. For the complete document (identification, tax calculation, credits, everything derived), use the Jacket button in the toolbar above, or open it after computing. These two fields are mandatory on the Alberta return and are not defaulted to zero — a corporation has revenue, and filing nil would state something untrue rather than leave a gap.",
+						"Switch to Form View to see the whole jacket, line by line. These two fields are mandatory on the Alberta return and are not defaulted to zero — a corporation has revenue, and filing nil would state something untrue rather than leave a gap.",
 				},
 			),
 			section(

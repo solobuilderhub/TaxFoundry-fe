@@ -27,7 +27,9 @@ export type PaperFieldKind =
 	| "rate"
 	| "flag"
 	| "bool-flag"
-	| "code";
+	| "code"
+	/** A quantity that is not money — kilometres, bushels, tonnage. */
+	| "count";
 /**
  * `not-collected` — on the printed form, modelled nowhere: no editable
  * binding, nothing computes it, nothing files it. It was being expressed as
@@ -112,6 +114,8 @@ export type LineValue =
 			 * final return.
 			 */
 			options?: readonly { code: string; label: string }[];
+			/** What files when the box is left blank — e.g. the client profile's value. */
+			placeholder?: string;
 	  }
 	/**
 	 * Read-only — computed, carried in from elsewhere, or otherwise not this
@@ -131,7 +135,20 @@ export type LineValue =
 			 * preparer type it directly. See {@link LinkedSlot}.
 			 */
 			linked?: LinkedSlot;
+			/**
+			 * A plain, always-open box for a value ANOTHER slice owns — the jacket's
+			 * 005 (the EDI certification code) and 082 (instalments, on Payments).
+			 * Printed on this form as an ordinary entry, so it is typed here like one;
+			 * the write goes to its one home, so the two screens cannot disagree.
+			 */
+			direct?: DirectSlot;
 	  };
+
+export type DirectSlot = {
+	/** What is stored at the slot now; `undefined` = never entered. */
+	stored: string | number | undefined;
+	write: (value: string | number | undefined) => Promise<void>;
+};
 
 /**
  * A T2 figure this return keeps in ONE place, that a schedule displays but may
@@ -141,7 +158,7 @@ export type LineValue =
  * 320), the Part VI.1 deduction (325), prospector's shares (350) — that the app
  * would ordinarily get from a T2 prepared in it. A preparer whose T2 was
  * prepared elsewhere has no T2 here to derive them from, so the line would sit
- * blank. Unlocking it lets them type the figure straight in.
+ * blank. The box takes the figure typed straight in.
  *
  * The edit writes the SAME slot the figure always lives in — not a copy local
  * to this schedule — so every schedule that reads it, and the engine, sees one

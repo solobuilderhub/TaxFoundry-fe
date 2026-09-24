@@ -1,11 +1,11 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import { type Control, Controller, useFieldArray } from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import { cn } from "@/lib/utils";
 import type { AlbertaForeignInvestment4Values } from "../../../../_lib/return-input";
 import { at1Money, parseAt1LineItemId } from "./at1-lines";
+import { PaperMoney, PaperText } from "./components/paper-inputs";
 import {
 	PaperFootnotes,
 	PaperLeaderRow,
@@ -27,9 +27,6 @@ const FIELD_NAME: Partial<Record<string, string>> = {
 	"004": "netForeignInvestmentIncome",
 	"008": "fedNonBusinessForeignTaxCredit",
 };
-
-const S4_CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
 
 /**
  * The eight-column country table, A-H, one row per country.
@@ -65,7 +62,10 @@ function CountryTable({
 	disabled?: boolean;
 	filedByFieldOccurrence: ReadonlyMap<string, string | number>;
 }) {
-	const { fields, append, remove } = useFieldArray({ control, name: "countries" });
+	const { fields, append, remove } = useFieldArray({
+		control,
+		name: "countries",
+	});
 
 	return (
 		<div className="space-y-3 px-4 py-3">
@@ -129,40 +129,21 @@ function CountryTable({
 									return (
 										<td key={c.column} className="px-2 py-1.5">
 											{bind ? (
-												<Controller
-													control={control}
-													name={`countries.${i}.${bind}` as never}
-													render={({ field: f }) => (
-														<input
-															type={c.line === "002" ? "text" : "number"}
-															inputMode={
-																c.line === "002" ? undefined : "decimal"
-															}
-															step="any"
-															disabled={disabled}
-															aria-label={`Row ${i + 1} — column ${c.column}`}
-															className={cn(
-																S4_CELL,
-																c.line === "002"
-																	? "text-left"
-																	: "text-right",
-															)}
-															value={
-																(f.value as string | number | undefined) ?? ""
-															}
-															onChange={(e) =>
-																f.onChange(
-																	e.target.value === ""
-																		? undefined
-																		: c.line === "002"
-																			? e.target.value
-																			: Number(e.target.value),
-																)
-															}
-															onBlur={f.onBlur}
-														/>
-													)}
-												/>
+												c.line === "002" ? (
+													<PaperText
+														control={control}
+														name={`countries.${i}.${bind}`}
+														label={`Row ${i + 1} — column ${c.column}`}
+														disabled={disabled}
+													/>
+												) : (
+													<PaperMoney
+														control={control}
+														name={`countries.${i}.${bind}`}
+														label={`Row ${i + 1} — column ${c.column}`}
+														disabled={disabled}
+													/>
+												)
 											) : (
 												<span className="block h-8 truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right leading-8 tabular-nums text-muted-foreground">
 													{typeof filed === "number"
@@ -213,6 +194,78 @@ function CountryTable({
 }
 
 /**
+ * The three figures column E is computed from, one row per country — the
+ * printed column's own heading names them (federal Schedule 21 lines 120 and
+ * 130, and the ACTA 8(2.2) deduction where Alberta's differs). They were
+ * collected only in Guided view.
+ */
+function ColumnEWorking({
+	control,
+	disabled,
+	filedByFieldOccurrence,
+}: {
+	control: Control<AlbertaForeignInvestment4Values>;
+	disabled?: boolean;
+	filedByFieldOccurrence: ReadonlyMap<string, string | number>;
+}) {
+	const countries = useWatch({ control, name: "countries" }) ?? [];
+	if (countries.length === 0)
+		return (
+			<p className="px-4 py-3 text-sm text-muted-foreground">
+				Add a country above first.
+			</p>
+		);
+	const inputs = [
+		["fedForeignTaxPaid", "Foreign tax paid (S21 line 120)"],
+		["fedIta2012Deduction", "ITA 20(12) deduction (S21 line 130)"],
+		["albertaActa82Deduction", "ACTA 8(2.2) deduction, if different"],
+	] as const;
+	return (
+		<div className="overflow-x-auto px-4 py-3">
+			<table className="w-full border-collapse text-xs">
+				<thead>
+					<tr className="border-b bg-muted/40">
+						<th className="px-2 py-2 text-left font-medium">Country (A)</th>
+						{inputs.map(([, label]) => (
+							<th key={label} className="px-2 py-2 text-left font-medium">
+								{label}
+							</th>
+						))}
+						<th className="px-2 py-2 text-left font-medium">= E (006)</th>
+					</tr>
+				</thead>
+				<tbody>
+					{countries.map((c, i) => {
+						const e = filedByFieldOccurrence.get(`006-${i + 1}`);
+						return (
+							// biome-ignore lint/suspicious/noArrayIndexKey: rows follow the country table's order
+							<tr key={i} className="border-b">
+								<td className="px-2 py-1.5">{c?.country || `Row ${i + 1}`}</td>
+								{inputs.map(([name, label]) => (
+									<td key={name} className="px-2 py-1.5">
+										<PaperMoney
+											control={control}
+											name={`countries.${i}.${name}`}
+											label={`Row ${i + 1} — ${label}`}
+											disabled={disabled}
+										/>
+									</td>
+								))}
+								<td className="px-2 py-1.5">
+									<span className="block h-8 rounded-md border border-dashed bg-muted/50 px-1.5 text-right leading-8 tabular-nums text-muted-foreground">
+										{typeof e === "number" ? at1Money(e) : "—"}
+									</span>
+								</td>
+							</tr>
+						);
+					})}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
+/**
  * AT1 Schedule 4 paper Form View — one row per country (dynamic, via
  * `PaperClassGrid`), matching `alberta-schedule4.ts`'s own `countries` array.
  * 006 and 012 are read-only, sourced from the last computed return by
@@ -233,30 +286,55 @@ export function Schedule4FormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
-	const s4Control = control as unknown as Control<AlbertaForeignInvestment4Values>;
+	const s4Control =
+		control as unknown as Control<AlbertaForeignInvestment4Values>;
 	// The table owns the row list via `useFieldArray`; nothing here needs to
 	// watch it, and watching it too re-rendered this whole view on every cell.
-	const filed = computed?.schedulePayloads?.find((p) => p.scheduleId === SCHEDULE_ID);
+	const filed = computed?.schedulePayloads?.find(
+		(p) => p.scheduleId === SCHEDULE_ID,
+	);
 	const filedByFieldOccurrence = new Map(
 		(filed?.values ?? []).flatMap((v) => {
 			const parsed = parseAt1LineItemId(v.lineItemId);
-			return parsed ? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const] : [];
+			return parsed
+				? [[`${parsed.field}-${parsed.occurrence}`, v.value] as const]
+				: [];
 		}),
 	);
 	const resolveTotalsLine: ResolveLine = (line): LineValue => {
 		const field = parseAt1LineItemId(line)?.field ?? line;
-		return { editable: false, value: filedByFieldOccurrence.get(`${field}-1`) as string | number | undefined };
+		return {
+			editable: false,
+			value: filedByFieldOccurrence.get(`${field}-1`) as
+				| string
+				| number
+				| undefined,
+		};
 	};
-	const totalsFields = AT1_SCHEDULE_4_FIELDS.filter((f) => f.section === "total");
+	const totalsFields = AT1_SCHEDULE_4_FIELDS.filter(
+		(f) => f.section === "total",
+	);
 
 	return (
 		<div className="space-y-4">
 			<PaperSection
-				title={AT1_SCHEDULE_4_SECTIONS[0]?.title ?? "Foreign Investment Credits"}
+				title={
+					AT1_SCHEDULE_4_SECTIONS[0]?.title ?? "Foreign Investment Credits"
+				}
 				description={AT1_SCHEDULE_4_SECTIONS[0]?.description}
 				formId="AT1SCH04"
 			>
 				<CountryTable
+					control={s4Control}
+					disabled={disabled}
+					filedByFieldOccurrence={filedByFieldOccurrence}
+				/>
+			</PaperSection>
+			<PaperSection
+				title="Column E working — federal Schedule 21"
+				description="Column E is the foreign tax paid (federal Schedule 21 line 120) minus the greater of the ACTA 8(2.2) or ITA 20(12) deduction (line 130), per country. Enter the three figures here; E is calculated."
+			>
+				<ColumnEWorking
 					control={s4Control}
 					disabled={disabled}
 					filedByFieldOccurrence={filedByFieldOccurrence}

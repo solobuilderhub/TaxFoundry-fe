@@ -34,7 +34,7 @@ import type { ScheduleKey } from "./registry";
  */
 export const FORM_ID_TO_SCHEDULE_KEY: Record<
 	string,
-	ScheduleKey | "schedule2" | "schedule10" | "schedule12"
+	ScheduleKey | "schedule2" | "schedule10"
 > = {
 	AT1: "alberta",
 	AT1SCH1: "albertaSbd",
@@ -44,10 +44,14 @@ export const FORM_ID_TO_SCHEDULE_KEY: Record<
 	AT1SCH4: "albertaForeignInvestment4",
 	AT1SCH04: "albertaForeignInvestment4",
 	AT1SCH10: "schedule10",
-	AT1SCH12: "schedule12",
-	AT1SCH13: "cca",
+	AT1SCH12: "albertaSchedule12",
+	// The AT1's OWN Schedules 13 and 17 — these pointed at the federal
+	// Schedule 8 and 13, so "→ AT1SCH13" opened a federal form.
+	AT1SCH13: "albertaCca13",
 	AT1SCH15: "albertaResourceDeductions15",
-	AT1SCH17: "reserves",
+	AT1SCH16: "albertaSred16",
+	AT1SCH17: "albertaReserves17",
+	AT1SCH18: "albertaSchedule18",
 	AT1SCH20: "albertaDonations",
 	AT1SCH21: "albertaContinuity",
 	AT1SCH29: "albertaIeg",

@@ -38,7 +38,7 @@ const SCHEDULE_ID = "021";
  *
  * §3.2.3.21 names each source ("Value must equal fed 200320", …). A preparer
  * whose T2 was prepared elsewhere has no T2 in this app for these to come
- * from, so each line is shown locked with a toggle to type the figure in.
+ * from, so each line is a box showing the derived figure until one is typed.
  */
 const PART_1_T2_SLOTS: Record<string, { path: string; label: string }> = {
 	"005": {
@@ -373,7 +373,7 @@ export function Schedule21FormView({
 		<div className="space-y-4">
 			<PaperSection
 				title="Calculation of current year non-capital loss"
-				description="Starts from Alberta net income on Schedule 12 line 054 and works down through the Division C deductions to the loss for the year. The T2 figures (violet) are kept once for the whole return — unlock one with its pencil to type it in when the T2 was not prepared here. Everything else is computed; 013 and 015 are print-only subtotals. Line 021 is a negative amount, carried to line 037 as a positive."
+				description="Starts from Alberta net income on Schedule 12 line 054 and works down through the Division C deductions to the loss for the year. The T2 figures (violet link) are kept once for the whole return — type over the grey figure when the T2 was not prepared here. Everything else is computed; 013 and 015 are print-only subtotals. Line 021 is a negative amount, carried to line 037 as a positive."
 				formId="AT1SCH21"
 			>
 				{part1Fields.map((f) => (

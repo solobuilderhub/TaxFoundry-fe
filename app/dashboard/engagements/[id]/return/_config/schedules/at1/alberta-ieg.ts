@@ -42,6 +42,8 @@ export const albertaIeg = defineSchedule({
 	hint: "Alberta SR&ED grant — eligible expenditures, associated group, agreement",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule29FormView, props),
+	// Every field is on the form, the AT4970 attachment and member details included.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

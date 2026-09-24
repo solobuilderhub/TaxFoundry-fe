@@ -1,18 +1,18 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import {
-	type Control,
-	Controller,
-	useFieldArray,
-	useWatch,
-} from "react-hook-form";
-import type { ComputedReturn } from "@/api/computed-returns";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
+import type {
+	AlbertaSbdCalculationTable,
+	ComputedReturn,
+} from "@/api/computed-returns";
+import { cn } from "@/lib/utils";
 import type {
 	AlbertaSbdValues,
 	ReturnInput,
 } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
+import { PaperMoney, PaperText } from "./components/paper-inputs";
 import {
 	formatSignedMoney,
 	PaperFootnotes,
@@ -71,8 +71,8 @@ const AGREEMENT_FIELD: Record<string, string | undefined> = {
 };
 
 /**
- * Federal figures this schedule DISPLAYS but does not own — locked, with an
- * unlock toggle that writes to the one place the figure actually lives.
+ * Federal figures this schedule DISPLAYS but does not own — a box showing the
+ * derived figure, which writes to the one place the figure actually lives.
  *
  * Line 003 is "Income from active businesses carried on in Canada as reported
  * on the T2 line 400 OR on Schedule 12, line 106". It is genuinely carried in,
@@ -115,9 +115,6 @@ const AGREEMENT_BASE_AMOUNT = 200_000;
 
 /** Two decimals, as the page's own percentages are printed. */
 const formatPercent = (n: number) => `${n.toFixed(2)}%`;
-
-const CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
 
 function buildResolveLine(
 	computed: ComputedReturn | undefined,
@@ -331,7 +328,13 @@ export function Schedule1FormView({
 				title={meta("calculation")?.title ?? "Calculation"}
 				description={meta("calculation")?.description}
 			>
-				<CalculationTable footnotes={footnotes} />
+				<CalculationTable
+					footnotes={footnotes}
+					table={
+						computed?.schedulePayloads?.find((p) => p.scheduleId === "001")
+							?.tables?.sbdCalculation
+					}
+				/>
 				{sectionFields("calculation").map(rowWithHeadings)}
 				{notesFor("calculation")}
 			</PaperSection>
@@ -386,28 +389,33 @@ export function Schedule1FormView({
 
 type Placement = ReturnType<typeof readFootnotePlacement>;
 
+const cellMoney = (v: number | undefined) =>
+	v === undefined ? "" : `$${Math.round(v).toLocaleString("en-CA")}`;
+
 /**
- * "Calculation of the Alberta Small Business Deduction" — read-only, and
- * honestly so.
+ * "Calculation of the Alberta Small Business Deduction" — computed by the
+ * engine (ca-tax `computeAlbertaSbdCalculation`), read-only.
  *
- * Seven columns and six rate periods, of which the page itself pre-prints two
- * columns: B ("250%" on every row) and F (the SBD rate per period). The other
- * five are blank on the paper form and blank here, because this engine does not
- * compute them: `computeAlbertaTax` reaches jacket line 070 as a residual
- * (`basicTax − albertaTaxPayable`) rather than day-weighting through these
- * columns, and column C needs line 015, which needs page 2's Area B, which is
- * numbered only (a)-(k) and so has nothing to file against.
- *
- * Showing the table empty is the point. A preparer checking a return against
- * the form needs to see that these columns exist and that this product has not
- * filled them; a table omitted altogether says the form does not have one.
+ * The page's own layout: the period label, then A-G. B and F are pre-printed
+ * on the paper form; A, C, D, E and G are the engine's, on rows the tax year
+ * actually touches — the others stay blank as they do on paper. The total of G
+ * is line 031 below, which equals jacket line 070. Print-only: the
+ * specification gives none of these cells a line to transmit on.
  */
-function CalculationTable({ footnotes }: { footnotes: Placement }) {
+function CalculationTable({
+	footnotes,
+	table,
+}: {
+	footnotes: Placement;
+	table?: AlbertaSbdCalculationTable;
+}) {
+	const rowFor = (label: string) => table?.rows.find((r) => r.label === label);
 	return (
 		<div className="overflow-x-auto p-2">
 			<table className="w-full border-collapse text-sm">
 				<thead>
 					<tr>
+						<th className="border-b px-2 pb-2" aria-label="Period" />
 						{AT1_SCHEDULE_1_COLUMNS.map((col) => (
 							<th
 								key={col.column}
@@ -435,27 +443,37 @@ function CalculationTable({ footnotes }: { footnotes: Placement }) {
 					</tr>
 				</thead>
 				<tbody>
-					{AT1_SCHEDULE_1_RATE_PERIODS.map((period) => (
-						<tr key={period.label} className="border-b">
-							<td className="px-2 py-1.5 text-xs leading-tight">
-								{period.label}
-							</td>
-							<td className="px-2 py-1.5 text-center font-semibold tabular-nums">
-								{period.percentage}
-							</td>
-							{/* C, D, E — blank on the page and not computed here. */}
-							<td className="px-2 py-1.5" />
-							<td className="px-2 py-1.5" />
-							<td className="px-2 py-1.5" />
-							<td className="px-2 py-1.5 text-center tabular-nums">
-								{period.sbdRate.toFixed(3)}
-							</td>
-							<td className="px-2 py-1.5" />
-						</tr>
-					))}
+					{AT1_SCHEDULE_1_RATE_PERIODS.map((period) => {
+						const r = rowFor(period.label);
+						const has = !!r && r.days > 0;
+						const num = "px-2 py-1.5 text-right tabular-nums";
+						return (
+							<tr key={period.label} className="border-b">
+								<td className="px-2 py-1.5 text-xs leading-tight">
+									{period.label}
+								</td>
+								<td className={num}>{has ? r.days : ""}</td>
+								<td className="px-2 py-1.5 text-center font-semibold tabular-nums">
+									{period.percentage}
+								</td>
+								<td className={num}>{has ? cellMoney(r.threshold) : ""}</td>
+								<td className={num}>{has ? cellMoney(r.least) : ""}</td>
+								<td className={num}>{has ? cellMoney(r.allocated) : ""}</td>
+								<td className="px-2 py-1.5 text-center tabular-nums">
+									{period.sbdRate.toFixed(3)}
+								</td>
+								<td className={cn(num, "font-medium")}>
+									{has ? cellMoney(r.deduction) : ""}
+								</td>
+							</tr>
+						);
+					})}
 					<tr>
 						<td className="px-2 py-1.5 text-xs font-semibold leading-tight">
 							{AT1_SCHEDULE_1_TOTAL_DAYS_LABEL}
+						</td>
+						<td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+							{table?.totalDays ?? ""}
 						</td>
 						<td colSpan={6} className="px-2 py-1.5" />
 					</tr>
@@ -614,45 +632,21 @@ function AgreementTable({
 									}
 									return (
 										<td key={col.line} className="px-2 py-1.5">
-											<Controller
-												control={control}
-												name={
-													`associatedCorpAgreement.${i}.${name}` as `associatedCorpAgreement.${number}.name`
-												}
-												render={({ field }) =>
-													col.kind === "money" ? (
-														<input
-															type="number"
-															inputMode="decimal"
-															step="any"
-															disabled={disabled}
-															aria-label={`${col.heading} — corporation ${i + 1}`}
-															className={`${CELL} text-right tabular-nums`}
-															value={(field.value as number | undefined) ?? ""}
-															onChange={(e) =>
-																field.onChange(
-																	e.target.value === ""
-																		? undefined
-																		: Number(e.target.value),
-																)
-															}
-															onBlur={field.onBlur}
-														/>
-													) : (
-														<input
-															type="text"
-															disabled={disabled}
-															aria-label={`${col.heading} — corporation ${i + 1}`}
-															className={CELL}
-															value={(field.value as string | undefined) ?? ""}
-															onChange={(e) =>
-																field.onChange(e.target.value || undefined)
-															}
-															onBlur={field.onBlur}
-														/>
-													)
-												}
-											/>
+											{col.kind === "money" ? (
+												<PaperMoney
+													control={control}
+													name={`associatedCorpAgreement.${i}.${name}`}
+													label={`${col.heading} — corporation ${i + 1}`}
+													disabled={disabled}
+												/>
+											) : (
+												<PaperText
+													control={control}
+													name={`associatedCorpAgreement.${i}.${name}`}
+													label={`${col.heading} — corporation ${i + 1}`}
+													disabled={disabled}
+												/>
+											)}
 										</td>
 									);
 								})}

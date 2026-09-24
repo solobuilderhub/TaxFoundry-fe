@@ -16,7 +16,7 @@
  * computed/carried-in lines read-only.
  */
 export type PaperFieldRole = "input" | "computed" | "total" | "carried-in" | "not-collected";
-export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";
+export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code" | "count";
 
 export interface PaperField {
   line: string;
@@ -68,7 +68,7 @@ export const AT1_JACKET_FIELDS: readonly PaperField[] = [
   { line: "000025001", caption: "Name of the person to contact to discuss this return", kind: "text", role: "input", section: "identification", requirement: "mandatory" },
   { line: "000026001", caption: "Contact Person’s Telephone No.", kind: "text", role: "input", section: "identification", requirement: "mandatory", note: "The page labels the row \"Telephone number:\" and numbers the \"Area Code\" sub-box; the whole number files against this one id." },
   { line: "000028001", caption: "SIC Code", kind: "code", role: "input", section: "identification", requirement: "mandatory" },
-  { line: "000034001", caption: "Alberta Corporate Account Number (CAN) (Enter the 9 or 10 digit account number)", kind: "flag", role: "input", section: "identification", requirement: "mandatory" },
+  { line: "000034001", caption: "Alberta Corporate Account Number (CAN) (Enter the 9 or 10 digit account number)", kind: "text", role: "input", section: "identification", requirement: "mandatory" },
   { line: "000035001", caption: "Federal Business Number (BN)", kind: "text", role: "input", section: "identification", requirement: "mandatory" },
   { line: "000036001", caption: "Taxation Year Beginning", kind: "date", role: "input", section: "identification", requirement: "mandatory" },
   { line: "000037001", caption: "Taxation Year Ending", kind: "date", role: "input", section: "identification", requirement: "mandatory" },

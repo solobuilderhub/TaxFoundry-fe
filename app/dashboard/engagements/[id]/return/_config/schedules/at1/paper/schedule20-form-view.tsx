@@ -1,18 +1,13 @@
 "use client";
 
-import {
-	type Control,
-	Controller,
-	useFieldArray,
-	useWatch,
-} from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
-import { cn } from "@/lib/utils";
 import type {
 	AlbertaDonationCarryforwardRow,
 	AlbertaDonationsValues,
 } from "../../../../_lib/return-input";
 import { at1Money, parseAt1LineItemId } from "./at1-lines";
+import { PaperMoney, PaperText } from "./components/paper-inputs";
 import {
 	PaperFootnotes,
 	PaperLeaderRow,
@@ -32,9 +27,8 @@ const SCHEDULE_ID = "020";
  * Own editable fields, by 3-digit line — everything with no federal
  * equivalent (Schedule 21's own pattern: only what genuinely cannot be
  * derived from elsewhere is an override). Charitable's opening (002) and
- * current-year (010) come from the federal donations schedule instead —
- * read-only here, sourced from the last computed return, same as any other
- * carried-in figure this product doesn't re-collect on a second schedule.
+ * current-year (010) default to the federal donations schedule and can be
+ * stated for Alberta through their edit buttons — see LINKED_OWN.
  */
 const OWN_FIELD: Partial<Record<string, keyof AlbertaDonationsValues>> = {
 	"004": "charitableExpired",
@@ -56,6 +50,20 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaDonationsValues>> = {
 	// origin, rendered by `CarryforwardTable` rather than as leader rows.
 };
 
+/** Lines that default to the federal Schedule 2 and may be stated for Alberta. */
+const LINKED_OWN: Partial<
+	Record<string, { name: keyof AlbertaDonationsValues; label: string }>
+> = {
+	"002": {
+		name: "charitableOpening",
+		label: "federal Schedule 2 opening donation pool",
+	},
+	"010": {
+		name: "charitableCurrentYear",
+		label: "federal Schedule 2 charitable donations this year",
+	},
+};
+
 /** Which field of a `carryforwardRows` row each printed column binds to. */
 const CARRYFORWARD_FIELD: Record<string, keyof AlbertaDonationCarryforwardRow> =
 	{
@@ -66,9 +74,6 @@ const CARRYFORWARD_FIELD: Record<string, keyof AlbertaDonationCarryforwardRow> =
 		"098": "ecologicalLand",
 		"100": "medicine",
 	};
-
-const CF_CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
 
 /**
  * Lines 090-100 — carryforward available by year of origin.
@@ -135,36 +140,22 @@ function CarryforwardTable({
 									const isDate = f.kind === "date";
 									return (
 										<td key={f.line} className="px-2 py-1.5">
-											<Controller
-												control={control}
-												name={name}
-												render={({ field: bound }) => (
-													<input
-														type={isDate ? "date" : "number"}
-														inputMode={isDate ? undefined : "decimal"}
-														step="any"
-														disabled={disabled}
-														aria-label={`Row ${i + 1} — line ${f.line}`}
-														className={cn(
-															CF_CELL,
-															isDate ? "text-left" : "text-right",
-														)}
-														value={
-															(bound.value as string | number | undefined) ?? ""
-														}
-														onChange={(e) =>
-															bound.onChange(
-																e.target.value === ""
-																	? undefined
-																	: isDate
-																		? e.target.value
-																		: Number(e.target.value),
-															)
-														}
-														onBlur={bound.onBlur}
-													/>
-												)}
-											/>
+											{isDate ? (
+												<PaperText
+													control={control}
+													name={name}
+													label={`Row ${i + 1} — line ${f.line}`}
+													type="date"
+													disabled={disabled}
+												/>
+											) : (
+												<PaperMoney
+													control={control}
+													name={name}
+													label={`Row ${i + 1} — line ${f.line}`}
+													disabled={disabled}
+												/>
+											)}
 										</td>
 									);
 								})}
@@ -250,9 +241,20 @@ function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 		const ownName = OWN_FIELD[field];
 		if (ownName) return { editable: true, name: ownName };
 		const value = filedByField.get(field) as string | number | undefined;
-		const sourceLabel =
-			field === "002" || field === "010" ? "Donations & Gifts (S2)" : undefined;
-		return { editable: false, value, sourceLabel };
+		/*
+		 * 002 and 010 default to the federal donations schedule and can be
+		 * stated on the Alberta side — above all when the T2 was prepared
+		 * elsewhere and there is no federal figure. They were read-only here,
+		 * with their override boxes only in Guided view.
+		 */
+		const linked = LINKED_OWN[field];
+		if (linked)
+			return {
+				editable: false,
+				value,
+				linked: { backing: "own", name: linked.name, label: linked.label },
+			};
+		return { editable: false, value };
 	};
 }
 

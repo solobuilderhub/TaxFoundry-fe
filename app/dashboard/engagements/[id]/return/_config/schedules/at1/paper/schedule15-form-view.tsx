@@ -1,15 +1,11 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import {
-	type Control,
-	Controller,
-	useFieldArray,
-	useWatch,
-} from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { AlbertaResourceDeductions15Values } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
+import { PaperMoney, PaperNumber, PaperText } from "./components/paper-inputs";
 import {
 	formatSignedMoney,
 	PaperFootnotes,
@@ -145,11 +141,6 @@ const CELL_FIELD: Readonly<Record<string, string>> = {
 	"221": "fedeSuccessor.claimed",
 	"233": "fedeSuccessor.federalForeignResourceIncome",
 };
-
-const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
-
-const CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
 
 /**
  * AT1 Schedule 15 paper Form View.
@@ -287,6 +278,8 @@ export function Schedule15FormView({
 			{/* The bold sentence at the very foot of page 6, below Area H. */}
 			<ClosingInstruction />
 
+			<NotPrinted control={s15Control} disabled={disabled} />
+
 			<PaperFootnotes
 				notes={AT1_SCHEDULE_15_FOOTNOTES}
 				only={footnotes.unplaced}
@@ -409,39 +402,39 @@ function ContinuityTable({
 					{area.rows
 						.filter((row) => !row.separateBox)
 						.map((row) => (
-						<tr key={row.label} className="border-b align-middle">
-							<td className="px-2 py-1.5 text-xs leading-tight">
-								{row.label}
-								{row.footnoteMarks?.map((n) => {
-									const text = AT1_SCHEDULE_15_FOOTNOTES[n];
-									if (!text) return null;
-									return (
-										<TooltipWrapper key={n} content={text} side="top">
-											<sup className="ml-0.5 cursor-help font-mono text-muted-foreground">
-												{markFor(n) ?? "*"}
-											</sup>
-										</TooltipWrapper>
-									);
-								})}
-							</td>
-							<Cell
-								row={row}
-								column="regular"
-								control={control}
-								disabled={disabled}
-								filed={filed}
-							/>
-							{twoColumn && (
+							<tr key={row.label} className="border-b align-middle">
+								<td className="px-2 py-1.5 text-xs leading-tight">
+									{row.label}
+									{row.footnoteMarks?.map((n) => {
+										const text = AT1_SCHEDULE_15_FOOTNOTES[n];
+										if (!text) return null;
+										return (
+											<TooltipWrapper key={n} content={text} side="top">
+												<sup className="ml-0.5 cursor-help font-mono text-muted-foreground">
+													{markFor(n) ?? "*"}
+												</sup>
+											</TooltipWrapper>
+										);
+									})}
+								</td>
 								<Cell
 									row={row}
-									column="successor"
+									column="regular"
 									control={control}
 									disabled={disabled}
 									filed={filed}
 								/>
-							)}
-						</tr>
-					))}
+								{twoColumn && (
+									<Cell
+										row={row}
+										column="successor"
+										control={control}
+										disabled={disabled}
+										filed={filed}
+									/>
+								)}
+							</tr>
+						))}
 				</tbody>
 			</table>
 		</div>
@@ -526,30 +519,31 @@ function Cell({
 		);
 	}
 
+	if (/\.alberta\w+$/.test(name)) {
+		return (
+			<td className="px-2 py-1.5">
+				<div className="flex items-start gap-1.5">
+					<span className="pt-2">{chip}</span>
+					<PairedMoney
+						control={control}
+						name={name}
+						label={`${row.label} — line ${line}`}
+						disabled={disabled}
+					/>
+				</div>
+			</td>
+		);
+	}
+
 	return (
 		<td className="px-2 py-1.5">
 			<div className="flex items-center gap-1.5">
 				{chip}
-				<Controller
+				<PaperMoney
 					control={control}
-					name={name as "daysInTaxYear"}
-					render={({ field }) => (
-						<input
-							type="number"
-							inputMode="decimal"
-							step="any"
-							disabled={disabled}
-							aria-label={`${row.label} — line ${line}`}
-							className={CELL}
-							value={(field.value as number | undefined) ?? ""}
-							onChange={(e) =>
-								field.onChange(
-									e.target.value === "" ? undefined : Number(e.target.value),
-								)
-							}
-							onBlur={field.onBlur}
-						/>
-					)}
+					name={name}
+					label={`${row.label} — line ${line}`}
+					disabled={disabled}
 				/>
 			</div>
 		</td>
@@ -858,6 +852,116 @@ function CountryTable({
 	);
 }
 
+/**
+ * What the engine needs that the page prints nowhere: the tax year's length
+ * (derived from the tax year — typed only to override it) and each Area H
+ * regular country's global foreign resource limit, the "B" in 293 = A + B.
+ */
+function NotPrinted({
+	control,
+	disabled,
+}: {
+	control: Control<AlbertaResourceDeductions15Values>;
+	disabled?: boolean;
+}) {
+	const cfre = useWatch({ control, name: "cfreRegular" }) ?? [];
+	return (
+		<PaperSection
+			title="Not printed on the form"
+			description="Figures the calculation needs that the page has no box for."
+		>
+			<div className="flex items-center gap-3 px-4 py-2 text-sm">
+				<span className="min-w-0 flex-1">
+					Days in the tax year
+					<span className="block text-xs text-muted-foreground">
+						Blank = the tax year's own length. Short years prorate the claims.
+					</span>
+				</span>
+				<PaperNumber
+					control={control}
+					name="daysInTaxYear"
+					label="Days in the tax year"
+					placeholder="From the tax year"
+					disabled={disabled}
+					className="w-36 shrink-0"
+				/>
+			</div>
+			{cfre.map((row, i) => (
+				<div
+					// biome-ignore lint/suspicious/noArrayIndexKey: same order as Area H's regular table
+					key={i}
+					className="flex items-center gap-3 px-4 py-2 text-sm"
+				>
+					<span className="min-w-0 flex-1">
+						Global foreign resource limit —{" "}
+						{row?.countryCode || `country ${i + 1}`}
+						<span className="block text-xs text-muted-foreground">
+							Area H line 293 = A + B; this is B. Blank is treated as nil.
+						</span>
+					</span>
+					<PaperMoney
+						control={control}
+						name={`cfreRegular.${i}.globalForeignResourceLimit`}
+						label={`Global foreign resource limit — country ${i + 1}`}
+						disabled={disabled}
+						className="w-36 shrink-0"
+					/>
+				</div>
+			))}
+		</PaperSection>
+	);
+}
+
+/**
+ * A reconciled line: the Alberta figure the form prints, and beneath it the
+ * federal figure it defaults to — federal and Alberta side by side, the way
+ * every tax package lays out a provincial override.
+ *
+ * The federal half used to be collected in the guided view only. It matters
+ * twice: it is the Alberta line's default, and the federal return's own
+ * resource deduction reads it too.
+ */
+function PairedMoney({
+	control,
+	name,
+	label,
+	disabled,
+}: {
+	control: Control<AlbertaResourceDeductions15Values>;
+	/** The Alberta half's full path — `pool.albertaX` or `array.i.albertaX`. */
+	name: string;
+	label: string;
+	disabled?: boolean;
+}) {
+	const federalName = name.replace(/\.alberta(\w+)$/, ".federal$1");
+	const box = (
+		bound: string,
+		aria: string,
+		placeholder?: string,
+		small?: boolean,
+	) => (
+		<PaperMoney
+			control={control}
+			name={bound}
+			label={aria}
+			placeholder={placeholder}
+			disabled={disabled}
+			className={small ? "[&_input]:h-7 [&_input]:text-xs" : undefined}
+		/>
+	);
+	return (
+		<div className="flex-1 space-y-1">
+			{box(name, `${label} — Alberta`, "Same as federal")}
+			<div className="flex items-center gap-1">
+				<span className="w-12 shrink-0 text-[10px] text-muted-foreground">
+					Federal
+				</span>
+				{box(federalName, `${label} — federal`, undefined, true)}
+			</div>
+		</div>
+	);
+}
+
 /** One cell of a per-country row — editable, computed, or unnumbered. */
 function CountryCell({
 	column,
@@ -901,41 +1005,36 @@ function CountryCell({
 		);
 	}
 
+	if (name.startsWith("alberta")) {
+		return (
+			<td className="px-2 py-1.5">
+				<PairedMoney
+					control={control}
+					name={`${arrayKey}.${index}.${name}`}
+					label={`${column.heading} - country ${index + 1}`}
+					disabled={disabled}
+				/>
+			</td>
+		);
+	}
+
 	return (
 		<td className="px-2 py-1.5">
-			<Controller
-				control={control}
-				name={`${arrayKey}.${index}.${name}` as "daysInTaxYear"}
-				render={({ field }) =>
-					column.kind === "code" ? (
-						<input
-							type="text"
-							disabled={disabled}
-							aria-label={`${column.heading} - country ${index + 1}`}
-							className={CELL.replace("text-right", "")}
-							value={(field.value as string | undefined) ?? ""}
-							onChange={(e) => field.onChange(e.target.value || undefined)}
-							onBlur={field.onBlur}
-						/>
-					) : (
-						<input
-							type="number"
-							inputMode="decimal"
-							step="any"
-							disabled={disabled}
-							aria-label={`${column.heading} - country ${index + 1}`}
-							className={CELL}
-							value={(field.value as number | undefined) ?? ""}
-							onChange={(e) =>
-								field.onChange(
-									e.target.value === "" ? undefined : Number(e.target.value),
-								)
-							}
-							onBlur={field.onBlur}
-						/>
-					)
-				}
-			/>
+			{column.kind === "code" ? (
+				<PaperText
+					control={control}
+					name={`${arrayKey}.${index}.${name}`}
+					label={`${column.heading} - country ${index + 1}`}
+					disabled={disabled}
+				/>
+			) : (
+				<PaperMoney
+					control={control}
+					name={`${arrayKey}.${index}.${name}`}
+					label={`${column.heading} - country ${index + 1}`}
+					disabled={disabled}
+				/>
+			)}
 		</td>
 	);
 }

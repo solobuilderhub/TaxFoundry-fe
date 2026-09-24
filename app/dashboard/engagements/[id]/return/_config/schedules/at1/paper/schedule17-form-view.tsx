@@ -1,19 +1,17 @@
 "use client";
 
-import {
-	type Control,
-	Controller,
-	useFieldArray,
-	useWatch,
-} from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import { cn } from "@/lib/utils";
 import type {
 	AlbertaReserve17Row,
 	AlbertaReserves17Values,
 	ReserveType,
+	ReturnInput,
 } from "../../../../_lib/return-input";
 import { at1Money, parseAt1LineItemId } from "./at1-lines";
+import { DivergenceGateNotice } from "./components/divergence-gate-notice";
+import { PaperMoney } from "./components/paper-inputs";
 import { PaperFootnotes, PaperSection } from "./components/paper-primitives";
 import {
 	AT1_SCHEDULE_17_FIELDS,
@@ -101,14 +99,16 @@ export function Schedule17FormView({
 	control,
 	disabled,
 	computed,
-	onNavigate: _onNavigate,
+	onNavigate,
 	highlightLine: _highlightLine,
+	returnInput,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	returnInput?: ReturnInput;
 }) {
 	const c = control as unknown as Control<AlbertaReserves17Values>;
 	const { append } = useFieldArray({ control: c, name: "rows" });
@@ -129,6 +129,14 @@ export function Schedule17FormView({
 
 	return (
 		<div className="space-y-4">
+			<DivergenceGateNotice
+				returnInput={returnInput}
+				hasEntries={rows.some(
+					(r) => r && Object.values(r).some((v) => typeof v === "number"),
+				)}
+				schedule="Schedule 17"
+				onNavigate={onNavigate}
+			/>
 			<PaperSection
 				title="Reserves"
 				description="Eight reserve kinds, as the form prints them. A cell left blank takes the federal figure — the schedule is required only where Alberta differs. Bank reserves and insurance policy reserves have no federal equivalent, so for those this is the only source."
@@ -166,28 +174,11 @@ export function Schedule17FormView({
 														{printed(kind[col.field])}
 													</span>
 													{i >= 0 ? (
-														<Controller
+														<PaperMoney
 															control={c}
-															name={`rows.${i}.${col.field}` as const}
-															render={({ field: f }) => (
-																<input
-																	type="number"
-																	inputMode="decimal"
-																	step="any"
-																	disabled={disabled}
-																	aria-label={`${kind.label} — ${col.heading}`}
-																	className={CELL}
-																	value={(f.value as number | undefined) ?? ""}
-																	onChange={(e) =>
-																		f.onChange(
-																			e.target.value === ""
-																				? undefined
-																				: Number(e.target.value),
-																		)
-																	}
-																	onBlur={f.onBlur}
-																/>
-															)}
+															name={`rows.${i}.${col.field}`}
+															label={`${kind.label} — ${col.heading}`}
+															disabled={disabled}
 														/>
 													) : (
 														/*

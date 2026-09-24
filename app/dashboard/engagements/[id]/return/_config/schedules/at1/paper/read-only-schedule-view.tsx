@@ -14,6 +14,7 @@ import {
 	OfficialPdfLink,
 	OwnLinkedValue,
 	PaperFootnotes,
+	PaperLeaderRow,
 	ProvenanceBadge,
 	useLineHighlight,
 } from "./components/paper-primitives";
@@ -96,7 +97,9 @@ function ReadOnlyRow({
 		typeof value === "number"
 			? field.kind === "money"
 				? formatSignedMoney(value)
-				: String(value)
+				: field.kind === "count"
+					? value.toLocaleString("en-CA")
+					: String(value)
 			: value != null
 				? String(value)
 				: "";
@@ -191,6 +194,8 @@ function SectionResultRow({
 		formulaAsPrinted?: string;
 		note?: string;
 		to?: { form: string; line: string; note?: string };
+		/** The figure the formula produced, where the return has one. */
+		value?: string;
 	};
 }) {
 	if (!result) return null;
@@ -223,6 +228,11 @@ function SectionResultRow({
 					</span>
 				)}
 			</span>
+			{result.value !== undefined && (
+				<span className="w-36 shrink-0 rounded-md border border-dashed bg-muted/50 px-1.5 text-right font-mono text-sm leading-8 tabular-nums">
+					{result.value}
+				</span>
+			)}
 			{result.to && (
 				<TooltipWrapper
 					content={result.to.note}
@@ -275,6 +285,7 @@ export function ReadOnlyScheduleView({
 	writeInput,
 	control,
 	ownSlice,
+	ownFields,
 }: {
 	scheduleId: string;
 	/** The `FormDefinition.id` (e.g. `"AT1SCH12"`) — for the "View official PDF" link, when a vendored copy exists (see `OFFICIAL_PDF`). */
@@ -363,6 +374,8 @@ export function ReadOnlyScheduleView({
 				formulaAsPrinted?: string;
 				note?: string;
 				to?: { form: string; line: string; note?: string };
+				/** The factor the return computed, shown in the result cell. */
+				value?: string;
 		  }
 		| undefined;
 	computed?: ComputedReturn;
@@ -375,7 +388,7 @@ export function ReadOnlyScheduleView({
 	highlightLine?: string;
 	/**
 	 * Lines (by printed three-digit number) that show a T2 figure the working
-	 * return keeps in one slot — locked, with a toggle to type it in. Honoured
+	 * return keeps in one slot — a box showing the derived figure. Honoured
 	 * only when `writeInput` is supplied; otherwise they stay plain read-only.
 	 */
 	linkedLines?: LinkedLines;
@@ -390,6 +403,23 @@ export function ReadOnlyScheduleView({
 	 */
 	control?: Control<Record<string, unknown>>;
 	ownSlice?: string;
+	/**
+	 * Printed line → a field of the schedule's own slice, rendered as an
+	 * ordinary editable row (a yes/no question, say) rather than a linked
+	 * figure. Only used with `control`, i.e. on the schedule's own Form View.
+	 */
+	ownFields?: Readonly<
+		Record<
+			string,
+			| string
+			| {
+					name: string;
+					options: readonly { code: string; label: string }[];
+					/** What a blank answer means, shown as the blank option. */
+					blank?: string;
+			  }
+		>
+	>;
 }) {
 	const linkFor = (field: PaperField): LinkedSlot | undefined => {
 		const slot =
@@ -488,18 +518,51 @@ export function ReadOnlyScheduleView({
 								const heading = blockHeadings?.find(
 									(h) => h.aboveLine === line,
 								);
-								const row = (
-									<ReadOnlyRow
-										key={f.line}
-										field={f}
-										filedByField={filedByField}
-										highlightLine={highlightLine}
-										onNavigate={onNavigate}
-										linked={linkFor(f)}
-										control={control}
-										displayCaption={captionFor?.(f)}
-									/>
-								);
+								const own = control ? ownFields?.[line] : undefined;
+								const ownName = typeof own === "string" ? own : own?.name;
+								const ownOptions =
+									typeof own === "object" ? own.options : undefined;
+								const row =
+									ownName && control ? (
+										<PaperLeaderRow
+											key={f.line}
+											line={line}
+											caption={captionFor?.(f) ?? f.caption}
+											kind={f.kind}
+											role={f.role}
+											note={f.note}
+											control={control}
+											// Blank box: the figure the return files without it, as a hint.
+											resolveLine={() => {
+												const filedValue = filedByField.get(line);
+												const blank =
+													typeof own === "object" ? own.blank : undefined;
+												return {
+													editable: true,
+													name: ownName,
+													...(ownOptions ? { options: ownOptions } : {}),
+													...(blank !== undefined
+														? { placeholder: blank }
+														: filedValue != null
+															? { placeholder: String(filedValue) }
+															: {}),
+												};
+											}}
+											onNavigate={onNavigate}
+											highlightLine={highlightLine}
+										/>
+									) : (
+										<ReadOnlyRow
+											key={f.line}
+											field={f}
+											filedByField={filedByField}
+											highlightLine={highlightLine}
+											onNavigate={onNavigate}
+											linked={linkFor(f)}
+											control={control}
+											displayCaption={captionFor?.(f)}
+										/>
+									);
 								if (!heading) return row;
 								return (
 									<div key={f.line}>

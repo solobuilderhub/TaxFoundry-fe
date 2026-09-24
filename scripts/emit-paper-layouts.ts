@@ -384,7 +384,7 @@ function emitPaperTypes(out: string[]): void {
 		`export type PaperFieldRole = ${FORM_FIELD_ROLES.map((r) => `"${r}"`).join(" | ")};`,
 	);
 	out.push(
-		'export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";',
+		'export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code" | "count";',
 	);
 	out.push("");
 	out.push("export interface PaperField {");

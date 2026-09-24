@@ -1,19 +1,26 @@
 "use client";
 
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import {
-	type Control,
-	Controller,
-	useFieldArray,
-	useWatch,
-} from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
+import { cn } from "@/lib/utils";
 import type {
 	AlbertaAbilEntry,
 	AlbertaSchedule18Values,
+	ReturnInput,
 } from "../../../../_lib/return-input";
-import { cn } from "@/lib/utils";
-import { formatSignedMoney, useLineHighlight } from "./components/paper-primitives";
+import { DISPOSITION_CATEGORY_OPTIONS } from "../../../options";
+import { DivergenceGateNotice } from "./components/divergence-gate-notice";
+import { PaperMoney, PaperSelect, PaperText } from "./components/paper-inputs";
+import {
+	formatSignedMoney,
+	PaperSection,
+	useLineHighlight,
+} from "./components/paper-primitives";
+import {
+	WorksheetMoneyField,
+	WorksheetTable,
+} from "./components/worksheet-table";
 import {
 	AT1_SCHEDULE_18_ABIL_COLUMNS,
 	AT1_SCHEDULE_18_ABIL_TOTALS_LABEL,
@@ -293,9 +300,6 @@ const rowLoss = (e: AlbertaAbilEntry | undefined): number | undefined => {
 	return n(e.proceeds) - (n(e.acb) + n(e.outlays));
 };
 
-const CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
-
 /** One editable cell, bound to `abilEntries.<index>.<field>`. */
 function AbilCell({
 	control,
@@ -310,57 +314,31 @@ function AbilCell({
 }) {
 	const field = ABIL_FIELD[line];
 	if (!field) return null;
-	return (
-		<Controller
+	return line === "084" ? (
+		<PaperSelect
 			control={control}
-			name={`abilEntries.${index}.${field}` as const}
-			render={({ field: f }) => {
-				const value = (f.value as string | number | undefined) ?? "";
-				/*
-				 * 084 is a SELECT, not a text box. The page prints "Specify: 1 =
-				 * shares or 2 = debt" and files the digit, but the stored value is
-				 * the word — `schedule18Values` maps shares→1, debt→2 at the filing
-				 * boundary. Typing "1" here would store the string "1", which is
-				 * neither of the two values the contract allows.
-				 */
-				if (line === "084")
-					return (
-						<select
-							{...f}
-							value={String(value)}
-							disabled={disabled}
-							aria-label="Specify: shares or debt"
-							className={cn(CELL, "text-left")}
-						>
-							<option value="">—</option>
-							<option value="shares">1 — Shares</option>
-							<option value="debt">2 — Debt</option>
-						</select>
-					);
-				const isText = line === "082";
-				const isDate = line === "086";
-				return (
-					<input
-						type={isDate ? "date" : isText ? "text" : "number"}
-						inputMode={isDate || isText ? undefined : "decimal"}
-						step="any"
-						disabled={disabled}
-						aria-label={`Row ${index + 1} — line ${line}`}
-						className={cn(CELL, isDate || isText ? "text-left" : "text-right")}
-						value={value}
-						onChange={(e) =>
-							f.onChange(
-								e.target.value === ""
-									? undefined
-									: isDate || isText
-										? e.target.value
-										: Number(e.target.value),
-							)
-						}
-						onBlur={f.onBlur}
-					/>
-				);
-			}}
+			name={`abilEntries.${index}.${field}`}
+			label={`Row ${index + 1} — line ${line}`}
+			options={[
+				{ value: "shares", label: "1 — Shares" },
+				{ value: "debt", label: "2 — Debt" },
+			]}
+			disabled={disabled}
+		/>
+	) : line === "082" || line === "086" ? (
+		<PaperText
+			control={control}
+			name={`abilEntries.${index}.${field}`}
+			label={`Row ${index + 1} — line ${line}`}
+			type={line === "086" ? "date" : "text"}
+			disabled={disabled}
+		/>
+	) : (
+		<PaperMoney
+			control={control}
+			name={`abilEntries.${index}.${field}`}
+			label={`Row ${index + 1} — line ${line}`}
+			disabled={disabled}
 		/>
 	);
 }
@@ -558,17 +536,130 @@ const GRID_LINES = [
 ];
 
 /**
+ * Printed lines that ARE the preparer's figure, typed on the form. They were
+ * collected in the guided view only.
+ */
+const OWN_FIELDS = {
+	"001": "electingPropertyTransfer",
+	"060": "unappliedLppLosses",
+	"064": "capitalGainsDividends",
+	"071": "gainOnDonatedSecurities",
+	"073": "gainOnDonatedEcologicalLand",
+	"077": "exemptionThreshold",
+	"078": "capitalGainsFromActualProperty",
+} as const;
+
+/** 066/068 file the Alberta reserve, which defaults to the federal one below. */
+const RESERVE_LINES = {
+	"066": {
+		path: "albertaSchedule18.albertaReserveOpening",
+		label: "Alberta opening reserve (defaults to federal)",
+	},
+	"068": {
+		path: "albertaSchedule18.albertaReserveClosing",
+		label: "Alberta closing reserve (defaults to federal)",
+	},
+};
+
+/**
+ * What the printed lines are computed FROM but do not print: the Alberta
+ * category overrides behind 002-032, the federal reserve balances behind
+ * 066/068, and the Schedule 73 figures the form doubles at 096/098.
+ */
+function Schedule18Worksheets({
+	control,
+	disabled,
+}: {
+	control: Control<Record<string, unknown>>;
+	disabled?: boolean;
+}) {
+	return (
+		<>
+			<PaperSection
+				title="Alberta category overrides (lines 002-032)"
+				description="Add a row ONLY for a category whose Alberta proceeds or adjusted cost base differ from the federal dispositions on Capital Gains (S6) — every other category takes the federal total."
+			>
+				<WorksheetTable
+					control={control}
+					name="albertaCategories"
+					disabled={disabled}
+					addLabel="+ Add a category"
+					emptyText="No overrides — every category takes the federal total."
+					columns={[
+						{
+							name: "category",
+							label: "Category",
+							kind: "select",
+							options: DISPOSITION_CATEGORY_OPTIONS,
+						},
+						{
+							name: "proceeds",
+							label: "Alberta proceeds (002-012)",
+							kind: "money",
+							hint: "Blank = the federal total.",
+						},
+						{
+							name: "acb",
+							label: "Alberta adjusted cost base (022-032)",
+							kind: "money",
+							hint: "Signed. Blank = the federal total.",
+						},
+					]}
+				/>
+			</PaperSection>
+			<PaperSection
+				title="Federal capital gain reserves (behind lines 066 and 068)"
+				description="The federal balances. Lines 066 and 068 file the Alberta figure, which defaults to these — edit it on the line itself when it differs."
+			>
+				<WorksheetMoneyField
+					control={control}
+					name="federalReserveOpening"
+					label="Federal opening balance"
+					hint="Federal line 006880."
+					disabled={disabled}
+				/>
+				<WorksheetMoneyField
+					control={control}
+					name="federalReserveClosing"
+					label="Federal closing balance"
+					hint="Federal line 006885."
+					disabled={disabled}
+				/>
+			</PaperSection>
+			<PaperSection
+				title="Section 34.2 — federal Schedule 73 (behind lines 096 and 098)"
+				description="Enter the figures AS FILED on federal Schedule 73. The form multiplies each by 2 at lines 096 and 098 — do not double them here."
+			>
+				<WorksheetMoneyField
+					control={control}
+					name="section342TaxableCapitalGains"
+					label="Taxable capital gains under s.34.2"
+					hint="Federal Schedule 73 line 275."
+					disabled={disabled}
+				/>
+				<WorksheetMoneyField
+					control={control}
+					name="section342AllowableCapitalLosses"
+					label="Allowable capital losses under s.34.2"
+					hint="Federal Schedule 73 line 285."
+					disabled={disabled}
+				/>
+			</PaperSection>
+		</>
+	);
+}
+
+/**
  * AT1 Schedule 18 — Alberta dispositions of capital property, as TRA prints
  * it: the disposition grids and their adjustments under the page-1 heading
  * "CAPITAL PROPERTY DISPOSITIONS", then the ABIL block on page 2.
  *
- * Read-only, like Schedule 12's. Most of this schedule is built from the SAME
- * rows the federal Capital Gains (S6) schedule already collects, tagged with
- * an Alberta category so nothing is typed twice — there is nothing here for a
- * preparer to edit. The one exception is the ABIL section, which has no
- * federal counterpart in this engine and is entered on its own guided
- * schedule (`alberta-schedule18.ts`); this view is where those entries are
- * checked against the printed form before filing.
+ * The category grids are built from the SAME rows the federal Capital Gains
+ * (S6) schedule collects, so they are read-only here; an Alberta difference is
+ * a row in the category-override worksheet below. Everything else this
+ * schedule collects is typed on the form: line 001 and 060-078 as ordinary
+ * boxes, 066/068 through their edit buttons, the ABIL table, and the federal
+ * reserve and Schedule 73 figures on the worksheets beneath.
  *
  * ── Why the dispositions block is a grid and not a list ─────────────────────
  *
@@ -600,6 +691,7 @@ export function Schedule18View({
 	stale,
 	onNavigate,
 	highlightLine,
+	returnInput,
 }: {
 	/** The ABIL rows are this schedule's OWN slice, so they bind and save here. */
 	control?: Control<Record<string, unknown>>;
@@ -608,6 +700,7 @@ export function Schedule18View({
 	stale?: boolean;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	returnInput?: ReturnInput;
 }) {
 	const byLine = new Map(
 		AT1_SCHEDULE_18_FIELDS.map((f) => [f.line.slice(3, 6), f] as const),
@@ -622,70 +715,87 @@ export function Schedule18View({
 	 * cells are editable, so what the preparer has typed is the truth, and a
 	 * figure from the previous compute would silently overwrite an unsaved edit.
 	 */
+	const s18 = (returnInput?.albertaSchedule18 ?? {}) as Record<string, unknown>;
+	const hasEntries = Object.values(s18).some(
+		(v) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0),
+	);
 	return (
-		<ReadOnlyScheduleView
-			scheduleId="018"
-			formId="AT1SCH18"
-			sections={AT1_SCHEDULE_18_SECTIONS}
-			footnotes={AT1_SCHEDULE_18_FOOTNOTES}
-			fields={AT1_SCHEDULE_18_FIELDS}
-			grids={(filed) => [
-				{
-					anchor: "002",
-					lines: GRID_LINES,
-					node: (
-						<div className="divide-y">
-							<DispositionGrid
-								gridId="shares"
-								filed={filed}
-								highlightLine={highlightLine}
-							/>
-							<div className="py-1">
-								{(["053", "054"] as const).map((line) => (
-									<BetweenGridsRow
-										key={line}
-										line={line}
-										caption={byLine.get(line)?.caption ?? line}
-										note={byLine.get(line)?.note}
-										filed={filed}
-										highlightLine={highlightLine}
-									/>
-								))}
+		<div className="space-y-4">
+			<DivergenceGateNotice
+				returnInput={returnInput}
+				hasEntries={hasEntries}
+				schedule="Schedule 18"
+				onNavigate={onNavigate}
+			/>
+			<ReadOnlyScheduleView
+				scheduleId="018"
+				formId="AT1SCH18"
+				sections={AT1_SCHEDULE_18_SECTIONS}
+				footnotes={AT1_SCHEDULE_18_FOOTNOTES}
+				fields={AT1_SCHEDULE_18_FIELDS}
+				grids={(filed) => [
+					{
+						anchor: "002",
+						lines: GRID_LINES,
+						node: (
+							<div className="divide-y">
+								<DispositionGrid
+									gridId="shares"
+									filed={filed}
+									highlightLine={highlightLine}
+								/>
+								<div className="py-1">
+									{(["053", "054"] as const).map((line) => (
+										<BetweenGridsRow
+											key={line}
+											line={line}
+											caption={byLine.get(line)?.caption ?? line}
+											note={byLine.get(line)?.note}
+											filed={filed}
+											highlightLine={highlightLine}
+										/>
+									))}
+								</div>
+								<DispositionGrid
+									gridId="properties"
+									filed={filed}
+									highlightLine={highlightLine}
+								/>
 							</div>
-							<DispositionGrid
-								gridId="properties"
-								filed={filed}
-								highlightLine={highlightLine}
-							/>
-						</div>
-					),
-				},
-				/*
-				 * The ABIL table, anchored at its first line. Only when `control`
-				 * is present: it binds to this schedule's own `abilEntries`, and
-				 * without a form there is nothing to bind — the flat rows below
-				 * still show 082-092 in that case, which is the honest fallback.
-				 */
-				...(control
-					? [
-							{
-								anchor: "082",
-								lines: ABIL_LINES,
-								node: (
-									<AbilTable control={control} disabled={disabled} />
-								),
-							},
-						]
-					: []),
-			]}
-			printedAfter={AT1_SCHEDULE_18_PRINTED_AFTER}
-			blockHeadings={AT1_SCHEDULE_18_BLOCK_HEADINGS}
-			computed={computed}
-			stale={stale}
-			onNavigate={onNavigate}
-			highlightLine={highlightLine}
-			notComputedMessage="Not yet computed — the form below is Schedule 18 as TRA prints it; its figures appear once you compute the return."
-			nothingToReportMessage="Computed, and Schedule 18 was not filed. TRA permits it only when the AT1 jacket declares a federal/Alberta difference (line 060 or 061), and the return declares none — so there are no Alberta dispositions to reconcile."
-		/>
+						),
+					},
+					/*
+					 * The ABIL table, anchored at its first line. Only when `control`
+					 * is present: it binds to this schedule's own `abilEntries`, and
+					 * without a form there is nothing to bind — the flat rows below
+					 * still show 082-092 in that case, which is the honest fallback.
+					 */
+					...(control
+						? [
+								{
+									anchor: "082",
+									lines: ABIL_LINES,
+									node: <AbilTable control={control} disabled={disabled} />,
+								},
+							]
+						: []),
+				]}
+				printedAfter={AT1_SCHEDULE_18_PRINTED_AFTER}
+				blockHeadings={AT1_SCHEDULE_18_BLOCK_HEADINGS}
+				computed={computed}
+				stale={stale}
+				onNavigate={onNavigate}
+				highlightLine={highlightLine}
+				notComputedMessage="Not yet computed — the form below is Schedule 18 as TRA prints it; its figures appear once you compute the return."
+				nothingToReportMessage="Computed, and Schedule 18 was not filed. TRA permits it only when the AT1 jacket declares a federal/Alberta difference (line 060 or 061), and the return declares none — so there are no Alberta dispositions to reconcile."
+				control={control}
+				ownSlice={control ? "albertaSchedule18" : undefined}
+				ownFields={OWN_FIELDS}
+				linkedLines={RESERVE_LINES}
+			/>
+			{control && (
+				<Schedule18Worksheets control={control} disabled={disabled} />
+			)}
+		</div>
 	);
 }

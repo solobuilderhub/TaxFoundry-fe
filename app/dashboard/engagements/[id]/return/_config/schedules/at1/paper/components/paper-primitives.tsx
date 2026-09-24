@@ -1,14 +1,18 @@
 "use client";
 
+import { useDebounce } from "@classytic/fluid/client/hooks";
 import { Pill } from "@classytic/fluid/client/pill";
 import { TooltipWrapper } from "@classytic/fluid/client/tooltip-wrapper";
-import { Check, Link2, Pencil, X } from "lucide-react";
+import { MoneyInput } from "@classytic/fluid/forms";
+import { Link2 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { type Control, Controller, type Path, useWatch } from "react-hook-form";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { canNavigateToForm } from "../../../../form-nav";
 import { at1Money, parseAt1LineItemId } from "../at1-lines";
 import type {
+	DirectSlot,
 	LineValue,
 	LinkedSlot,
 	NavigateToLine,
@@ -16,6 +20,13 @@ import type {
 	PaperFieldRole,
 	ResolveLine,
 } from "../resolve-line";
+import {
+	PaperMoney,
+	PaperNumber,
+	PaperSelect,
+	PaperText,
+	PaperYesNo,
+} from "./paper-inputs";
 
 /**
  * The shared visual primitives every paper Form View composes from — a
@@ -163,6 +174,9 @@ function formatReadOnly(
 	if (value === undefined) return "";
 	if (kind === "money" && typeof value === "number")
 		return formatSignedMoney(value);
+	// Kilometres, bushels, tonnage — a quantity, never a dollar figure.
+	if (kind === "count" && typeof value === "number")
+		return value.toLocaleString("en-CA");
 	if (kind === "flag")
 		return value === "yes" ? "Yes" : value === "no" ? "No" : String(value);
 	if (kind === "date" && typeof value === "string") {
@@ -174,11 +188,6 @@ function formatReadOnly(
 		return dateInputValue(value);
 	}
 	return String(value);
-}
-
-/** "code" (e.g. a CCA class number) and "text" (e.g. a corporation name) both take free text — every other kind is numeric. */
-function isTextKind(kind: PaperFieldKind): boolean {
-	return kind === "code" || kind === "text";
 }
 
 /**
@@ -462,7 +471,16 @@ export function useLineHighlight<E extends HTMLElement>(
 	const ref = useRef<E>(null);
 	const [active, setActive] = useState(false);
 	useEffect(() => {
-		if (!highlightLine || highlightLine !== line) return;
+		/*
+		 * Compared as the PRINTED number. A cross-reference names a line by its
+		 * nine-digit id ("000065001") while many rows are keyed by what the page
+		 * prints ("065"), so an exact match left those jumps scrolling nowhere.
+		 * The target is always on the schedule just opened, so the printed
+		 * number is unambiguous.
+		 */
+		const printed = (l: string) => parseAt1LineItemId(l)?.field ?? l;
+		if (!highlightLine || !line || printed(highlightLine) !== printed(line))
+			return;
 		ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
 		setActive(true);
 		const t = setTimeout(() => setActive(false), 2000);
@@ -471,50 +489,100 @@ export function useLineHighlight<E extends HTMLElement>(
 	return { ref, active };
 }
 
-/** `""` → cleared (`undefined`); otherwise a whole-dollar number. */
-const parseLinkedDraft = (raw: string): number | undefined => {
-	const t = raw.trim();
-	if (t === "") return undefined;
-	const n = Number(t);
-	return Number.isFinite(n) ? Math.round(n) : undefined;
-};
-
-const LINKED_INPUT_CLASS = cn(
-	"h-8 w-28 shrink-0 rounded-md border border-l-2 border-input border-l-violet-500/70 bg-transparent px-1.5 text-right text-sm tabular-nums outline-none dark:border-l-violet-400/70",
-	"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-);
-
-const ICON_BUTTON_CLASS =
-	"inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
-
 /**
- * The locked box, shared by both backings: the figure, a link glyph naming
- * where it lives, and an amber mark when what is stored has not been computed
- * through the return yet.
+ * A box whose value lives in ANOTHER slice of the working return — a T2
+ * figure kept once for the whole return (`LinkedSlot` "global"), or a field a
+ * different form owns (`DirectSlot`). It types like every other box and saves
+ * itself the same way the forms do, about 0.8 s after the last keystroke and
+ * once more on the way out.
+ *
+ * These were a locked figure behind a pencil, with a tick to save — a second
+ * way of entering a number on the same page. A blank box now shows, as its
+ * placeholder, the figure the return uses when nothing is typed.
  */
-function LinkedDisplay({
+function SlotInput({
 	kind,
-	shown,
-	computedValue,
-	label,
-	entered,
+	caption,
+	stored,
+	placeholder,
+	write,
+	disabled,
 }: {
 	kind: PaperFieldKind;
-	shown: string | number | undefined;
-	computedValue: string | number | undefined;
-	label: string;
-	/** Whether the preparer has typed a value in (vs. the T2's own figure showing through). */
-	entered: boolean;
+	caption: string;
+	stored: string | number | undefined;
+	placeholder?: string;
+	write: (v: string | number | undefined) => Promise<void>;
+	disabled?: boolean;
 }) {
-	const text = formatReadOnly(kind, shown);
-	// Stale only when something was ENTERED and the last compute has not caught
-	// up — a derived figure showing through is, by definition, the computed one.
-	// A line missing from the payload counts as zero: optional lines are not
-	// filed at zero, so "absent" is how a computed nil arrives. Comparing
-	// against `undefined` instead missed the commonest case — the first figure
-	// typed into a line that has never been filed — and would have left an
-	// entered 0 marked stale for ever.
-	const stale = entered && Number(shown) !== Number(computedValue ?? 0);
+	const [draft, setDraft] = useState<string | number | undefined>(stored);
+	const written = useRef(stored);
+	const latest = useRef({ draft, write });
+	latest.current = { draft, write };
+	// Follow the stored value when it changes elsewhere (another form, a reload).
+	useEffect(() => {
+		if (stored !== written.current) {
+			written.current = stored;
+			setDraft(stored);
+		}
+	}, [stored]);
+	const debounced = useDebounce(draft, 800);
+	useEffect(() => {
+		if (debounced === written.current) return;
+		written.current = debounced;
+		// The editor reports a failed save; the typed figure stays in the box.
+		void write(debounced).catch(() => undefined);
+	}, [debounced, write]);
+	useEffect(
+		() => () => {
+			const { draft: pending, write: save } = latest.current;
+			if (pending !== written.current)
+				void save(pending).catch(() => undefined);
+		},
+		[],
+	);
+
+	if (kind === "money") {
+		return (
+			<MoneyInput
+				name={caption}
+				label={caption}
+				labelClassName="sr-only"
+				placeholder={placeholder}
+				disabled={disabled}
+				currency="CAD"
+				decimals={0}
+				allowNegative
+				value={draft == null || draft === "" ? null : Number(draft)}
+				onChange={(v) => setDraft(v == null ? undefined : v)}
+				className="w-full"
+				inputClassName="text-right tabular-nums"
+			/>
+		);
+	}
+	const numeric = kind === "rate";
+	return (
+		<Input
+			type={numeric ? "number" : "text"}
+			inputMode={numeric ? "decimal" : undefined}
+			aria-label={caption}
+			placeholder={placeholder}
+			disabled={disabled}
+			className={cn("h-8", numeric && "text-right tabular-nums")}
+			value={draft ?? ""}
+			onChange={(e) => {
+				const t = e.target.value;
+				setDraft(t.trim() === "" ? undefined : numeric ? Number(t) : t);
+			}}
+		/>
+	);
+}
+
+/**
+ * Where a linked box's figure is kept — the violet link glyph, with the
+ * explanation on hover. Shown beside the box, never instead of it.
+ */
+function LinkedMark({ label, entered }: { label: string; entered: boolean }) {
 	return (
 		<TooltipWrapper
 			content={
@@ -522,42 +590,26 @@ function LinkedDisplay({
 					Kept once as <b>{label}</b> for the whole return — every schedule that
 					uses it, and the engine, read this one figure.{" "}
 					{entered
-						? "Entered directly here."
-						: "Unlock to type it in if the T2 was not prepared in this app."}
-					{stale && " Recompute the return to carry the new amount through."}
+						? "Entered here. Clear the box to go back to the figure the return derives."
+						: "The grey figure is what the return uses now; type over it if the T2 was not prepared in this app or Alberta's amount differs."}
 				</span>
 			}
 			side="top"
 		>
-			<span
-				className={cn(
-					"relative flex h-8 w-28 shrink-0 items-center justify-end gap-1 overflow-hidden rounded-md border border-l-2 border-l-violet-500/70 bg-violet-50/40 px-1.5 text-sm tabular-nums dark:border-l-violet-400/70 dark:bg-violet-950/20",
-					kind === "money" && typeof shown === "number" && shown < 0
-						? "text-red-600 dark:text-red-400"
-						: "text-foreground",
-				)}
-			>
-				<Link2
-					className="size-3 shrink-0 text-violet-600/70 dark:text-violet-400/70"
-					aria-hidden
-				/>
-				<span className="truncate">{text || "—"}</span>
-				{stale && (
-					<span
-						role="img"
-						className="absolute top-1 left-1 size-1.5 rounded-full bg-amber-500"
-						aria-label="Not yet computed"
-					/>
-				)}
-			</span>
+			<Link2
+				className="size-3.5 shrink-0 cursor-help text-violet-600/70 dark:text-violet-400/70"
+				aria-label={`Linked: ${label}`}
+			/>
 		</TooltipWrapper>
 	);
 }
 
-/**
- * A T2 figure kept in the working return, locked by default — see `LinkedSlot`.
- * Locked, it shows what the return holds; unlocked, it writes that slot.
- */
+const placeholderFor = (
+	value: string | number | undefined,
+	fallback: string,
+) => (value == null || value === "" ? fallback : String(value));
+
+/** A T2 figure kept in the working return — see `LinkedSlot`. */
 export function GlobalLinkedValue({
 	kind,
 	caption,
@@ -571,102 +623,50 @@ export function GlobalLinkedValue({
 	computedValue: string | number | undefined;
 	disabled?: boolean;
 }) {
-	const [editing, setEditing] = useState(false);
-	const [saving, setSaving] = useState(false);
-	const [draft, setDraft] = useState("");
-	const shown = slot.stored ?? computedValue;
-
-	const open = () => {
-		setDraft(shown === undefined ? "" : String(shown));
-		setEditing(true);
-	};
-	const commit = async () => {
-		const next = parseLinkedDraft(draft);
-		if (next === slot.stored) return setEditing(false);
-		setSaving(true);
-		try {
-			await slot.write(next);
-			setEditing(false);
-		} finally {
-			setSaving(false);
-		}
-	};
-
-	if (!editing) {
-		return (
-			<span className="flex w-36 shrink-0 items-center justify-end gap-1">
-				<LinkedDisplay
-					kind={kind}
-					shown={shown}
-					computedValue={computedValue}
-					label={slot.label}
-					entered={slot.stored !== undefined}
-				/>
-				<button
-					type="button"
-					className={ICON_BUTTON_CLASS}
-					onClick={open}
-					disabled={disabled}
-					aria-label={`Edit ${caption}`}
-					title={`Enter ${slot.label} directly`}
-				>
-					<Pencil className="size-3.5" />
-				</button>
-			</span>
-		);
-	}
-
 	return (
 		<span className="flex w-36 shrink-0 items-center justify-end gap-1">
-			<input
-				// biome-ignore lint/a11y/noAutofocus: the preparer just asked to type here
-				autoFocus
-				type="number"
-				inputMode="decimal"
-				step="1"
-				aria-label={`${caption} — ${slot.label}`}
-				placeholder="T2 figure"
-				className={LINKED_INPUT_CLASS}
-				value={draft}
-				disabled={saving}
-				onChange={(e) => setDraft(e.target.value)}
-				onKeyDown={(e) => {
-					if (e.key === "Enter") {
-						e.preventDefault(); // never submit the schedule's own form
-						void commit();
-					}
-					if (e.key === "Escape") setEditing(false);
-				}}
+			<LinkedMark label={slot.label} entered={slot.stored !== undefined} />
+			<SlotInput
+				kind={kind}
+				caption={`${caption} — ${slot.label}`}
+				stored={slot.stored}
+				placeholder={placeholderFor(computedValue, "T2 figure")}
+				write={(v) => slot.write(v == null ? undefined : Number(v))}
+				disabled={disabled}
 			/>
-			<span className="flex flex-col">
-				<button
-					type="button"
-					className={cn(ICON_BUTTON_CLASS, "size-4")}
-					onClick={() => void commit()}
-					disabled={saving}
-					aria-label="Save"
-					title="Save — blank uses the T2's own figure"
-				>
-					<Check className="size-3" />
-				</button>
-				<button
-					type="button"
-					className={cn(ICON_BUTTON_CLASS, "size-4")}
-					onClick={() => setEditing(false)}
-					disabled={saving}
-					aria-label="Cancel"
-				>
-					<X className="size-3" />
-				</button>
-			</span>
+		</span>
+	);
+}
+
+/** An ordinary box whose value another slice owns — see `DirectSlot`. */
+export function DirectInput({
+	kind,
+	caption,
+	slot,
+	disabled,
+}: {
+	kind: PaperFieldKind;
+	caption: string;
+	slot: DirectSlot;
+	disabled?: boolean;
+}) {
+	return (
+		<span className="w-36 shrink-0">
+			<SlotInput
+				kind={kind}
+				caption={caption}
+				stored={slot.stored}
+				write={slot.write}
+				disabled={disabled}
+			/>
 		</span>
 	);
 }
 
 /**
- * Same toggle, for a slot on THIS schedule's own form: unlocked, it is an
- * ordinary bound box, saved with the schedule — writing it anywhere else would
- * be overwritten by that save.
+ * The same, for a slot on THIS schedule's own form: an ordinary bound box,
+ * saved with the schedule — writing it anywhere else would be overwritten by
+ * that save.
  */
 export function OwnLinkedValue<T extends Record<string, unknown>>({
 	kind,
@@ -683,70 +683,67 @@ export function OwnLinkedValue<T extends Record<string, unknown>>({
 	control: Control<T>;
 	disabled?: boolean;
 }) {
-	const [editing, setEditing] = useState(false);
-	const own = useWatch({ control, name: slot.name as Path<T> }) as
-		| number
-		| undefined;
-	const entered = own !== undefined && own !== null && (own as unknown) !== "";
-	const shown = entered ? own : computedValue;
-
+	const own = useWatch({ control, name: slot.name as Path<T> }) as unknown;
+	const entered = own !== undefined && own !== null && own !== "";
 	return (
 		<span className="flex w-36 shrink-0 items-center justify-end gap-1">
-			{editing ? (
-				<Controller
-					control={control}
-					name={slot.name as Path<T>}
-					render={({ field }) => (
-						<input
-							// biome-ignore lint/a11y/noAutofocus: the preparer just asked to type here
-							autoFocus
-							type="number"
-							inputMode="decimal"
-							step="1"
-							aria-label={`${caption} — ${slot.label}`}
-							placeholder="Federal"
-							className={LINKED_INPUT_CLASS}
-							value={(field.value as number | undefined) ?? ""}
-							disabled={disabled}
-							onChange={(e) => field.onChange(parseLinkedDraft(e.target.value))}
-							onBlur={field.onBlur}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" || e.key === "Escape") {
-									e.preventDefault();
-									setEditing(false);
-								}
-							}}
-						/>
-					)}
-				/>
-			) : (
-				<LinkedDisplay
-					kind={kind}
-					shown={shown}
-					computedValue={computedValue}
-					label={slot.label}
-					entered={entered}
-				/>
-			)}
-			<button
-				type="button"
-				className={ICON_BUTTON_CLASS}
-				onClick={() => setEditing((v) => !v)}
+			<LinkedMark label={slot.label} entered={entered} />
+			<PaperMoney
+				control={control}
+				name={slot.name}
+				label={`${caption} — ${slot.label}`}
+				placeholder={placeholderFor(computedValue, "Federal")}
 				disabled={disabled}
-				aria-label={editing ? "Done" : `Edit ${caption}`}
-				title={
-					editing
-						? "Done — saved with this schedule; blank uses the federal figure"
-						: `Enter the Alberta amount if it differs from ${slot.label}`
-				}
-			>
-				{editing ? (
-					<Check className="size-3.5" />
-				) : (
-					<Pencil className="size-3.5" />
-				)}
-			</button>
+			/>
 		</span>
+	);
+}
+
+/**
+ * Yes/No radios for a field that is a genuine boolean (federal guided fields),
+ * mapping only at the DOM boundary so the stored value stays `true`/`false`.
+ * A string "yes" written into a boolean field is rejected by the API on save.
+ */
+function BoolYesNo<T extends Record<string, unknown>>({
+	control,
+	name,
+	caption,
+	disabled,
+}: {
+	control: Control<T>;
+	name: string;
+	caption: string;
+	disabled?: boolean;
+}) {
+	return (
+		<Controller
+			control={control}
+			name={name as Path<T>}
+			render={({ field }) => (
+				<div
+					className="flex shrink-0 gap-3"
+					role="radiogroup"
+					aria-label={caption}
+				>
+					{([true, false] as const).map((opt) => (
+						<label
+							key={String(opt)}
+							className="flex items-center gap-1 text-xs"
+						>
+							<input
+								type="radio"
+								name={`${name}-paper`}
+								disabled={disabled}
+								checked={field.value === opt}
+								onChange={() => field.onChange(opt)}
+								className="disabled:cursor-not-allowed"
+							/>
+							{opt ? "Yes" : "No"}
+						</label>
+					))}
+				</div>
+			)}
+		/>
 	);
 }
 
@@ -860,147 +857,78 @@ export function PaperLeaderRow<T extends Record<string, unknown>>({
 				})}
 			</span>
 			{resolved.editable ? (
-				kind === "flag" || kind === "bool-flag" ? (
-					<Controller
+				/*
+				 * The shared printed-form inputs (fluid, on the host's shadcn
+				 * primitives). "bool-flag" stays local: its field is a real boolean
+				 * (federal guided fields), which the string yes/no radio would corrupt.
+				 */
+				kind === "bool-flag" ? (
+					<BoolYesNo
 						control={control}
-						name={resolved.name as Path<T>}
-						render={({ field }) => {
-							// "flag" fields are AT1's own string convention ("yes"/"no");
-							// "bool-flag" fields are a genuine TypeScript `boolean` —
-							// mapping happens ONLY here, at the DOM boundary, so the
-							// underlying form value stays whichever type the schema
-							// actually declares (never silently coerced to a string the
-							// server would then reject).
-							const isYes =
-								kind === "bool-flag"
-									? field.value === true
-									: field.value === "yes";
-							const isNo =
-								kind === "bool-flag"
-									? field.value === false
-									: field.value === "no";
-							const setOpt = (opt: "yes" | "no") =>
-								field.onChange(kind === "bool-flag" ? opt === "yes" : opt);
-							return (
-								<div
-									className="flex shrink-0 gap-3"
-									role="radiogroup"
-									aria-label={caption}
-								>
-									{(["yes", "no"] as const).map((opt) => (
-										<label
-											key={opt}
-											className="flex items-center gap-1 text-xs"
-										>
-											<input
-												type="radio"
-												name={`${resolved.name}-paper`}
-												value={opt}
-												disabled={disabled}
-												checked={opt === "yes" ? isYes : isNo}
-												onChange={() => setOpt(opt)}
-												className="disabled:cursor-not-allowed"
-											/>
-											{opt === "yes" ? "Yes" : "No"}
-										</label>
-									))}
-								</div>
-							);
-						}}
+						name={resolved.name}
+						caption={caption}
+						disabled={disabled}
+					/>
+				) : kind === "flag" ? (
+					<PaperYesNo
+						control={control}
+						name={resolved.name}
+						label={caption}
+						disabled={disabled}
 					/>
 				) : resolved.options ? (
-					/*
-					 * A coded answer with a known list of permitted values.
-					 *
-					 * Native <select> rather than the design system's own,
-					 * deliberately: this row sits inside a facsimile of a printed
-					 * page, where the boxes are short and inline, and a portalled
-					 * listbox breaks that layout. The value written is the CODE,
-					 * which is what TRA receives.
-					 */
-					<Controller
+					<PaperSelect
 						control={control}
-						name={resolved.name as Path<T>}
-						render={({ field }) => (
-							<select
-								disabled={disabled}
-								aria-label={caption}
-								className={cn(
-									"h-8 w-36 shrink-0 rounded-md border border-l-2 border-input border-l-blue-500/60 bg-transparent px-1.5 text-sm outline-none",
-									"dark:border-l-blue-400/70 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-									"disabled:cursor-not-allowed disabled:border-dashed disabled:border-l-2 disabled:bg-muted/50 disabled:opacity-50",
-								)}
-								value={(field.value as string | undefined) ?? ""}
-								onChange={(e) =>
-									field.onChange(
-										e.target.value === "" ? undefined : e.target.value,
-									)
-								}
-								onBlur={field.onBlur}
-							>
-								{/*
-								 * Blank stays selectable. Every coded line on this page is
-								 * conditional, so withdrawing an answer given by mistake has
-								 * to be possible — and for the gated ones it is the only way
-								 * to leave the field absent, which the specification requires
-								 * once the gate above is "No".
-								 */}
-								<option value="">—</option>
-								{/* `?? []` only to keep the narrowing TS loses inside this callback — the branch is reached only when options exist. */}
-								{(resolved.options ?? []).map((o) => (
-									<option key={o.code} value={o.code}>
-										{o.code} — {o.label}
-									</option>
-								))}
-							</select>
-						)}
+						name={resolved.name}
+						label={caption}
+						disabled={disabled}
+						className="w-36 shrink-0"
+						options={resolved.options.map((o) => ({
+							value: o.code,
+							// A printed numeric code is part of the answer ("1 — CCPC");
+							// an internal id is not, and stays out of the label.
+							label: /^\d+$/.test(o.code) ? `${o.code} — ${o.label}` : o.label,
+						}))}
+						blankLabel={
+							resolved.placeholder ? `— (${resolved.placeholder})` : "—"
+						}
+					/>
+				) : kind === "money" ? (
+					<PaperMoney
+						control={control}
+						name={resolved.name}
+						label={caption}
+						placeholder={resolved.placeholder}
+						disabled={disabled}
+						className="w-36 shrink-0"
+					/>
+				) : kind === "rate" || kind === "count" ? (
+					<PaperNumber
+						control={control}
+						name={resolved.name}
+						label={caption}
+						placeholder={resolved.placeholder}
+						disabled={disabled}
+						className="w-36 shrink-0"
 					/>
 				) : (
-					<Controller
+					<PaperText
 						control={control}
-						name={resolved.name as Path<T>}
-						render={({ field }) => (
-							<input
-								type={
-									kind === "date"
-										? "date"
-										: kind === "money" || kind === "rate"
-											? "number"
-											: "text"
-								}
-								inputMode={
-									kind === "money" || kind === "rate" ? "decimal" : undefined
-								}
-								step={
-									kind === "money" ? "1" : kind === "rate" ? "any" : undefined
-								}
-								disabled={disabled}
-								aria-label={caption}
-								className={cn(
-									"h-8 w-36 shrink-0 rounded-md border border-l-2 border-input border-l-blue-500/60 bg-transparent px-1.5 text-right text-sm tabular-nums outline-none dark:border-l-blue-400/70",
-									"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-									"disabled:cursor-not-allowed disabled:border-dashed disabled:border-l-2 disabled:bg-muted/50 disabled:opacity-50",
-								)}
-								value={
-									kind === "date"
-										? dateInputValue(field.value as string | number | undefined)
-										: ((field.value as string | number | undefined) ?? "")
-								}
-								onChange={(e) => {
-									const v = e.target.value;
-									field.onChange(
-										v === ""
-											? undefined
-											: kind === "money" || kind === "rate"
-												? Number(v)
-												: v,
-									);
-								}}
-								onBlur={field.onBlur}
-							/>
-						)}
+						name={resolved.name}
+						label={caption}
+						placeholder={resolved.placeholder}
+						disabled={disabled}
+						type={kind === "date" ? "date" : "text"}
+						className="w-36 shrink-0"
 					/>
 				)
+			) : resolved.direct ? (
+				<DirectInput
+					kind={kind}
+					caption={caption}
+					slot={resolved.direct}
+					disabled={disabled}
+				/>
 			) : resolved.linked?.backing === "global" ? (
 				<GlobalLinkedValue
 					kind={kind}
@@ -1236,32 +1164,11 @@ function ContinuityCell<T extends Record<string, unknown>>({
 						)}
 					</div>
 					{name ? (
-						<Controller
+						<PaperMoney
 							control={control}
-							name={name as Path<T>}
-							render={({ field }) => (
-								<input
-									type="number"
-									inputMode="decimal"
-									step="any"
-									disabled={disabled || poolRow.role !== "input"}
-									aria-label={`${pool.label} — ${row.caption}`}
-									className={cn(
-										"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-right text-sm tabular-nums outline-none",
-										"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-										"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
-									)}
-									value={(field.value as number | undefined) ?? ""}
-									onChange={(e) =>
-										field.onChange(
-											e.target.value === ""
-												? undefined
-												: Number(e.target.value),
-										)
-									}
-									onBlur={field.onBlur}
-								/>
-							)}
+							name={name}
+							label={`${pool.label} — ${row.caption}`}
+							disabled={disabled || poolRow.role !== "input"}
 						/>
 					) : isUncollectedInput ? (
 						<TooltipWrapper
@@ -1699,79 +1606,35 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 												</span>
 											)}
 											{editable ? (
-												<Controller
-													control={control}
-													name={
-														`${arrayName}.${row.arrayIndex}.${col.fieldName}` as Path<T>
-													}
-													render={({ field }) => (
-														<input
-															type={
-																col.kind === "date"
-																	? "date"
-																	: isTextKind(col.kind)
-																		? "text"
-																		: "number"
-															}
-															inputMode={
-																col.kind === "date" || isTextKind(col.kind)
-																	? undefined
-																	: "decimal"
-															}
-															step="any"
-															disabled={disabled}
-															aria-label={`${row.label} — ${col.caption}`}
-															/*
-															 * What the engine actually used, shown as the
-															 * placeholder while the box is empty.
-															 *
-															 * Most of these columns mean "blank = take the
-															 * computed default", so an empty box hid the figure
-															 * that will be FILED: a class claiming the maximum
-															 * showed nothing at the CCA column and nothing at
-															 * the rate, and the only evidence of either was the
-															 * closing balance further along the row. Typing
-															 * still overrides — this stops a default being
-															 * invisible.
-															 */
-															placeholder={readOnlyText || undefined}
-															className={cn(
-																"h-8 w-full min-w-[5.5rem] rounded-md border border-input bg-transparent px-1.5 text-sm tabular-nums outline-none",
-																"placeholder:italic placeholder:text-muted-foreground/70",
-																col.kind === "date" || isTextKind(col.kind)
-																	? "text-left"
-																	: "text-right",
-																"focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring",
-																"disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50",
-															)}
-															value={
-																col.kind === "date"
-																	? dateInputValue(
-																			field.value as
-																				| string
-																				| number
-																				| undefined,
-																		)
-																	: ((field.value as
-																			| string
-																			| number
-																			| undefined) ?? "")
-															}
-															onChange={(e) => {
-																const v = e.target.value;
-																field.onChange(
-																	v === ""
-																		? undefined
-																		: col.kind === "date" ||
-																				isTextKind(col.kind)
-																			? v
-																			: Number(v),
-																);
-															}}
-															onBlur={field.onBlur}
-														/>
-													)}
-												/>
+												col.kind === "money" ? (
+													<PaperMoney
+														control={control}
+														name={`${arrayName}.${row.arrayIndex}.${col.fieldName}`}
+														label={`${row.label} — ${col.caption}`}
+														placeholder={readOnlyText || undefined}
+														disabled={disabled}
+														className="min-w-[5.5rem]"
+													/>
+												) : col.kind === "rate" ? (
+													<PaperNumber
+														control={control}
+														name={`${arrayName}.${row.arrayIndex}.${col.fieldName}`}
+														label={`${row.label} — ${col.caption}`}
+														placeholder={readOnlyText || undefined}
+														disabled={disabled}
+														className="min-w-[5.5rem]"
+													/>
+												) : (
+													<PaperText
+														control={control}
+														name={`${arrayName}.${row.arrayIndex}.${col.fieldName}`}
+														label={`${row.label} — ${col.caption}`}
+														placeholder={readOnlyText || undefined}
+														type={col.kind === "date" ? "date" : "text"}
+														disabled={disabled}
+														className="min-w-[5.5rem]"
+													/>
+												)
 											) : readOnlyText ? (
 												<span
 													className="block h-8 overflow-hidden truncate rounded-md border border-dashed bg-muted/50 px-1.5 text-right leading-8 text-muted-foreground"

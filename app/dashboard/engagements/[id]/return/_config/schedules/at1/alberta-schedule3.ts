@@ -192,7 +192,8 @@ export const albertaSchedule3Schema: FormSchema = defineSchema({
 				f.custom(
 					"vintages.capitalInvestmentTaxCredit",
 					"Capital Investment Tax Credit by year of origin (lines 220-230)",
-					(props) => createElement(CapitalInvestmentTaxCreditVintageTable, props),
+					(props) =>
+						createElement(CapitalInvestmentTaxCreditVintageTable, props),
 				),
 				f.custom(
 					"vintages.agriProcessingTaxCredit",
@@ -219,5 +220,8 @@ export const albertaOtherCredits3 = defineSchedule({
 	hint: "ITC / CITC / APITC investment tax credits",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule3FormView, props),
+	// Every field is on the form: page 1, and the page-2/3 year-of-origin
+	// tables (APITC availability comes from page 3, line 335).
+	formOnly: true,
 	schema: albertaSchedule3Schema,
 });

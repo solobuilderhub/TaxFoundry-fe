@@ -16,7 +16,7 @@
  * computed/carried-in lines read-only.
  */
 export type PaperFieldRole = "input" | "computed" | "total" | "carried-in" | "not-collected";
-export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code";
+export type PaperFieldKind = "money" | "date" | "text" | "rate" | "flag" | "code" | "count";
 
 export interface PaperField {
   line: string;

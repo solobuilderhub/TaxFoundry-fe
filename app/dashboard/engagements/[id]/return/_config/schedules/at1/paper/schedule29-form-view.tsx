@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	type Control,
-	Controller,
-	useFieldArray,
-	useWatch,
-} from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type {
 	AlbertaIegValues,
@@ -13,11 +8,18 @@ import type {
 } from "../../../../_lib/return-input";
 import { at1Money, parseAt1LineItemId } from "./at1-lines";
 import {
+	PaperMoney,
+	PaperNumber,
+	PaperSelect,
+	PaperText,
+} from "./components/paper-inputs";
+import {
 	PaperFootnotes,
 	PaperLeaderRow,
 	PaperSection,
 	readFootnotePlacement,
 } from "./components/paper-primitives";
+import { WorksheetTable } from "./components/worksheet-table";
 import {
 	AT1_SCHEDULE_29_ALLOCATION_COLUMNS,
 	AT1_SCHEDULE_29_ALLOCATION_TOTALS_LABEL,
@@ -79,9 +81,6 @@ const MEMBER_FIELD: Partial<Record<string, keyof IegAgreementMember>> = {
 };
 
 const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
-
-const CELL =
-	"h-8 w-full rounded-md border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/50 disabled:opacity-50";
 
 function buildResolveLine(computed: ComputedReturn | undefined): ResolveLine {
 	const filedByField = filedByFieldFor(
@@ -311,6 +310,86 @@ export function Schedule29FormView({
 				{sectionFields("allocation")
 					.filter((f) => !gridLines.has(printed(f.line)))
 					.map(row)}
+				<MemberDetails control={iegControl} disabled={disabled} />
+			</PaperSection>
+
+			{/*
+			 * AT4970 — the attachment TRA requires whenever the grant is claimed,
+			 * listing the Alberta SR&ED projects. Its project totals feed this
+			 * schedule's lines 005/007/009 automatically. Collected in the guided
+			 * view only until now.
+			 */}
+			<PaperSection
+				title="AT4970 — Listing of IEG projects carried out in Alberta"
+				description="One row per project (lines 101-113). The totals across projects fill lines 005, 007 and 009 above unless those are entered directly."
+			>
+				<WorksheetTable
+					control={iegControl}
+					name="projects"
+					disabled={disabled}
+					addLabel="+ Add a project"
+					emptyText="No projects listed."
+					columns={[
+						{
+							name: "title",
+							label: "Title (101)",
+							kind: "text",
+							hint: "Same as line 200 of federal T661 Part 2.",
+						},
+						{
+							name: "projectCode",
+							label: "Project code (103)",
+							kind: "text",
+							hint: "Federal T661 line 206.",
+						},
+						{
+							name: "albertaPortion",
+							label: "Alberta portion (105)",
+							kind: "money",
+						},
+						{
+							name: "otherPortion",
+							label: "Not in Alberta (107)",
+							kind: "money",
+						},
+						{
+							name: "salariesAndWages",
+							label: "Salaries and wages (109)",
+							kind: "money",
+						},
+						{
+							name: "federalProxyAmount",
+							label: "Federal proxy (111)",
+							kind: "money",
+						},
+						{
+							name: "albertaProxyAmount",
+							label: "Alberta proxy (113)",
+							kind: "money",
+						},
+					]}
+				/>
+			</PaperSection>
+			<PaperSection
+				title="AT4970 — SR&ED expenditures by jurisdiction"
+				description="Informational (lines 135-161): where the SR&ED spending was incurred."
+			>
+				<WorksheetTable
+					control={iegControl}
+					name="jurisdictions"
+					disabled={disabled}
+					addLabel="+ Add a jurisdiction"
+					emptyText="No jurisdictions listed."
+					columns={[
+						{
+							name: "jurisdiction",
+							label: "Jurisdiction",
+							kind: "select",
+							options: JURISDICTIONS,
+						},
+						{ name: "amountIncurred", label: "Amount incurred", kind: "money" },
+					]}
+				/>
 			</PaperSection>
 
 			{/*
@@ -424,43 +503,21 @@ function GroupRoster({
 								</td>
 								{COLUMNS.map((col) => (
 									<td key={col.name} className="px-2 py-1.5">
-										<Controller
-											control={control}
-											name={`group.${i}.${col.name}` as const}
-											render={({ field }) =>
-												col.kind === "money" ? (
-													<input
-														type="number"
-														inputMode="decimal"
-														step="any"
-														disabled={disabled}
-														aria-label={`${col.heading} — member ${i + 1}`}
-														className={`${CELL} text-right tabular-nums`}
-														value={(field.value as number | undefined) ?? ""}
-														onChange={(e) =>
-															field.onChange(
-																e.target.value === ""
-																	? undefined
-																	: Number(e.target.value),
-															)
-														}
-														onBlur={field.onBlur}
-													/>
-												) : (
-													<input
-														type="text"
-														disabled={disabled}
-														aria-label={`${col.heading} — member ${i + 1}`}
-														className={CELL}
-														value={(field.value as string | undefined) ?? ""}
-														onChange={(e) =>
-															field.onChange(e.target.value || undefined)
-														}
-														onBlur={field.onBlur}
-													/>
-												)
-											}
-										/>
+										{col.kind === "money" ? (
+											<PaperMoney
+												control={control}
+												name={`group.${i}.${col.name}`}
+												label={`${col.heading} — member ${i + 1}`}
+												disabled={disabled}
+											/>
+										) : (
+											<PaperText
+												control={control}
+												name={`group.${i}.${col.name}`}
+												label={`${col.heading} — member ${i + 1}`}
+												disabled={disabled}
+											/>
+										)}
 									</td>
 								))}
 								<td className="px-1 py-1.5 text-right">
@@ -494,6 +551,104 @@ function GroupRoster({
 					grant computes as nil.
 				</p>
 			)}
+		</div>
+	);
+}
+
+const JURISDICTIONS = [
+	{ value: "alberta", label: "Alberta" },
+	{ value: "britishColumbia", label: "British Columbia" },
+	{ value: "manitoba", label: "Manitoba" },
+	{ value: "newBrunswick", label: "New Brunswick" },
+	{ value: "newfoundlandAndLabrador", label: "Newfoundland and Labrador" },
+	{ value: "northwestTerritories", label: "Northwest Territories" },
+	{ value: "novaScotia", label: "Nova Scotia" },
+	{ value: "nunavut", label: "Nunavut" },
+	{ value: "ontario", label: "Ontario" },
+	{ value: "princeEdwardIsland", label: "Prince Edward Island" },
+	{ value: "quebec", label: "Québec" },
+	{ value: "saskatchewan", label: "Saskatchewan" },
+	{ value: "yukon", label: "Yukon" },
+	{ value: "other", label: "Other" },
+] as const;
+
+/**
+ * What the agreement needs about each member beyond its printed columns: a
+ * name (not a printed line — line 220's BN identifies a member on the page,
+ * so this is never filed), the member's own days in its tax year, and whether
+ * it has an Alberta permanent establishment (a member without one gets no
+ * allowed amount at 268). One row per member, in the grid's order.
+ */
+function MemberDetails({
+	control,
+	disabled,
+}: {
+	control: Control<AlbertaIegValues>;
+	disabled?: boolean;
+}) {
+	const members = useWatch({ control, name: "agreementMembers" }) ?? [];
+	if (members.length === 0) return null;
+	return (
+		<div className="space-y-1 p-2">
+			<p className="px-2 text-xs font-semibold">Member details</p>
+			<div className="overflow-x-auto">
+				<table className="w-full border-collapse text-sm">
+					<thead>
+						<tr>
+							<th className="w-8 border-b px-1 pb-2" />
+							<th className="border-b px-2 pb-2 text-left font-medium">
+								Name (not filed)
+							</th>
+							<th className="border-b px-2 pb-2 text-left font-medium">
+								Days in this member's tax year
+							</th>
+							<th className="border-b px-2 pb-2 text-left font-medium">
+								Permanent establishment in Alberta?
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						{members.map((_m, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: same order as the allocation grid above
+							<tr key={`detail-${i}`} className="border-b">
+								<td className="px-1 py-1.5 text-center font-mono text-[11px] text-muted-foreground">
+									{i + 1}
+								</td>
+								<td className="px-2 py-1.5">
+									<PaperText
+										control={control}
+										name={`agreementMembers.${i}.name`}
+										label={`Name — member ${i + 1}`}
+										disabled={disabled}
+									/>
+								</td>
+								<td className="px-2 py-1.5">
+									<PaperNumber
+										control={control}
+										name={`agreementMembers.${i}.daysInTaxYear`}
+										label={`Days in tax year — member ${i + 1}`}
+										placeholder="365"
+										disabled={disabled}
+									/>
+								</td>
+								<td className="px-2 py-1.5">
+									<PaperSelect
+										control={control}
+										name={`agreementMembers.${i}.hasAlbertaPermanentEstablishment`}
+										label={`Alberta permanent establishment — member ${i + 1}`}
+										options={[
+											{ value: "yes", label: "Yes" },
+											{ value: "no", label: "No" },
+										]}
+										blankLabel="— not answered"
+										disabled={disabled}
+									/>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	);
 }
@@ -552,7 +707,7 @@ function AllocationGrid({
 						</tr>
 					</thead>
 					<tbody>
-						{members.map((m, i) => (
+						{members.map((_m, i) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: the array index IS the row's printed occurrence — reordering would change which member files at which occurrence
 							<tr key={`member-${i}`} className="border-b">
 								<td className="px-1 py-1.5 text-center font-mono text-[11px] text-muted-foreground">
@@ -583,43 +738,22 @@ function AllocationGrid({
 									}
 									return (
 										<td key={col.line} className="px-2 py-1.5">
-											<Controller
-												control={control}
-												name={`agreementMembers.${i}.${name}` as const}
-												render={({ field }) =>
-													col.kind === "money" ? (
-														<input
-															type="number"
-															inputMode="decimal"
-															step="any"
-															disabled={disabled}
-															aria-label={`${col.heading} — member ${i + 1}`}
-															className={`${CELL} text-right tabular-nums`}
-															value={(field.value as number | undefined) ?? ""}
-															onChange={(e) =>
-																field.onChange(
-																	e.target.value === ""
-																		? undefined
-																		: Number(e.target.value),
-																)
-															}
-															onBlur={field.onBlur}
-														/>
-													) : (
-														<input
-															type={col.kind === "date" ? "date" : "text"}
-															disabled={disabled}
-															aria-label={`${col.heading} — member ${i + 1}`}
-															className={CELL}
-															value={(field.value as string | undefined) ?? ""}
-															onChange={(e) =>
-																field.onChange(e.target.value || undefined)
-															}
-															onBlur={field.onBlur}
-														/>
-													)
-												}
-											/>
+											{col.kind === "money" ? (
+												<PaperMoney
+													control={control}
+													name={`agreementMembers.${i}.${name}`}
+													label={`${col.heading} — member ${i + 1}`}
+													disabled={disabled}
+												/>
+											) : (
+												<PaperText
+													control={control}
+													name={`agreementMembers.${i}.${name}`}
+													label={`${col.heading} — member ${i + 1}`}
+													type={col.kind === "date" ? "date" : "text"}
+													disabled={disabled}
+												/>
+											)}
 										</td>
 									);
 								})}

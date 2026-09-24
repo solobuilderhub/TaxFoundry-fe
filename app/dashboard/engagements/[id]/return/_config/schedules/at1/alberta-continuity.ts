@@ -136,6 +136,9 @@ export const albertaContinuity = defineSchedule({
 	hint: "Opening balances — cannot be derived from federal",
 	programs: ["AT1"],
 	formView: (props) => createElement(Schedule21FormView, props),
+	// Every field is on a printed form: the continuity here, the carry-back
+	// requests (and 002, 023, 025) on Schedule 10, where the page prints them.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

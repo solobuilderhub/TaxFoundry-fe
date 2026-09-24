@@ -1,12 +1,15 @@
 "use client";
 
+import { BooleanCheckbox } from "@classytic/fluid/forms";
 import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type {
 	AlbertaCca13Row,
 	AlbertaCca13Values,
+	ReturnInput,
 } from "../../../../_lib/return-input";
 import { parseAt1LineItemId } from "./at1-lines";
+import { DivergenceGateNotice } from "./components/divergence-gate-notice";
 import {
 	type ClassGridColumn,
 	type ClassGridRow,
@@ -15,6 +18,10 @@ import {
 	PaperLeaderRow,
 	PaperSection,
 } from "./components/paper-primitives";
+import {
+	WorksheetMoneyField,
+	WorksheetTable,
+} from "./components/worksheet-table";
 import {
 	AT1_SCHEDULE_13_FIELDS,
 	AT1_SCHEDULE_13_FOOTNOTES,
@@ -34,8 +41,8 @@ import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
  * AIIP amount the same "if the Alberta amount differs from federal, enter it;
  * otherwise take fed 0082xx" rule that opening UCC and the claim always had.
  *
- * Two fields the schedule collects are not columns of this grid and so are not
- * here — both live in the guided editor:
+ * Two things the schedule collects are not columns of this grid, so they sit
+ * BELOW it, as a tick box per class and two supporting worksheets:
  *
  *   classEmptied   not printed at all. It is the FACT behind the terminal loss
  *                  at 017, which the form itself shows as a computed result: a
@@ -60,6 +67,38 @@ const FIELD_NAME: Partial<Record<string, keyof AlbertaCca13Row>> = {
 	"013013001": "rate",
 	"013019001": "claim",
 };
+
+/** A straight-line class's opening UCC and claim, above its worksheet. Blank = federal. */
+function StraightLineHeader({
+	control,
+	disabled,
+	opening,
+	claim,
+}: {
+	control: Control<AlbertaCca13Values>;
+	disabled?: boolean;
+	opening: "class13OpeningUCC" | "class14OpeningUCC";
+	claim: "class13Claim" | "class14Claim";
+}) {
+	return (
+		<div className="pt-1">
+			<WorksheetMoneyField
+				control={control}
+				name={opening}
+				label="Opening UCC"
+				placeholder="Federal"
+				disabled={disabled}
+			/>
+			<WorksheetMoneyField
+				control={control}
+				name={claim}
+				label="Alberta claim"
+				placeholder="Federal"
+				disabled={disabled}
+			/>
+		</div>
+	);
+}
 
 /** 013125 — per RETURN, so it is a single row above the grid, not a column in it. */
 const LIMIT_LINE = "013125001";
@@ -106,12 +145,14 @@ export function Schedule13FormView({
 	computed,
 	onNavigate,
 	highlightLine,
+	returnInput,
 }: {
 	control: Control<Record<string, unknown>>;
 	disabled?: boolean;
 	computed?: ComputedReturn;
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
+	returnInput?: ReturnInput;
 }) {
 	const ccaControl = control as unknown as Control<AlbertaCca13Values>;
 	const classes = useWatch({ control: ccaControl, name: "classes" }) ?? [];
@@ -201,6 +242,12 @@ export function Schedule13FormView({
 
 	return (
 		<div className="space-y-4">
+			<DivergenceGateNotice
+				returnInput={returnInput}
+				hasEntries={classes.length > 0}
+				schedule="Schedule 13"
+				onNavigate={onNavigate}
+			/>
 			{limitField && (
 				<PaperSection title="Immediate expensing limit" formId="AT1SCH13">
 					<PaperLeaderRow
@@ -219,7 +266,7 @@ export function Schedule13FormView({
 			)}
 			<PaperSection
 				title="Alberta capital cost allowance by class"
-				description="One row per class. Every column the specification lets Alberta state is editable here; the remaining ten are arithmetic on them, shown from the last computed return. 'Class emptied' and the straight-line classes 13 and 14 are collected in Guided view — neither is a column of this grid."
+				description="One row per class. Every column the specification lets Alberta state is editable here; the remaining ten are arithmetic on them, shown from the last computed return. 'Class emptied' and the straight-line classes 13 and 14 are below the grid."
 				formId="AT1SCH13"
 			>
 				<div className="p-2">
@@ -258,9 +305,97 @@ export function Schedule13FormView({
 			</PaperSection>
 			{rows.length === 0 && (
 				<p className="px-1 text-sm text-muted-foreground">
-					No CCA classes yet — add one above, or in Guided view.
+					No CCA classes yet — add one above.
 				</p>
 			)}
+			{rows.length > 0 && (
+				<PaperSection
+					title="Classes emptied this year"
+					description="Tick a class with no property left at year-end. Its remaining balance is then a terminal loss at column 22 (line 017), computed — never typed."
+				>
+					<div className="flex flex-wrap gap-x-6 gap-y-2 px-4 py-3">
+						{rows.map((r) => (
+							<BooleanCheckbox
+								key={r.key}
+								control={ccaControl}
+								name={`classes.${r.arrayIndex}.classEmptied`}
+								label={`${r.label} — class emptied`}
+								disabled={disabled}
+							/>
+						))}
+					</div>
+				</PaperSection>
+			)}
+			<PaperSection
+				title="Class 13 worksheet — leasehold interests"
+				description="Supports a class 13 row: straight-line, one layer per leasehold improvement. Needed only when there is no federal Schedule 8 to read the layers from — blanks take the federal figures."
+			>
+				<StraightLineHeader
+					control={ccaControl}
+					disabled={disabled}
+					opening="class13OpeningUCC"
+					claim="class13Claim"
+				/>
+				<WorksheetTable
+					control={ccaControl}
+					name="class13Layers"
+					disabled={disabled}
+					addLabel="+ Add a leasehold layer"
+					emptyText="No layers added this year."
+					columns={[
+						{ name: "description", label: "Description", kind: "text" },
+						{ name: "capitalCost", label: "Capital cost", kind: "money" },
+						{
+							name: "leaseEnd",
+							label: "Lease end",
+							kind: "date",
+							hint: "The 12-month period count is derived from this and the tax year start.",
+						},
+						{
+							name: "firstRenewalEnd",
+							label: "First renewal end",
+							kind: "date",
+							hint: "Where the lease grants renewal rights — replaces the lease end for the period count.",
+						},
+						{
+							name: "claimedToDate",
+							label: "CCA claimed in prior years",
+							kind: "money",
+						},
+						{ name: "proceeds", label: "Disposition proceeds", kind: "money" },
+						{ name: "isFirstYear", label: "First tax year", kind: "bool" },
+						{ name: "aiip", label: "AIIP", kind: "bool" },
+					]}
+				/>
+			</PaperSection>
+			<PaperSection
+				title="Class 14 worksheet — limited-life intangibles"
+				description="Supports a class 14 row: straight-line, prorated per property by the life it had left when acquired."
+			>
+				<StraightLineHeader
+					control={ccaControl}
+					disabled={disabled}
+					opening="class14OpeningUCC"
+					claim="class14Claim"
+				/>
+				<WorksheetTable
+					control={ccaControl}
+					name="class14Properties"
+					disabled={disabled}
+					addLabel="+ Add a property"
+					emptyText="No properties added this year."
+					columns={[
+						{ name: "description", label: "Description", kind: "text" },
+						{ name: "capitalCost", label: "Capital cost", kind: "money" },
+						{
+							name: "lifeDaysAtAcquisition",
+							label: "Days of life remaining at acquisition",
+							kind: "number",
+							hint: "Days the property had REMAINING when the cost was incurred — not its total life.",
+						},
+					]}
+				/>
+			</PaperSection>
 			<PaperSection title="Totals carried to Schedule 12">
 				{totalsFields.map((f) => (
 					<PaperLeaderRow
