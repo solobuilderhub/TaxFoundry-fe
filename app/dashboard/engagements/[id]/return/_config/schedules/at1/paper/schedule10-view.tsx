@@ -199,7 +199,7 @@ export function Schedule10View({
 			</p>
 			<PaperSection
 				title="Application of current year losses"
-				description="Enter the loss to be applied to each preceding year. Type the loss available (A) when the T2 was not prepared here; blank uses the federal figure. The balance carried forward is calculated."
+				description="Enter the loss to be applied to each preceding year. The non-capital loss available (A) is Schedule 21's current-year loss; the gross capital loss (042) can be typed when the T2 was not prepared here — blank uses the federal figure. The balance carried forward is calculated."
 				formId="AT1SCH10"
 			>
 				<div className="overflow-x-auto p-2">
@@ -259,33 +259,28 @@ export function Schedule10View({
 									</span>{" "}
 									<span className="font-semibold">A</span>
 								</td>
-								{COLUMNS.slice(0, 3).map((c) =>
-									c.key === "nonCapitalCarrybacks" ? (
-										<td key={c.key} className="px-2 py-1.5">
-											<div className="flex items-center">
-												<LineChip line="002" />
-												<PaperMoney
-													control={control}
-													name="nonCapitalCurrentYearLoss"
-													label="Non-capital loss available for carry-back"
-													placeholder={
-														num("002") === undefined
-															? "Federal"
-															: String(num("002"))
-													}
-													disabled={disabled}
-												/>
-											</div>
-										</td>
-									) : (
-										<td key={c.key} className="px-2 py-1.5">
-											<div className={READ} title="Calculated">
-												<LineChip line={c.available} />
-												{money(num(c.available))}
-											</div>
-										</td>
-									),
-								)}
+								{/*
+								 * Calculated, all three. Non-capital's 002 is Schedule 21's
+								 * own current-year loss (037, §3.2.3.11) — it was a box, and a
+								 * typed figure there could contradict the 037 it must equal.
+								 * To change it, change what produces it: the federal net
+								 * income on Schedule 12.
+								 */}
+								{COLUMNS.slice(0, 3).map((c) => (
+									<td key={c.key} className="px-2 py-1.5">
+										<div
+											className={READ}
+											title={
+												c.key === "nonCapitalCarrybacks"
+													? "Schedule 21 line 037 — Alberta's current-year non-capital loss"
+													: "Calculated"
+											}
+										>
+											<LineChip line={c.available} />
+											{money(num(c.available))}
+										</div>
+									</td>
+								))}
 								<td />
 								<td className="px-2 py-1.5">
 									{/*

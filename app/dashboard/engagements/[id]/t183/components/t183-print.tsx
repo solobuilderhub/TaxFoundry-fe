@@ -16,6 +16,8 @@ import {
 } from "@/hooks/query/use-engagements";
 import { formatCalendarDate } from "@/lib/format-date";
 import { getT183Schema, type T183Values } from "../../../_config/t183-config";
+import { derivedJacketLines } from "../../return/_config/schedules/at1/paper/jacket-form-view";
+import type { ReturnInput } from "../../return/_lib/return-input";
 
 const money = (v: number) =>
 	new Intl.NumberFormat("en-CA", {
@@ -127,10 +129,34 @@ export function T183Print({ id }: { id: string }) {
 					value: amount(foldVal("albertaSmallBusinessDeduction")),
 				},
 				{
-					label: "Alberta tax payable",
+					label: "Alberta tax payable (080)",
 					value: amount(foldVal("albertaTaxPayable")),
 				},
-				{ label: "Total owing", value: amount(totalTax) },
+				/*
+				 * The grant and the balance the return actually files. "Total
+				 * owing" was 080 again, so an Innovation Employment Grant return
+				 * — TRA's own Test Case 2 — had the officer certify "$0 owing"
+				 * with no mention of the $31,250 grant it exists to claim, or of
+				 * the refund at 090. The balance is the jacket's own derivation,
+				 * not a second one.
+				 */
+				...(foldVal("innovationEmploymentGrant")
+					? [
+							{
+								label: "Innovation Employment Grant (129)",
+								value: amount(foldVal("innovationEmploymentGrant")),
+							},
+						]
+					: []),
+				{
+					label: "Balance owing or (refund) (090)",
+					value: amount(
+						derivedJacketLines(
+							computed ?? undefined,
+							engagement.returnInput as ReturnInput | undefined,
+						)["090"],
+					),
+				},
 			];
 
 	/**

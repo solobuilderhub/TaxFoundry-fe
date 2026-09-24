@@ -251,7 +251,7 @@ const NOT_PRINTED = new Set(AT1_JACKET_LINES_NOT_PRINTED);
  * they contribute zero. When one is wired, it belongs in these sums — the
  * printed captions above are the specification for what each must contain.
  */
-function derivedJacketLines(
+export function derivedJacketLines(
 	computed: ComputedReturn | undefined,
 	returnInput: ReturnInput | undefined,
 ): Partial<Record<string, number>> {
