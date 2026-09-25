@@ -542,6 +542,32 @@ function SlotInput({
 		[],
 	);
 
+	if (kind === "flag") {
+		// "yes" / "no" as the AT1 slices store them, nothing preselected: TRA
+		// records No as an answer (2), distinct from an unanswered question.
+		return (
+			<span role="radiogroup" aria-label={caption} className="flex gap-1">
+				{(["yes", "no"] as const).map((answer) => (
+					<button
+						key={answer}
+						type="button"
+						role="radio"
+						aria-checked={draft === answer}
+						disabled={disabled}
+						onClick={() => setDraft(answer)}
+						className={cn(
+							"h-7 rounded-md border px-2.5 text-xs capitalize",
+							draft === answer
+								? "border-primary bg-primary text-primary-foreground"
+								: "hover:bg-muted",
+						)}
+					>
+						{answer}
+					</button>
+				))}
+			</span>
+		);
+	}
 	if (kind === "money") {
 		return (
 			<MoneyInput

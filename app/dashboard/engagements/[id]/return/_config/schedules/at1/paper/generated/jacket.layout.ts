@@ -81,7 +81,6 @@ export const AT1_JACKET_FIELDS: readonly PaperField[] = [
   { line: "000024001", caption: "Postal/Zip Code", kind: "text", role: "input", section: "identification", requirement: "conditional", note: "Assessment address — the postal/zip code. Not on the printed AT1 (TRA11722 Rev. 2025-07), which carries only the MAILING address at 012-017 and prints a footnote sending every address change through TRACS. Retained because the specification still tabulates the block; conditional, so omitted rather than zeroed when absent." },
   { line: "000027001", caption: "Contact Person’s Fax No.", kind: "text", role: "input", section: "identification", requirement: "optional", note: "Contact person’s fax number. Not on the printed AT1 — the current form prints one telephone number for the contact and nothing else. Optional." },
   { line: "000093001", caption: "Fax number for transmitting NOA", kind: "text", role: "input", section: "identification", requirement: "optional", note: "Fax number for transmitting the Notice of Assessment. Not on the printed AT1, which routes notices by the authorized email at 105 instead, under a printed note restricting that address to an owner, operator or director. Optional." },
-  { line: "000001001", caption: "Is the corporation associated with one or more Canadian-controlled private corporations?", kind: "flag", role: "input", section: "status", requirement: "mandatory", note: "The question itself is not printed on this page — TRA prints it on AT1 Schedule 1, whose own box 001 carries this identical caption, and the jacket’s 001 sits inside the \"For Department Use\" box with no words beside it. The VALUE files here regardless: four accepted certification samples file it as the first value under Schedule 000 and none ever files 001001001. See LINE_001’s doc comment." },
   { line: "000029001", caption: "Type of Corporation", kind: "code", role: "input", section: "status", requirement: "mandatory" },
   { line: "000030001", caption: "Special Corporation Status (if applicable)", kind: "code", role: "input", section: "status", requirement: "conditional" },
   { line: "000031001", caption: "Has there been a wind-up of a subsidiary under federal Income Tax Act (ITA) section 88 during the current taxation year?", kind: "flag", role: "input", section: "status", requirement: "mandatory" },
@@ -273,5 +272,5 @@ export const AT1_JACKET_DEPARTMENT_USE = {
   heading: "For Department Use",
   preprinted: "01RT",
   lines: ["005", "001", "004"] as readonly string[],
-  unmodelled: ["004"] as readonly string[],
+  unmodelled: ["001", "004"] as readonly string[],
 };

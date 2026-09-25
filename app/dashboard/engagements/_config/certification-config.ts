@@ -56,7 +56,12 @@ export function getCertificationSchema(
 									{ required: true },
 								),
 							],
-							{ cols: 1, description: AT1_DECLARATION.join("\n\n") },
+							{
+								cols: 1,
+								description: AT1_DECLARATION.join("\n\n"),
+								// Four paragraphs, presented "exactly as below" (§3.3.12).
+								className: "whitespace-pre-line",
+							},
 						),
 					]
 				: []),

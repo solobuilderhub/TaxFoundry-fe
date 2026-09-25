@@ -39,7 +39,7 @@ import {
 } from "./generated/schedule1.layout";
 import type { LineValue, NavigateToLine, ResolveLine } from "./resolve-line";
 
-import { filedByFieldFor, valueAt } from "./resolve-line";
+import { filedByFieldFor, storedAt, valueAt } from "./resolve-line";
 import {
 	AREA_B_AMOUNT,
 	AREA_B_BLANK_REASON,
@@ -100,6 +100,14 @@ const T2_SLOTS: Record<string, { path: string; label: string }> = {
 	},
 };
 
+/**
+ * Line 001, "Is the corporation associated with one or more Canadian-controlled
+ * private corporations?" — this schedule's own mandatory box (§3.2.3.2), filed
+ * at 001001001. The answer is kept once, on the Alberta slice beside the other
+ * yes/no questions, and this box writes it there.
+ */
+const ASSOCIATED_PATH = "alberta.associatedWithCcpcs";
+
 const printed = (line: string) => parseAt1LineItemId(line)?.field ?? line;
 
 /**
@@ -119,7 +127,7 @@ const formatPercent = (n: number) => `${n.toFixed(2)}%`;
 function buildResolveLine(
 	computed: ComputedReturn | undefined,
 	returnInput?: ReturnInput,
-	writeInput?: (path: string, value: number | undefined) => Promise<void>,
+	writeInput?: (path: string, value: unknown) => Promise<void>,
 ): ResolveLine {
 	const filedByField = filedByFieldFor(
 		computed,
@@ -132,6 +140,16 @@ function buildResolveLine(
 		const ownName = OWN_FIELD[field];
 		if (ownName) return { editable: true, name: ownName };
 		const value = filedByField.get(field) as string | number | undefined;
+		if (field === "001" && writeInput) {
+			return {
+				editable: false,
+				value,
+				direct: {
+					stored: storedAt(returnInput, ASSOCIATED_PATH),
+					write: (v) => writeInput(ASSOCIATED_PATH, v),
+				},
+			};
+		}
 		const t2 = T2_SLOTS[field];
 		if (t2 && writeInput) {
 			return {
@@ -204,7 +222,7 @@ export function Schedule1FormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 	returnInput?: ReturnInput;
-	writeInput?: (path: string, value: number | undefined) => Promise<void>;
+	writeInput?: (path: string, value: unknown) => Promise<void>;
 }) {
 	const sbdControl = control as unknown as Control<AlbertaSbdValues>;
 	const resolveLine = buildResolveLine(computed, returnInput, writeInput);

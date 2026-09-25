@@ -76,7 +76,6 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaValues>> = {
 	"034": "corporateAccountNumber",
 	"035": "businessNumber",
 	"105": "authorizedEmail",
-	"001": "associatedWithCcpcs",
 	"030": "specialCorporationStatus",
 	"031": "windUpOfSubsidiary",
 	"032": "firstYearAfterAmalgamation",

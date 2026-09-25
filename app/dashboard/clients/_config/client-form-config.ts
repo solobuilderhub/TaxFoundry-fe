@@ -43,7 +43,15 @@ export function getClientFormSchema() {
 				}),
 				field.text<ClientFormValues>("businessNumber", "Business Number (BN)", {
 					required: true,
-					placeholder: "9 digits, e.g. 100092287",
+					// The corporation income tax program account, as T2 line 001 and
+					// AT1 line 035 ("AN 15", = fed 200001) both file it. The reference
+					// after RC is not always 0001, so it is entered, never assumed.
+					placeholder: "15 characters, e.g. 100092287RC0001",
+					pattern: {
+						regex: "^\\d{9}RC\\d{4}$",
+						message:
+							"The full program account: 9-digit BN, RC, then the 4-digit reference — e.g. 100092287RC0001",
+					},
 				}),
 				field.select<ClientFormValues>(
 					"corpType",

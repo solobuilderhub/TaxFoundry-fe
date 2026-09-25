@@ -254,6 +254,18 @@ export function filedByFieldFor(
  * that is present but of the wrong type, which is a real possibility on a
  * working return assembled from many schedules and must not render as a figure.
  */
+/** The stored answer at a path, as the slice keeps it — a figure or a code. */
+export function storedAt(
+	ri: unknown,
+	path: string,
+): string | number | undefined {
+	let cur: unknown = ri;
+	for (const key of path.split(".")) {
+		cur = (cur as Record<string, unknown> | undefined)?.[key];
+	}
+	return typeof cur === "number" || typeof cur === "string" ? cur : undefined;
+}
+
 export function valueAt(ri: unknown, path: string): number | undefined {
 	let cur: unknown = ri;
 	for (const key of path.split(".")) {
