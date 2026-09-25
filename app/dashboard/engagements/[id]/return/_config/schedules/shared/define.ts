@@ -80,6 +80,14 @@ export type ScheduleDef<K extends keyof ReturnInput = keyof ReturnInput> = {
 	 * field makes that field unreachable — check it field by field first.
 	 */
 	formOnly?: boolean;
+	/**
+	 * Values the form starts from, under whatever is saved. Needed where a
+	 * field is an object keyed by digits: Schedule 1 keeps its lines as
+	 * `lines.101`, `lines.104`…, and with no `lines` object to write into,
+	 * react-hook-form reads the digits as array indices and builds a sparse
+	 * array the contract refuses. The Guided form used to supply the object.
+	 */
+	initialValues?: Record<string, unknown>;
 };
 
 /** Identity helper — infers `key` as a literal so the registry can derive `ScheduleKey`. */

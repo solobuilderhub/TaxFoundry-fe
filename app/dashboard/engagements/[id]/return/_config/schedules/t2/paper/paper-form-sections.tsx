@@ -12,6 +12,7 @@ import type {
 	NavigateToLine,
 	ResolveLine,
 } from "../../at1/paper/resolve-line";
+import { federalKind } from "./federal-kind";
 import type { PaperFieldKind, PaperFieldRole } from "./generated/jacket.layout";
 
 /**
@@ -149,7 +150,7 @@ export function PaperFormSections({
 								key={f.line}
 								line={f.line}
 								caption={f.caption}
-								kind={f.kind}
+								kind={federalKind(f.kind)}
 								role={boundFields?.[f.line] ? "input" : f.role}
 								note={f.note}
 								from={f.from}

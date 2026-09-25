@@ -7,6 +7,7 @@ import {
 	PaperLeaderRow,
 	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
+import { WorksheetTable } from "../../at1/paper/components/worksheet-table";
 import type {
 	LineValue,
 	NavigateToLine,
@@ -30,17 +31,12 @@ interface JacketSbdField {
 }
 
 /**
- * These are JACKET lines (`packages/ca-tax/src/t2/forms/jacket.ts`), not
- * Schedule 7's own numbering — confirmed directly against that
- * FormDefinition, not assumed from the guided editor's own "(line NNN)"
- * captions (one of which, 440, turned out to be citing the wrong CONCEPT
- * even though the number itself is real — see the note below). Schedule 7's
- * own internal calculation (12 pages, 25 parts across 5 credits — see
- * `schedule7.ts`'s doc comment) is not modelled anywhere in this app; these
- * three jacket lines are simply CARRIED-IN-from-S7 in the jacket's own
- * FormDefinition, but since this app never builds S7's internal detail,
- * they are real editable inputs here instead — the honest reflection of how
- * this app actually works, not a fabricated Schedule 7 facsimile.
+ * The jacket lines this schedule's slice holds, on the jacket's own numbers.
+ *
+ * 440 is THIS year's aggregate investment income; 417 is the PRIOR year's
+ * adjusted figure for the whole associated group, which grinds the business
+ * limit. Line 440 used to be bound to the prior-year adjusted figure, so the
+ * one box stood for both — its own note called that out.
  */
 const FIELDS: readonly JacketSbdField[] = [
 	{
@@ -52,27 +48,56 @@ const FIELDS: readonly JacketSbdField[] = [
 		line: "410",
 		caption: "Business limit",
 		fieldName: "businessLimit",
-		note: "$500,000, shared across an associated group (Schedule 23) — see the Associated Corporations section below for this corporation's allocation.",
+		note: "$500,000, shared across an associated group (Schedule 23) — see the associated corporations below.",
+	},
+	{
+		line: "415",
+		caption:
+			"Total taxable capital employed in Canada of the corporation and its associated corporations, previous tax year",
+		fieldName: "taxableCapital",
+		note: "The base of line 415, which is this amount minus $10,000,000, times 0.225% — the large-corporation grind. Enter the taxable capital; the grind is computed.",
+	},
+	{
+		line: "417",
+		caption:
+			"Adjusted aggregate investment income of the corporation and all associated corporations, previous tax year (Schedule 7 line 745)",
+		fieldName: "aaii",
+		note: "Grinds the business limit $5 for every $1 above $50,000. Leave blank to derive it from Part 2 below.",
 	},
 	{
 		line: "440",
-		caption: "Aggregate investment income",
-		fieldName: "aaii",
-		note: 'This app\'s field is labelled "adjusted" AAII, but line 440 is the PLAIN aggregate investment income (Schedule 7 Part 1) — the ADJUSTED figure (Part 2, real line 745) is a genuinely different number under s.125(7) whenever net capital losses or foreign tax were applied within it. This app collects only one figure and uses it for both the refundable-tax calculation (correct use of 440) and the business-limit grind (which really wants 745) — see research/findings/federal/S7-aaii-vs-aggregate-investment-income-conflation.md.',
+		caption: "Aggregate investment income, this year (Schedule 7 line 092)",
+		fieldName: "aggregateInvestmentIncome",
+		note: "Feeds the refundable portion of Part I tax. Leave blank to derive it from Part 1 below.",
 	},
 ];
 
 /**
- * Federal T2 "Small Business Deduction" guided-editor page — in reality a
- * blend of THREE different CRA forms' worth of figures (T2 jacket
- * 400/410/440, Schedule 27 ZETM, Schedule 23 associated corporations), none
- * of which this app builds as its own full Form View. The sections it collects
- * are the jacket-line figures it genuinely, directly collects; ZETM is
- * disclosed as belonging to its own (unbuilt) form rather than rendered under a
- * borrowed form id. Schedules 7 and 23 are both printed below those, read-only
- * and under their own form ids, so a preparer can read what each form asks for
- * against what this app actually collects.
+ * Schedule 7's Part 1 and Part 2 lines the slice holds. Filled in, they are
+ * what the engine derives lines 092 and 745 from; blank, the figures typed at
+ * 440 and 417 above stand.
  */
+const SCHEDULE_7_BOUND: Readonly<Record<string, string>> = {
+	"002": "aiiDetail.taxableCapitalGains",
+	"012": "aiiDetail.allowableCapitalLosses",
+	"022": "aiiDetail.netCapitalLossesClaimed",
+	"032": "aiiDetail.incomeFromProperty",
+	"042": "aiiDetail.exemptIncome",
+	"052": "aiiDetail.agriInvestFundReceived",
+	"062": "aiiDetail.taxableDividendsDeductible",
+	"072": "aiiDetail.trustPropertyIncome",
+	"082": "aiiDetail.lossesFromProperty",
+	"705": "aaiiDetail.taxableCapitalGains",
+	"710": "aaiiDetail.allowableCapitalLosses",
+	"715": "aaiiDetail.incomeFromProperty",
+	"720": "aaiiDetail.exemptIncome",
+	"725": "aaiiDetail.agriInvestFundReceived",
+	"730": "aaiiDetail.dividendsFromConnectedCorporations",
+	"735": "aaiiDetail.trustPropertyIncome",
+	"740": "aaiiDetail.lossesFromProperty",
+	"741": "aaiiDetail.subsection91_4Deduction",
+};
+
 export function Schedule7FormView({
 	control,
 	computed,
@@ -99,7 +124,7 @@ export function Schedule7FormView({
 		<div className="space-y-4">
 			<PaperSection
 				title="Small business deduction — jacket lines"
-				description="This app's SBD inputs feed the T2 jacket directly (see jacket.ts); Schedule 7's own 12-page, 25-part calculation is not built. Line numbers below are the JACKET's, not Schedule 7's own numbering."
+				description="The figures the T2 jacket's small business deduction is computed from, on the jacket's own line numbers. Schedule 7's Part 1 and Part 2 below derive lines 440 and 417 when they are filled in."
 				formId="T2"
 			>
 				{FIELDS.map((f) => (
@@ -119,31 +144,53 @@ export function Schedule7FormView({
 				))}
 			</PaperSection>
 			<PaperSection
-				title="Taxable capital, prior year"
-				description="This belongs to Schedule 33 (Taxable Capital Employed in Canada), which has its own full paper Form View — see the 'Taxable Capital (S33)' schedule. Folded into this page's guided editor for convenience only; not re-shown here to avoid two different boxes for the same figure."
-				formId="T2SCH33"
-			>
-				<p className="p-4 text-xs text-muted-foreground">
-					See Schedule 33's own Form View.
-				</p>
-			</PaperSection>
-			<PaperSection
 				title="Zero-emission technology manufacturing (Schedule 27)"
-				description="Not modelled as its own form in this app yet. ZETM income is collected on this same guided-editor page for convenience, but has no numbered-line paper facsimile here — see the Guided view for what's actually collected."
+				description="Income from qualifying clean-technology manufacturing, taxed at half the rate (s.125.2). Schedule 27 itself is not modelled as a printed form; the qualifying portion of active business income is entered here and the engine applies the rate reduction to Part I tax."
 			>
-				<p className="p-4 text-xs text-muted-foreground">
-					Not modelled as a separate paper Form View.
-				</p>
+				<PaperLeaderRow
+					line="—"
+					caption="Zero-emission technology manufacturing income"
+					kind="money"
+					role="input"
+					control={sbdControl}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "zetmIncome",
+					})}
+					disabled={disabled}
+				/>
+			</PaperSection>
+
+			<PaperSection
+				title="Associated corporations"
+				description="The other Canadian-controlled private corporations this one is associated with, and the share of the $500,000 business limit each is assigned. This corporation's own share is line 410 above; the group's total cannot exceed $500,000."
+				formId="T2SCH23"
+			>
+				<div className="p-3">
+					<WorksheetTable
+						control={sbdControl}
+						name="associated"
+						disabled={disabled}
+						addLabel="+ Add an associated corporation"
+						emptyText="Not associated with any other corporation."
+						columns={[
+							{ name: "name", label: "Corporation name", kind: "text" },
+							{
+								name: "allocatedLimit",
+								label: "Business limit assigned",
+								kind: "money",
+							},
+						]}
+					/>
+				</div>
 			</PaperSection>
 
 			{/*
 			 * Schedule 23 — the associated group's allocation of the business
 			 * limit, read-only from the generated layout.
 			 *
-			 * The associated-corporations list is collected on this same
-			 * guided-editor page, and this section used to say the form had no
-			 * paper facsimile here. It has one now: the printed lines below are
-			 * what the agreement itself asks for — the calendar year it covers,
+			 * The associated corporations are entered in the table above. The
+			 * printed lines below are what the agreement itself asks for — the calendar year it covers,
 			 * whether it amends or replaces one already filed, and the per-
 			 * corporation percentage that must total 100% — none of which this
 			 * app collects as numbered boxes.
@@ -162,16 +209,11 @@ export function Schedule7FormView({
 			/>
 
 			{/*
-			 * Schedule 7 itself, read-only, from the generated layout.
-			 *
-			 * The sections above are the three JACKET lines this app collects, and
-			 * they stay: this app does not build Schedule 7's own calculation, so
-			 * presenting its lines as fillable would be a facsimile of work that is
-			 * not happening. Showing the form below them is different — a preparer
-			 * can see what Schedule 7 actually asks for, and that this app does not
-			 * yet ask it. That is the gap stated rather than hidden. A line the
-			 * engine does report (line 745, the adjusted aggregate investment
-			 * income) carries the figure the last compute filed for it.
+			 * Schedule 7 itself, from the generated layout. Part 1 and Part 2 —
+			 * the lines the engine derives aggregate investment income (092) and
+			 * its adjusted figure (745) from — are boxes; the parts this app does
+			 * not model (3 to 7) stay as printed, read-only. Line 745 carries the
+			 * figure the last compute filed for it.
 			 */}
 			<PaperFormSections
 				sections={T2_SCHEDULE_7_SECTIONS}
@@ -179,10 +221,10 @@ export function Schedule7FormView({
 				control={control}
 				computed={computed}
 				scheduleId="T2SCH7"
+				boundFields={SCHEDULE_7_BOUND}
 				disabled={disabled}
 				onNavigate={onNavigate}
 				highlightLine={highlightLine}
-				titleSuffix=" — as printed, not collected here"
 			/>
 		</div>
 	);

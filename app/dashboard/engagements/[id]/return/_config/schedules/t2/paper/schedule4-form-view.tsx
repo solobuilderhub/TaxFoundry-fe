@@ -1,6 +1,6 @@
 "use client";
 
-import { type Control, useWatch } from "react-hook-form";
+import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { LossesValues } from "../../../../_lib/return-input";
 import {
@@ -33,6 +33,14 @@ const FIELD_NAME: Partial<Record<string, keyof LossesValues>> = {
 	"330": "farmApplied",
 	"402": "restrictedFarmOpening",
 	"430": "restrictedFarmApplied",
+	/*
+	 * Part 5 — this app models one limited partnership. Its opening balance,
+	 * at-risk amount and the amount applied sit on the table that applies
+	 * prior-year losses (lines 630-680).
+	 */
+	"636": "atRiskAmount",
+	"662": "limitedPartnershipOpening",
+	"675": "limitedPartnershipApplied",
 };
 
 const CARRYBACK_LINES = ["901", "902", "903"];
@@ -99,13 +107,12 @@ export function Schedule4FormView({
 	highlightLine?: string;
 }) {
 	const lossesControl = control as unknown as Control<LossesValues>;
-	const carrybacks =
-		useWatch({ control: lossesControl, name: "carrybacks" }) ?? [];
-
 	const carrybackRows: ClassGridRow[] = [0, 1, 2].map((i) => ({
 		key: `carryback-${i}`,
 		label: `${["First", "Second", "Third"][i]} preceding year`,
-		arrayIndex: i < carrybacks.length ? i : undefined,
+		// Every row is a box: a year can be carried back to without the one
+		// before it, and the row index is which preceding year it is.
+		arrayIndex: i,
 	}));
 
 	return (
@@ -136,6 +143,24 @@ export function Schedule4FormView({
 					resolveLine={(): LineValue => ({
 						editable: true,
 						name: "farmingIncome",
+					})}
+					disabled={disabled}
+				/>
+			</PaperSection>
+
+			<PaperSection
+				title="Limited partnership income this year"
+				description="What the partnership allocated to the corporation this year. Not a line of Schedule 4 — the engine uses it with the at-risk amount (line 636) to limit the losses applied at line 675."
+			>
+				<PaperLeaderRow
+					line="—"
+					caption="Income from the limited partnership this year"
+					kind="money"
+					role="input"
+					control={lossesControl}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "partnershipIncome",
 					})}
 					disabled={disabled}
 				/>

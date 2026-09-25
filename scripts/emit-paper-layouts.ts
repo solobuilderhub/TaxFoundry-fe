@@ -285,6 +285,17 @@ export function emit(
 	out.push(`  label: ${q(label)},`);
 	out.push(`  hint: ${q(hint)},`);
 	out.push("  formView: (props) => createElement(Schedule1FormView, props),");
+	// The printed form is Schedule 1's only view: every field below is a box on it.
+	out.push(
+		"  // Every field is editable on the form itself — the printed form is the only view.",
+	);
+	out.push("  formOnly: true,");
+	// The form starts from an OBJECT of lines, so `lines.101` writes a key rather
+	// than an array index — see `ScheduleDef.initialValues`.
+	out.push(
+		"  // The lines are keyed by line number — see `ScheduleDef.initialValues`.",
+	);
+	out.push("  initialValues: { lines: {} },");
 	out.push("  schema: defineSchema({");
 	out.push("    sections: [");
 

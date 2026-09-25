@@ -1448,6 +1448,8 @@ export interface ClassGridColumn {
 	 * have within reach of someone reconciling against the paper.
 	 */
 	printedHeading?: string;
+	/** A fixed list of answers — the cell is a select rather than a typed box. */
+	options?: readonly { value: string; label: string }[];
 }
 
 /** One conceptual row of a class/type grid. */
@@ -1488,6 +1490,7 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	onAppend,
 	onRemove,
 	addLabel = "+ Add a row",
+	onAddRow,
 }: {
 	arrayName: string;
 	rows: readonly ClassGridRow[];
@@ -1530,6 +1533,13 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 	onRemove?: (index: number) => void;
 	/** Defaults to "+ Add a row". */
 	addLabel?: string;
+	/**
+	 * For a grid of FIXED rows — a reserve kind, a jurisdiction — whose backing
+	 * array holds only the ones in use: a row with no entry yet gets an "Add"
+	 * button that creates it. Those views used to send the preparer to the
+	 * Guided view to add the row first.
+	 */
+	onAddRow?: (row: ClassGridRow) => void;
 }) {
 	const growable = !!onAppend && !!onRemove;
 	return (
@@ -1585,7 +1595,19 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 						{rows.map((row) => (
 							<tr key={row.key} className="border-b last:border-b-0">
 								<td className="sticky left-0 bg-card px-3 py-1.5 text-muted-foreground">
-									{row.label}
+									<span className="flex items-center justify-between gap-2">
+										{row.label}
+										{onAddRow && row.arrayIndex === undefined && (
+											<button
+												type="button"
+												onClick={() => onAddRow(row)}
+												disabled={disabled}
+												className="shrink-0 rounded-md border border-dashed px-1.5 py-0.5 text-[11px] text-foreground hover:bg-accent disabled:opacity-50"
+											>
+												+ Add
+											</button>
+										)}
+									</span>
 								</td>
 								{columns.map((col, i) => {
 									const editable =
@@ -1606,7 +1628,16 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 												</span>
 											)}
 											{editable ? (
-												col.kind === "money" ? (
+												col.options ? (
+													<PaperSelect
+														control={control}
+														name={`${arrayName}.${row.arrayIndex}.${col.fieldName}`}
+														label={`${row.label} — ${col.caption}`}
+														options={col.options}
+														disabled={disabled}
+														className="min-w-[9rem]"
+													/>
+												) : col.kind === "money" ? (
 													<PaperMoney
 														control={control}
 														name={`${arrayName}.${row.arrayIndex}.${col.fieldName}`}
@@ -1615,7 +1646,7 @@ export function PaperClassGrid<T extends Record<string, unknown>>({
 														disabled={disabled}
 														className="min-w-[5.5rem]"
 													/>
-												) : col.kind === "rate" ? (
+												) : col.kind === "rate" || col.kind === "count" ? (
 													<PaperNumber
 														control={control}
 														name={`${arrayName}.${row.arrayIndex}.${col.fieldName}`}

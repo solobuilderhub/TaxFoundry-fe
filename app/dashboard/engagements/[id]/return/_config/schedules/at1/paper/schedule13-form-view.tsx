@@ -18,10 +18,7 @@ import {
 	PaperLeaderRow,
 	PaperSection,
 } from "./components/paper-primitives";
-import {
-	WorksheetMoneyField,
-	WorksheetTable,
-} from "./components/worksheet-table";
+import { StraightLineWorksheets } from "./components/straight-line-worksheets";
 import {
 	AT1_SCHEDULE_13_FIELDS,
 	AT1_SCHEDULE_13_FOOTNOTES,
@@ -67,38 +64,6 @@ const FIELD_NAME: Partial<Record<string, keyof AlbertaCca13Row>> = {
 	"013013001": "rate",
 	"013019001": "claim",
 };
-
-/** A straight-line class's opening UCC and claim, above its worksheet. Blank = federal. */
-function StraightLineHeader({
-	control,
-	disabled,
-	opening,
-	claim,
-}: {
-	control: Control<AlbertaCca13Values>;
-	disabled?: boolean;
-	opening: "class13OpeningUCC" | "class14OpeningUCC";
-	claim: "class13Claim" | "class14Claim";
-}) {
-	return (
-		<div className="pt-1">
-			<WorksheetMoneyField
-				control={control}
-				name={opening}
-				label="Opening UCC"
-				placeholder="Federal"
-				disabled={disabled}
-			/>
-			<WorksheetMoneyField
-				control={control}
-				name={claim}
-				label="Alberta claim"
-				placeholder="Federal"
-				disabled={disabled}
-			/>
-		</div>
-	);
-}
 
 /** 013125 — per RETURN, so it is a single row above the grid, not a column in it. */
 const LIMIT_LINE = "013125001";
@@ -326,76 +291,12 @@ export function Schedule13FormView({
 					</div>
 				</PaperSection>
 			)}
-			<PaperSection
-				title="Class 13 worksheet — leasehold interests"
-				description="Supports a class 13 row: straight-line, one layer per leasehold improvement. Needed only when there is no federal Schedule 8 to read the layers from — blanks take the federal figures."
-			>
-				<StraightLineHeader
-					control={ccaControl}
-					disabled={disabled}
-					opening="class13OpeningUCC"
-					claim="class13Claim"
-				/>
-				<WorksheetTable
-					control={ccaControl}
-					name="class13Layers"
-					disabled={disabled}
-					addLabel="+ Add a leasehold layer"
-					emptyText="No layers added this year."
-					columns={[
-						{ name: "description", label: "Description", kind: "text" },
-						{ name: "capitalCost", label: "Capital cost", kind: "money" },
-						{
-							name: "leaseEnd",
-							label: "Lease end",
-							kind: "date",
-							hint: "The 12-month period count is derived from this and the tax year start.",
-						},
-						{
-							name: "firstRenewalEnd",
-							label: "First renewal end",
-							kind: "date",
-							hint: "Where the lease grants renewal rights — replaces the lease end for the period count.",
-						},
-						{
-							name: "claimedToDate",
-							label: "CCA claimed in prior years",
-							kind: "money",
-						},
-						{ name: "proceeds", label: "Disposition proceeds", kind: "money" },
-						{ name: "isFirstYear", label: "First tax year", kind: "bool" },
-						{ name: "aiip", label: "AIIP", kind: "bool" },
-					]}
-				/>
-			</PaperSection>
-			<PaperSection
-				title="Class 14 worksheet — limited-life intangibles"
-				description="Supports a class 14 row: straight-line, prorated per property by the life it had left when acquired."
-			>
-				<StraightLineHeader
-					control={ccaControl}
-					disabled={disabled}
-					opening="class14OpeningUCC"
-					claim="class14Claim"
-				/>
-				<WorksheetTable
-					control={ccaControl}
-					name="class14Properties"
-					disabled={disabled}
-					addLabel="+ Add a property"
-					emptyText="No properties added this year."
-					columns={[
-						{ name: "description", label: "Description", kind: "text" },
-						{ name: "capitalCost", label: "Capital cost", kind: "money" },
-						{
-							name: "lifeDaysAtAcquisition",
-							label: "Days of life remaining at acquisition",
-							kind: "number",
-							hint: "Days the property had REMAINING when the cost was incurred — not its total life.",
-						},
-					]}
-				/>
-			</PaperSection>
+			<StraightLineWorksheets
+				control={ccaControl}
+				disabled={disabled}
+				blankMeans={{ opening: "Federal", claim: "Federal" }}
+				class13Description="Supports a class 13 row: straight-line, one layer per leasehold improvement. Needed only when there is no federal Schedule 8 to read the layers from — blanks take the federal figures."
+			/>
 			<PaperSection title="Totals carried to Schedule 12">
 				{totalsFields.map((f) => (
 					<PaperLeaderRow

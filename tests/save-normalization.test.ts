@@ -33,3 +33,21 @@ describe("saving a form", () => {
 		expect(normalizeSchedule2({ allocationAreaB: { l082: null } })).toEqual({});
 	});
 });
+
+describe("holes in arrays", () => {
+	it("become empty rows in a list of rows", () => {
+		expect(withoutNulls({ rows: [null, { amount: 5 }] })).toEqual({
+			rows: [{}, { amount: 5 }],
+		});
+	});
+
+	it("stay null in an array of plain values — Schedule 1's line-number index", () => {
+		const lines: (number | null)[] = [];
+		lines[3] = 120;
+		expect(
+			withoutNulls({ lines: Array.from(lines, (x) => x ?? null) }),
+		).toEqual({
+			lines: [null, null, null, 120],
+		});
+	});
+});

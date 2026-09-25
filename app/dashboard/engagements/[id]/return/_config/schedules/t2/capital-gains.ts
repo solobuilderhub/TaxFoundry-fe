@@ -14,6 +14,8 @@ export const capitalGains = defineSchedule({
 	label: "Capital Gains (S6)",
 	hint: "Dispositions of capital property",
 	formView: (props) => createElement(CapitalGainsFormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

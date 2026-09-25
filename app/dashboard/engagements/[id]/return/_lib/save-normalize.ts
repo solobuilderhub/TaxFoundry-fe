@@ -10,10 +10,23 @@
  * clearing a saved figure silently restored it.
  *
  * Only object properties are dropped — an array keeps its positions, because
- * a row's index is its meaning (Schedule 10's i-th preceding year).
+ * a row's index is its meaning (Schedule 10's and Schedule 4's i-th preceding
+ * year). A hole such a row leaves behind — typing into the second year first —
+ * becomes an empty row, which is what it is; `null` is not a row the contract
+ * accepts.
+ *
+ * Only in a list of ROWS, though. An array of plain values keeps its holes as
+ * `null`: Schedule 1's digit-keyed lines can arrive as a sparse array whose
+ * index is the line number, and the server turns exactly that shape — numbers
+ * and nulls — back into its record. An `{}` there is refused.
  */
 export function withoutNulls(v: unknown): unknown {
-	if (Array.isArray(v)) return v.map(withoutNulls);
+	if (Array.isArray(v)) {
+		const rows = v.some((x) => x != null && typeof x === "object");
+		return Array.from(v, (x) =>
+			x == null ? (rows ? {} : null) : withoutNulls(x),
+		);
+	}
 	if (v && typeof v === "object") {
 		return Object.fromEntries(
 			Object.entries(v as Record<string, unknown>)

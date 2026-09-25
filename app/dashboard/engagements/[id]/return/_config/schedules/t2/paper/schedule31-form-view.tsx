@@ -2,9 +2,20 @@
 
 import type { Control } from "react-hook-form";
 import type { CreditsValues } from "../../../../_lib/return-input";
-import { PaperLeaderRow, PaperSection } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
-import { T2_SCHEDULE_31_FIELDS, T2_SCHEDULE_31_SECTIONS } from "./generated/schedule31.layout";
+import {
+	PaperLeaderRow,
+	PaperSection,
+} from "../../at1/paper/components/paper-primitives";
+import type {
+	LineValue,
+	NavigateToLine,
+	ResolveLine,
+} from "../../at1/paper/resolve-line";
+import { federalKind } from "./federal-kind";
+import {
+	T2_SCHEDULE_31_FIELDS,
+	T2_SCHEDULE_31_SECTIONS,
+} from "./generated/schedule31.layout";
 
 const OWN_FIELD: Partial<Record<string, keyof CreditsValues>> = {
 	"380": "sredQualifiedExpenditures",
@@ -54,37 +65,45 @@ export function Schedule31FormView({
 	};
 
 	const modelledSections = new Set(["sred-expenditures", "sred-balances"]);
-	const fieldsFor = (sectionId: string) => T2_SCHEDULE_31_FIELDS.filter((f) => f.section === sectionId);
+	const fieldsFor = (sectionId: string) =>
+		T2_SCHEDULE_31_FIELDS.filter((f) => f.section === sectionId);
 
 	return (
 		<div className="space-y-4">
-			{T2_SCHEDULE_31_SECTIONS.filter((s) => modelledSections.has(s.id)).map((section) => (
-				<PaperSection key={section.id} title={section.title} description={section.description} formId="T2SCH31">
-					{fieldsFor(section.id).map((f) => (
-						<PaperLeaderRow
-							key={f.line}
-							line={f.line}
-							caption={f.caption}
-							kind={f.kind}
-							role={OWN_FIELD[f.line] ? "input" : f.role}
-							note={
-								f.line === "520"
-									? "Labelled 'computed' on the printed form (12A minus 12B, worksheet letters this app cannot resolve to numbered lines) — but this app has no year-over-year continuity tracking, so it's a genuine manual entry here."
-									: f.note
-							}
-							to={f.to}
-							onNavigate={onNavigate}
-							highlightLine={highlightLine}
-							control={creditsControl}
-							resolveLine={resolveLine}
-							disabled={disabled}
-						/>
-					))}
-				</PaperSection>
-			))}
+			{T2_SCHEDULE_31_SECTIONS.filter((s) => modelledSections.has(s.id)).map(
+				(section) => (
+					<PaperSection
+						key={section.id}
+						title={section.title}
+						description={section.description}
+						formId="T2SCH31"
+					>
+						{fieldsFor(section.id).map((f) => (
+							<PaperLeaderRow
+								key={f.line}
+								line={f.line}
+								caption={f.caption}
+								kind={federalKind(f.kind)}
+								role={OWN_FIELD[f.line] ? "input" : f.role}
+								note={
+									f.line === "520"
+										? "Labelled 'computed' on the printed form (12A minus 12B, worksheet letters this app cannot resolve to numbered lines) — but this app has no year-over-year continuity tracking, so it's a genuine manual entry here."
+										: f.note
+								}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
+								control={creditsControl}
+								resolveLine={resolveLine}
+								disabled={disabled}
+							/>
+						))}
+					</PaperSection>
+				),
+			)}
 			<PaperSection
 				title="The rest of this form"
-				description="Not modelled in this app at all — a genuinely large gap, not a rendering omission. Qualified property (Parts 4-7), SR&ED eligibility and recapture (Parts 2-3, 14-17), pre-production mining (Part 18), apprenticeship job creation (Parts 19-21), child care spaces (Part 22), and the clean economy credits (Part 23) have no guided-editor fields anywhere in this product yet."
+				description="Not modelled in this app at all — a genuinely large gap, not a rendering omission. Qualified property (Parts 4-7), SR&ED eligibility and recapture (Parts 2-3, 14-17), pre-production mining (Part 18), apprenticeship job creation (Parts 19-21), child care spaces (Part 22), and the clean economy credits (Part 23) are not collected anywhere in this product yet."
 				formId="T2SCH31"
 			>
 				<p className="p-4 text-xs text-muted-foreground">

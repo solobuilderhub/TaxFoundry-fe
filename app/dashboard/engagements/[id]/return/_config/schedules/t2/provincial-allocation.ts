@@ -14,6 +14,8 @@ export const provincialAllocation = defineSchedule({
 	label: "Provincial Allocation (S5 Part 1)",
 	hint: "Permanent establishments in multiple provinces",
 	formView: (props) => createElement(Schedule5FormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

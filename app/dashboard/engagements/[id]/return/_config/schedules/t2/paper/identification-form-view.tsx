@@ -3,6 +3,7 @@
 import type { Control } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type { IdentificationValues } from "../../../../_lib/return-input";
+import { PROVINCE_OPTIONS } from "../../../options";
 import {
 	PaperLeaderRow,
 	PaperSection,
@@ -17,6 +18,46 @@ import {
 	T2_JACKET_SECTIONS,
 } from "./generated/jacket.layout";
 import { PaperFormSections } from "./paper-form-sections";
+
+/**
+ * Page 2 and 3 questions this app asks, with the CRA's own line numbers and
+ * captions (research/sources/cra-forms/extracted/T2-jacket.layout.txt). The
+ * jacket definition does not model these pages, so they are written out here
+ * — each one files a named answer in the CIF questionnaire.
+ */
+const ATTACHMENT_QUESTIONS: readonly {
+	line: string;
+	caption: string;
+	name: keyof IdentificationValues;
+	note: string;
+}[] = [
+	{
+		line: "150",
+		caption: "Is the corporation related to any other corporations?",
+		name: "relatedCorporations",
+		note: "Schedule 9.",
+	},
+	{
+		line: "171",
+		caption:
+			"Did the corporation have a total amount over CAN$1 million of reportable transactions with non-arm's length non-residents?",
+		name: "nonArmsLengthNonResidentTransactions",
+		note: "Form T106.",
+	},
+	{
+		line: "259",
+		caption:
+			"If the corporation is a resident of Canada, did the corporation own or hold specified foreign property where the total cost amount of all such property, at any time in the year, was more than CAN$100,000?",
+		name: "foreignPropertyOver100k",
+		note: "Form T1135.",
+	},
+	{
+		line: "271",
+		caption: "Did the corporation have any foreign affiliates in the tax year?",
+		name: "foreignAffiliates",
+		note: "Form T1134.",
+	},
+];
 
 interface JacketField {
 	line: string;
@@ -79,6 +120,13 @@ interface JacketField {
  * out by hand below.
  */
 const BOUND_FIELDS: Readonly<Record<string, keyof IdentificationValues>> = {
+	/*
+	 * 010 is the head office question. This app asks it once for all three
+	 * addresses (010/020/030) and the CIF files one combined answer, so it is
+	 * bound on the first of them; 020 and 030 stay unbound rather than three
+	 * boxes silently writing one field.
+	 */
+	"010": "addressChanged",
 	"040": "corpType",
 	"063": "acquisitionOfControl",
 	"066": "deemedYearEnd",
@@ -145,22 +193,84 @@ export function IdentificationFormView({
 			/>
 
 			<PaperSection
-				title="Attachments checklist (page 2)"
-				description="Page 2 asks which schedules are in the envelope. The jacket definition models page 1 and pages 3 to 9 and deliberately leaves this one out, so the single question this app collects from it is written out here rather than rendered from a form."
+				title="Attachments and information returns (pages 2–3)"
+				description="The questions that decide which schedules and information returns go with the T2. The jacket definition does not model these pages, so the ones this app collects are written out here with the CRA's own line numbers and wording."
+			>
+				{ATTACHMENT_QUESTIONS.map((q) => (
+					<PaperLeaderRow
+						key={q.line}
+						line={q.line}
+						caption={q.caption}
+						kind="bool-flag"
+						role="input"
+						note={q.note}
+						onNavigate={onNavigate}
+						highlightLine={highlightLine}
+						control={identControl}
+						resolveLine={
+							((): LineValue => ({
+								editable: true,
+								name: q.name,
+							})) as ResolveLine
+						}
+						disabled={disabled}
+					/>
+				))}
+			</PaperSection>
+			<PaperSection
+				title="Jurisdiction"
+				description="Where the corporation has its permanent establishment. It decides which provincial tax Schedule 5 computes — Alberta and Québec file their own returns."
 			>
 				<PaperLeaderRow
-					line="150"
-					caption="Is the corporation related to any other corporations?"
-					kind="bool-flag"
+					line="750"
+					caption="Provincial or territorial jurisdiction"
+					kind="code"
 					role="input"
-					note="Schedule 9."
+					note="Where there is a permanent establishment in more than one, list each on Schedule 5."
 					onNavigate={onNavigate}
 					highlightLine={highlightLine}
 					control={identControl}
 					resolveLine={
 						((): LineValue => ({
 							editable: true,
-							name: "relatedCorporations",
+							name: "province",
+							options: PROVINCE_OPTIONS.map((o) => ({
+								code: o.value,
+								label: o.label,
+							})),
+						})) as ResolveLine
+					}
+					disabled={disabled}
+				/>
+			</PaperSection>
+			<PaperSection
+				title="Also asked by this app"
+				description="Not lines on the T2 jacket. The first tells the return it has no financial activity; the second is used only when the corporation also files a Québec CO-17."
+			>
+				<PaperLeaderRow
+					line="—"
+					caption="Inactive / nil return"
+					kind="bool-flag"
+					role="input"
+					control={identControl}
+					resolveLine={
+						((): LineValue => ({
+							editable: true,
+							name: "inactive",
+						})) as ResolveLine
+					}
+					disabled={disabled}
+				/>
+				<PaperLeaderRow
+					line="—"
+					caption="Québec enterprise number (NEQ) — leave blank for a federal-only return"
+					kind="text"
+					role="input"
+					control={identControl}
+					resolveLine={
+						((): LineValue => ({
+							editable: true,
+							name: "quebecId",
 						})) as ResolveLine
 					}
 					disabled={disabled}

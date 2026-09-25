@@ -47,6 +47,10 @@ export const netIncome = defineSchedule({
   label: "Net Income for Tax (S1)",
   hint: "Book-to-tax reconciliation",
   formView: (props) => createElement(Schedule1FormView, props),
+  // Every field is editable on the form itself — the printed form is the only view.
+  formOnly: true,
+  // The lines are keyed by line number — see `ScheduleDef.initialValues`.
+  initialValues: { lines: {} },
   schema: defineSchema({
     sections: [
       section(

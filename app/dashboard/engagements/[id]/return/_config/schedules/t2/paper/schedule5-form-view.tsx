@@ -1,15 +1,19 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ProvincialAllocationValues } from "../../../../_lib/return-input";
 import {
+	type ClassGridColumn,
+	type ClassGridRow,
 	PaperClassGrid,
 	PaperLeaderRow,
 	PaperSection,
-	type ClassGridColumn,
-	type ClassGridRow,
 } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
+import type {
+	LineValue,
+	NavigateToLine,
+	ResolveLine,
+} from "../../at1/paper/resolve-line";
 import { T2_SCHEDULE_5_FIELDS } from "./generated/schedule5.layout";
 
 /**
@@ -19,25 +23,73 @@ import { T2_SCHEDULE_5_FIELDS } from "./generated/schedule5.layout";
  * two "Offshore" rows (Newfoundland 004, Nova Scotia 008) this app has no
  * separate province code for — genuinely not collected, not a mapping gap.
  */
-const PROVINCE_LINES: Record<string, { tick: string; salaries: string; grossRevenue: string; label: string }> = {
-	NL: { tick: "003", salaries: "103", grossRevenue: "143", label: "Newfoundland and Labrador" },
-	PE: { tick: "005", salaries: "105", grossRevenue: "145", label: "Prince Edward Island" },
-	NS: { tick: "007", salaries: "107", grossRevenue: "147", label: "Nova Scotia" },
-	NB: { tick: "009", salaries: "109", grossRevenue: "149", label: "New Brunswick" },
+const PROVINCE_LINES: Record<
+	string,
+	{ tick: string; salaries: string; grossRevenue: string; label: string }
+> = {
+	NL: {
+		tick: "003",
+		salaries: "103",
+		grossRevenue: "143",
+		label: "Newfoundland and Labrador",
+	},
+	PE: {
+		tick: "005",
+		salaries: "105",
+		grossRevenue: "145",
+		label: "Prince Edward Island",
+	},
+	NS: {
+		tick: "007",
+		salaries: "107",
+		grossRevenue: "147",
+		label: "Nova Scotia",
+	},
+	NB: {
+		tick: "009",
+		salaries: "109",
+		grossRevenue: "149",
+		label: "New Brunswick",
+	},
 	QC: { tick: "011", salaries: "111", grossRevenue: "151", label: "Quebec" },
 	ON: { tick: "013", salaries: "113", grossRevenue: "153", label: "Ontario" },
 	MB: { tick: "015", salaries: "115", grossRevenue: "155", label: "Manitoba" },
-	SK: { tick: "017", salaries: "117", grossRevenue: "157", label: "Saskatchewan" },
+	SK: {
+		tick: "017",
+		salaries: "117",
+		grossRevenue: "157",
+		label: "Saskatchewan",
+	},
 	AB: { tick: "019", salaries: "119", grossRevenue: "159", label: "Alberta" },
-	BC: { tick: "021", salaries: "121", grossRevenue: "161", label: "British Columbia" },
+	BC: {
+		tick: "021",
+		salaries: "121",
+		grossRevenue: "161",
+		label: "British Columbia",
+	},
 	YT: { tick: "023", salaries: "123", grossRevenue: "163", label: "Yukon" },
-	NT: { tick: "025", salaries: "125", grossRevenue: "165", label: "Northwest Territories" },
+	NT: {
+		tick: "025",
+		salaries: "125",
+		grossRevenue: "165",
+		label: "Northwest Territories",
+	},
 	NU: { tick: "026", salaries: "126", grossRevenue: "166", label: "Nunavut" },
 };
 
 const COLUMNS: ClassGridColumn[] = [
-	{ line: "salaries", caption: "Salaries and wages", kind: "money", fieldName: "salariesWages" },
-	{ line: "grossRevenue", caption: "Gross revenue", kind: "money", fieldName: "grossRevenue" },
+	{
+		line: "salaries",
+		caption: "Salaries and wages",
+		kind: "money",
+		fieldName: "salariesWages",
+	},
+	{
+		line: "grossRevenue",
+		caption: "Gross revenue",
+		kind: "money",
+		fieldName: "grossRevenue",
+	},
 ];
 
 /**
@@ -67,20 +119,31 @@ export function Schedule5FormView({
 	onNavigate?: NavigateToLine;
 	highlightLine?: string;
 }) {
-	const provincialControl = control as unknown as Control<ProvincialAllocationValues>;
-	const establishments = useWatch({ control: provincialControl, name: "establishments" }) ?? [];
-
-	const gridRows: ClassGridRow[] = Object.entries(PROVINCE_LINES).map(([code, meta]) => {
-		const arrayIndex = establishments.findIndex((e) => e?.province === code);
-		return {
-			key: code,
-			label: meta.label,
-			arrayIndex: arrayIndex === -1 ? undefined : arrayIndex,
-		};
+	const provincialControl =
+		control as unknown as Control<ProvincialAllocationValues>;
+	const establishments =
+		useWatch({ control: provincialControl, name: "establishments" }) ?? [];
+	const { append } = useFieldArray({
+		control: provincialControl,
+		name: "establishments",
 	});
 
+	const gridRows: ClassGridRow[] = Object.entries(PROVINCE_LINES).map(
+		([code, meta]) => {
+			const arrayIndex = establishments.findIndex((e) => e?.province === code);
+			return {
+				key: code,
+				label: meta.label,
+				arrayIndex: arrayIndex === -1 ? undefined : arrayIndex,
+			};
+		},
+	);
+
 	const tickField = T2_SCHEDULE_5_FIELDS.find((f) => f.line === "100");
-	const resolveTick: ResolveLine = (): LineValue => ({ editable: false, value: undefined });
+	const resolveTick: ResolveLine = (): LineValue => ({
+		editable: false,
+		value: undefined,
+	});
 
 	return (
 		<div className="space-y-4">
@@ -100,7 +163,7 @@ export function Schedule5FormView({
 			)}
 			<PaperSection
 				title="Part 1 — Allocation of taxable income"
-				description="One row per jurisdiction with a permanent establishment. A jurisdiction not yet added below in Guided view shows 'not added' — add it there first. The 'tick' (column A) isn't asked separately; a row existing here IS the tick."
+				description="One row per jurisdiction with a permanent establishment. Add each jurisdiction where the corporation has one. The tick (column A) is not asked separately — a jurisdiction added here is the tick."
 				formId="T2SCH5"
 			>
 				<div className="p-2">
@@ -111,10 +174,14 @@ export function Schedule5FormView({
 						control={provincialControl}
 						disabled={disabled}
 						resolveCell={() => undefined}
+						// Row keys are the province codes.
+						onAddRow={(row) => append({ province: row.key as never })}
 						lineFor={(row, col) => {
 							const meta = PROVINCE_LINES[row.key];
 							if (!meta) return "";
-							return col.line === "salaries" ? meta.salaries : meta.grossRevenue;
+							return col.line === "salaries"
+								? meta.salaries
+								: meta.grossRevenue;
 						}}
 					/>
 				</div>

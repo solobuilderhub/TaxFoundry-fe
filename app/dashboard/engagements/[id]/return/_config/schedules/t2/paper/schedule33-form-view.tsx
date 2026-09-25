@@ -1,13 +1,21 @@
 "use client";
 
-import { useWatch, type Control } from "react-hook-form";
+import { type Control, useWatch } from "react-hook-form";
 import type { CapitalValues } from "../../../../_lib/return-input";
 import {
 	PaperLeaderRow,
 	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
-import { T2_SCHEDULE_33_FIELDS, T2_SCHEDULE_33_SECTIONS } from "./generated/schedule33.layout";
+import type {
+	LineValue,
+	NavigateToLine,
+	ResolveLine,
+} from "../../at1/paper/resolve-line";
+import { federalKind } from "./federal-kind";
+import {
+	T2_SCHEDULE_33_FIELDS,
+	T2_SCHEDULE_33_SECTIONS,
+} from "./generated/schedule33.layout";
 
 /**
  * Every field this app actually collects, by printed line. Line 112
@@ -107,52 +115,81 @@ export function Schedule33FormView({
 		num(values.partnershipObligations) +
 		num(values.partnershipInterestAsset);
 	const line500 = Math.max(0, line190 - line490);
-	const computedByLine: Record<string, number> = { "190": line190, "490": line490, "500": line500 };
+	const computedByLine: Record<string, number> = {
+		"190": line190,
+		"490": line490,
+		"500": line500,
+	};
 
 	const resolveLine: ResolveLine = (line): LineValue => {
 		const field = OWN_FIELD[line];
 		if (field) return { editable: true, name: field };
-		if (line in computedByLine) return { editable: false, value: computedByLine[line] };
+		if (line in computedByLine)
+			return { editable: false, value: computedByLine[line] };
 		return { editable: false, value: undefined };
 	};
 
-	const fieldsFor = (sectionId: string) => T2_SCHEDULE_33_FIELDS.filter((f) => f.section === sectionId);
+	const fieldsFor = (sectionId: string) =>
+		T2_SCHEDULE_33_FIELDS.filter((f) => f.section === sectionId);
 
 	return (
 		<div className="space-y-4">
-			{T2_SCHEDULE_33_SECTIONS.filter((s) => s.id !== "canadian").map((section) => (
-				<PaperSection key={section.id} title={section.title} description={section.description} formId="T2SCH33">
-					{fieldsFor(section.id).map((f) => (
-						<PaperLeaderRow
-							key={f.line}
-							line={f.line}
-							caption={f.caption}
-							kind={f.kind}
-							role={f.role}
-							note={f.note}
-							to={f.to}
-							onNavigate={onNavigate}
-							highlightLine={highlightLine}
-							control={capitalControl}
-							resolveLine={resolveLine}
-							disabled={disabled}
-						/>
-					))}
-				</PaperSection>
-			))}
+			{T2_SCHEDULE_33_SECTIONS.filter((s) => s.id !== "canadian").map(
+				(section) => (
+					<PaperSection
+						key={section.id}
+						title={section.title}
+						description={section.description}
+						formId="T2SCH33"
+					>
+						{fieldsFor(section.id).map((f) => (
+							<PaperLeaderRow
+								key={f.line}
+								line={f.line}
+								caption={f.caption}
+								kind={federalKind(f.kind)}
+								role={f.role}
+								note={f.note}
+								to={f.to}
+								onNavigate={onNavigate}
+								highlightLine={highlightLine}
+								control={capitalControl}
+								resolveLine={resolveLine}
+								disabled={disabled}
+							/>
+						))}
+					</PaperSection>
+				),
+			)}
 			<PaperSection
 				title="Part 3 — Taxable capital employed in Canada"
-				description="Not modelled to the printed form's own line-by-line detail (701/711/712/713). This app derives line 790 from a taxable-income ratio instead of the form's asset/debt subtraction — see the guided editor's 'Taxable income earned in Canada' field."
+				description="Not modelled to the printed form's own line-by-line detail (701/711/712/713). This app prorates taxable capital by taxable income instead of the form's asset/debt subtraction, using the figure below."
 				formId="T2SCH33"
 			>
+				<PaperLeaderRow
+					line="—"
+					caption="Taxable income earned in Canada — the numerator of line 690's proration (taxable capital × taxable income earned in Canada ÷ taxable income)"
+					kind="money"
+					role="input"
+					note="Leave blank for a wholly Canadian corporation: all its taxable capital is employed in Canada."
+					control={capitalControl}
+					resolveLine={(): LineValue => ({
+						editable: true,
+						name: "taxableIncomeEarnedInCanada",
+					})}
+					disabled={disabled}
+				/>
 				{fieldsFor("canadian").map((f) => (
 					<PaperLeaderRow
 						key={f.line}
 						line={f.line}
 						caption={f.caption}
-						kind={f.kind}
+						kind={federalKind(f.kind)}
 						role={f.role}
-						note={f.note ?? "Not collected at this line-level detail — see this section's own description above."}
+						note={
+							f.note ??
+							"Not collected at this line-level detail — see this section's own description above."
+						}
 						to={f.to}
 						onNavigate={onNavigate}
 						highlightLine={highlightLine}

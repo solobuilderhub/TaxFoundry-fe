@@ -45,6 +45,7 @@ import {
 } from "../_config/line-labels";
 import {
 	formViewFor,
+	initialValuesFor,
 	isFormOnly,
 	isProgramSpecific,
 	SCHEDULE_TREE,
@@ -1047,7 +1048,9 @@ function FormHost({
 		control: Control<Record<string, unknown>>;
 	}) => React.ReactNode;
 }) {
-	const plain = useForm<Record<string, unknown>>({ defaultValues: value });
+	const plain = useForm<Record<string, unknown>>({
+		defaultValues: { ...initialValuesFor(schedule), ...value },
+	});
 	if (formOnly) {
 		return (
 			<form onSubmit={plain.handleSubmit((v) => onSave(v))}>

@@ -28,6 +28,8 @@ export const cca = defineSchedule({
 	label: "Capital Cost Allowance (S8)",
 	hint: "Depreciable property, by class",
 	formView: (props) => createElement(Schedule8FormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

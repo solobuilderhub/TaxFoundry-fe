@@ -88,6 +88,7 @@ export const T2_SCHEDULE_7_FIELDS: readonly PaperField[] = [
   { line: "540", caption: "Income referred to in clause 125(1)(a)(i)(C)", kind: "money", role: "input", section: "sbd-income" },
   { line: "600", caption: "Business number of the corporation", kind: "money", role: "input", section: "specified-corporate" },
   { line: "615", caption: "Total income described under clause 125(1)(a)(i)(B) (total of column FF)", kind: "money", role: "input", section: "specified-corporate" },
+  { line: "022", caption: "Net capital losses of previous years claimed on line 332 on the T2 Corporation Income Tax Return", kind: "money", role: "carried-in", section: "aii", from: { form: "T2", line: "332", note: "Net capital losses of previous years claimed on the jacket" } },
   { line: "610", caption: "Income described under clause 125(1)(a)(i)(B) from the corporation identified in column EE", kind: "money", role: "input", section: "specified-corporate" },
   { line: "620", caption: "Business limit assigned from the corporation identified in column EE", kind: "money", role: "input", section: "specified-corporate" },
   { line: "625", caption: "Total business limit assigned (total of column GG)", kind: "money", role: "input", section: "specified-corporate" },

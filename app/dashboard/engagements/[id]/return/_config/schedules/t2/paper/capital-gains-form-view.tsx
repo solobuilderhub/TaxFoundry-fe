@@ -1,12 +1,13 @@
 "use client";
 
-import { type Control, useWatch } from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ComputedReturn } from "@/api/computed-returns";
 import type {
 	At1DispositionCategory,
 	CapitalGainsValues,
 	Disposition,
 } from "../../../../_lib/return-input";
+import { DISPOSITION_CATEGORY_OPTIONS } from "../../../options";
 import {
 	type ClassGridColumn,
 	type ClassGridRow,
@@ -116,6 +117,17 @@ const FLOORED_CATEGORIES = new Set<At1DispositionCategory>([
 ]);
 
 const COLUMNS: ClassGridColumn[] = [
+	/*
+	 * The category decides which of Schedule 6's grids — and so which line
+	 * numbers — the row belongs to. It was settable only in the Guided view.
+	 */
+	{
+		line: "",
+		caption: "Category",
+		kind: "code",
+		fieldName: "category",
+		options: DISPOSITION_CATEGORY_OPTIONS,
+	},
 	{ line: "", caption: "Property", kind: "text", fieldName: "description" },
 	{
 		line: "",
@@ -153,6 +165,10 @@ export function CapitalGainsFormView({
 	const cgControl = control as unknown as Control<CapitalGainsValues>;
 	const dispositions =
 		useWatch({ control: cgControl, name: "dispositions" }) ?? [];
+	const { append, remove } = useFieldArray({
+		control: cgControl,
+		name: "dispositions",
+	});
 
 	const rows: ClassGridRow[] = dispositions.map((d, i) => ({
 		key: `disposition-${i}`,
@@ -166,7 +182,7 @@ export function CapitalGainsFormView({
 		<div className="space-y-4">
 			<PaperSection
 				title="Dispositions of capital property"
-				description="Line numbers depend on the property CATEGORY chosen for each row in Guided view — Shares (Part 1), Real estate (Part 2), Bonds (Part 3), Other properties (Part 4), Personal-use property (Part 5, gain floored at nil), Listed personal property (Part 6, gain floored at nil). A row with no category set shows no line numbers until one is chosen."
+				description="Line numbers depend on the property category chosen for each row — Shares (Part 1), Real estate (Part 2), Bonds (Part 3), Other properties (Part 4), Personal-use property (Part 5, gain floored at nil), Listed personal property (Part 6, gain floored at nil). A row with no category set shows no line numbers until one is chosen."
 				formId="T2SCH6"
 			>
 				<div className="p-2">
@@ -176,6 +192,9 @@ export function CapitalGainsFormView({
 						columns={COLUMNS}
 						control={cgControl}
 						disabled={disabled}
+						onAppend={() => append({})}
+						onRemove={(i) => remove(i)}
+						addLabel="+ Add a disposition"
 						resolveCell={(row, col) => {
 							if (col.fieldName) return undefined;
 							const d =
@@ -189,6 +208,7 @@ export function CapitalGainsFormView({
 								row.arrayIndex !== undefined
 									? dispositions[row.arrayIndex]
 									: undefined;
+							if (col.fieldName === "category") return "";
 							if (!d?.category) return "—";
 							const lines = CATEGORY_LINES[d.category];
 							if (col.fieldName === "description") return lines.description;
@@ -202,7 +222,7 @@ export function CapitalGainsFormView({
 			</PaperSection>
 			{rows.length === 0 && (
 				<p className="px-1 text-sm text-muted-foreground">
-					No dispositions entered yet — add one in Guided view first.
+					No dispositions entered yet — add one above.
 				</p>
 			)}
 			<PaperSection

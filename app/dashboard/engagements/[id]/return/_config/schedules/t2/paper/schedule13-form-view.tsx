@@ -1,6 +1,6 @@
 "use client";
 
-import { type Control, useWatch } from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import {
 	RESERVE_TYPES,
 	type ReservesValues,
@@ -13,6 +13,7 @@ import {
 	PaperSection,
 } from "../../at1/paper/components/paper-primitives";
 import type { NavigateToLine } from "../../at1/paper/resolve-line";
+import { federalKind } from "./federal-kind";
 import { T2_SCHEDULE_13_FIELDS } from "./generated/schedule13.layout";
 
 const COLUMNS: ClassGridColumn[] = [
@@ -80,6 +81,7 @@ export function Schedule13FormView({
 }) {
 	const reservesControl = control as unknown as Control<ReservesValues>;
 	const rows = useWatch({ control: reservesControl, name: "rows" }) ?? [];
+	const { append } = useFieldArray({ control: reservesControl, name: "rows" });
 
 	// The six federally-recognized reserve types, in the same order as the
 	// printed form's lines (110, 130, 150, 190, 210, 230) — `RESERVE_TYPES`
@@ -151,7 +153,7 @@ export function Schedule13FormView({
 			</PaperSection>
 			<PaperSection
 				title="Part 2 — Other reserves"
-				description="Six named reserve types. A type not yet added below in Guided view shows 'not added' — add it there first, then it becomes editable here."
+				description="Six named reserve types. Add the ones the corporation holds; a type left out has no reserve."
 				formId="T2SCH13"
 			>
 				<div className="p-2">
@@ -162,6 +164,8 @@ export function Schedule13FormView({
 						control={reservesControl}
 						disabled={disabled}
 						resolveCell={() => undefined}
+						// Row keys are the reserve types.
+						onAddRow={(row) => append({ type: row.key as never })}
 					/>
 				</div>
 			</PaperSection>
@@ -173,7 +177,7 @@ export function Schedule13FormView({
 						key={f.line}
 						line={f.line}
 						caption={f.caption}
-						kind={f.kind}
+						kind={federalKind(f.kind)}
 						role={f.role}
 						note={
 							f.note ??

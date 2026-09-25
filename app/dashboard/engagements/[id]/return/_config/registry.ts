@@ -163,6 +163,10 @@ export const schemaFor = (key: ScheduleKey) => BY_KEY[key].schema;
 
 /** `undefined` when the schedule has no paper Form View yet — drives whether the editor shows the Guided/Form View toggle at all. */
 export const formViewFor = (key: ScheduleKey) => BY_KEY[key].formView;
+/** The values a schedule's form starts from, under what is saved — see `ScheduleDef.initialValues`. */
+export const initialValuesFor = (key: ScheduleKey): Record<string, unknown> =>
+	BY_KEY[key].initialValues ?? {};
+
 /** True when the printed form is this schedule's only view — see `ScheduleDef.formOnly`. */
 export const isFormOnly = (key: ScheduleKey) =>
 	!!BY_KEY[key].formOnly && !!BY_KEY[key].formView;

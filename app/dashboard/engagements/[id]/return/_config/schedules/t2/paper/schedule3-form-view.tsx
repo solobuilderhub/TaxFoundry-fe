@@ -208,17 +208,16 @@ export function Schedule3FormView({
 			{/*
 			 * The General Rate Income Pool, on its own form.
 			 *
-			 * Opening GRIP is collected on this same guided-editor page for
-			 * convenience, but it is a Schedule 53 figure, not a Schedule 3 one, and
-			 * this view used to say so and stop there. Schedule 53 itself is printed
-			 * below instead — read-only, since the pool's continuity is derived by
-			 * the engine rather than entered here — which is the same disclosure
-			 * made against the real form rather than in place of it.
+			 * Opening GRIP is kept on this schedule's slice, but it is Schedule 53's
+			 * line 100 — "GRIP at the end of the previous tax year" — so that is
+			 * where its box is. The rest of the pool's continuity is derived by the
+			 * engine and stays read-only.
 			 */}
 			<PaperFormSections
 				sections={T2_SCHEDULE_53_SECTIONS}
 				fields={T2_SCHEDULE_53_FIELDS}
 				control={control}
+				boundFields={{ "100": "openingGrip" }}
 				computed={computed}
 				scheduleId="T2SCH53"
 				disabled={disabled}

@@ -12,6 +12,7 @@ import type {
 	NavigateToLine,
 	ResolveLine,
 } from "../../at1/paper/resolve-line";
+import { federalKind } from "./federal-kind";
 import {
 	T2_SCHEDULE_130_FIELDS,
 	T2_SCHEDULE_130_SECTIONS,
@@ -114,7 +115,7 @@ export function Schedule130FormView({
 						key={f.key}
 						line={String(i)}
 						caption={f.caption}
-						kind={f.kind}
+						kind={federalKind(f.kind)}
 						role="input"
 						onNavigate={onNavigate}
 						highlightLine={highlightLine}

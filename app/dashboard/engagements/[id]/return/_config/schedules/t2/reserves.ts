@@ -17,6 +17,8 @@ export const reserves = defineSchedule({
 	label: "Continuity of Reserves (S13)",
 	hint: "Tax reserves opening / closing",
 	formView: (props) => createElement(Schedule13FormView, props),
+	// Every field is editable on the form itself — the printed form is the only view.
+	formOnly: true,
 	schema: defineSchema({
 		sections: [
 			section(

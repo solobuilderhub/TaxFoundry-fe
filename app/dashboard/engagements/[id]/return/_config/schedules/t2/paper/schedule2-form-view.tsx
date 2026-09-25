@@ -2,9 +2,20 @@
 
 import type { Control } from "react-hook-form";
 import type { DonationsValues } from "../../../../_lib/return-input";
-import { PaperLeaderRow, PaperSection } from "../../at1/paper/components/paper-primitives";
-import type { LineValue, NavigateToLine, ResolveLine } from "../../at1/paper/resolve-line";
-import { T2_SCHEDULE_2_FIELDS, T2_SCHEDULE_2_SECTIONS } from "./generated/schedule2.layout";
+import {
+	PaperLeaderRow,
+	PaperSection,
+} from "../../at1/paper/components/paper-primitives";
+import type {
+	LineValue,
+	NavigateToLine,
+	ResolveLine,
+} from "../../at1/paper/resolve-line";
+import { federalKind } from "./federal-kind";
+import {
+	T2_SCHEDULE_2_FIELDS,
+	T2_SCHEDULE_2_SECTIONS,
+} from "./generated/schedule2.layout";
 
 /**
  * The 4 of 15 real form lines this schedule's guided editor
@@ -52,7 +63,9 @@ export function Schedule2FormView({
 	return (
 		<div className="space-y-4">
 			{T2_SCHEDULE_2_SECTIONS.map((section) => {
-				const fields = T2_SCHEDULE_2_FIELDS.filter((f) => f.section === section.id);
+				const fields = T2_SCHEDULE_2_FIELDS.filter(
+					(f) => f.section === section.id,
+				);
 				if (fields.length === 0) return null;
 				return (
 					<PaperSection
@@ -66,7 +79,7 @@ export function Schedule2FormView({
 								key={f.line}
 								line={f.line}
 								caption={f.caption}
-								kind={f.kind}
+								kind={federalKind(f.kind)}
 								role={f.role}
 								note={f.note}
 								from={f.from}

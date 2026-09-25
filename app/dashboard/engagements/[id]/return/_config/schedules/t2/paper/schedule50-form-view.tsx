@@ -1,6 +1,6 @@
 "use client";
 
-import { type Control, useWatch } from "react-hook-form";
+import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import type { ShareholdersValues } from "../../../../_lib/return-input";
 import {
 	type ClassGridColumn,
@@ -49,6 +49,10 @@ export function Schedule50FormView({
 }) {
 	const shareholdersControl = control as unknown as Control<ShareholdersValues>;
 	const list = useWatch({ control: shareholdersControl, name: "list" }) ?? [];
+	const { append, remove } = useFieldArray({
+		control: shareholdersControl,
+		name: "list",
+	});
 
 	const rows: ClassGridRow[] = list.map((s, i) => ({
 		key: `shareholder-${i}`,
@@ -77,13 +81,16 @@ export function Schedule50FormView({
 						columns={columns}
 						control={shareholdersControl}
 						disabled={disabled}
+						onAppend={() => append({})}
+						onRemove={(i) => remove(i)}
+						addLabel="+ Add a shareholder"
 						resolveCell={() => undefined}
 					/>
 				</div>
 			</PaperSection>
 			{rows.length === 0 && (
 				<p className="px-1 text-sm text-muted-foreground">
-					No shareholders entered yet — add one in Guided view first.
+					No shareholders entered yet — add one above.
 				</p>
 			)}
 		</div>
