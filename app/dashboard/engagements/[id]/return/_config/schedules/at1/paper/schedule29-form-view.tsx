@@ -38,8 +38,9 @@ const SCHEDULE_ID = "029";
 /**
  * The fields this schedule collects on its own slice, by 3-digit line.
  *
- * Most of Schedule 29 is computed (104/108/110/112/118/125/128/130 and every
- * page-3 total) or — for 114/116/126 — genuinely ambiguous which `group` row is
+ * Most of Schedule 29 is computed (102/104/108/110/112/118/125/128/130 and
+ * every page-3 total — 102 is row 1's own line 240, §3.2.3.29, so a box of its
+ * own could only contradict it) or — for 114/116/126 — genuinely ambiguous which `group` row is
  * "this corporation", since that array holds every associated member and
  * nothing marks the claimant's own. Those stay read-only rather than guessed.
  */
@@ -51,7 +52,6 @@ const OWN_FIELD: Partial<Record<string, keyof AlbertaIegValues>> = {
 	"011": "iegReducingFederalExpenditure",
 	"025": "repaymentOrContractPayment",
 	"040": "primaryFieldCode",
-	"102": "allocatedLimit",
 	"132": "recapture",
 	"200": "agreementLongestYearCan",
 	"202": "agreementLongestYearBegin",

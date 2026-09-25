@@ -259,6 +259,11 @@ export function EngagementDetail({ id }: { id: string }) {
 	})();
 
 	const onTransmit = async (values: Record<string, unknown>) => {
+		// TRA's declaration (§3.3.12) must be agreed to before an AT1 may go.
+		if (engagement.program === "AT1" && values.declarationAgreed !== true) {
+			toast.error("Agree to the declaration before transmitting.");
+			return;
+		}
 		const certification = {
 			firstName: String(values.firstName ?? ""),
 			lastName: String(values.lastName ?? ""),
@@ -523,7 +528,9 @@ export function EngagementDetail({ id }: { id: string }) {
 				title={`Certify & transmit to ${authority}`}
 				submitLabel="Transmit"
 				submitLoading={transmit.isPending}
-				schema={getCertificationSchema()}
+				schema={getCertificationSchema({
+					at1Declaration: engagement.program === "AT1",
+				})}
 				onSubmit={onTransmit}
 			/>
 		</div>
